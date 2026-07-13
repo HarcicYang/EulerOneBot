@@ -1,13 +1,13 @@
 from pydantic import BaseModel, RootModel
 from typing import Any, TYPE_CHECKING, Literal, Union
 
-from ..versions import NAME, VERSION
+from versions import NAME, VERSION
 
 if TYPE_CHECKING:
-    from .segments import BaseSegment, Node
+    from .segments import BaseSegmentData, Node
     from .events import GroupSender, PrivateSender
 
-    SEGMENT = BaseSegment
+    SEGMENT = BaseSegmentData
     NODE = Node
     GROUP_SENDER = GroupSender
     PRIVATE_SENDER = PrivateSender

@@ -4,9 +4,9 @@ from typing import Literal, TYPE_CHECKING, Any, Union
 from .models import BotStatus
 
 if TYPE_CHECKING:
-    from .segments import BaseSegment
+    from .segments import BaseSegmentData
 
-    SEGMENT = BaseSegment
+    SEGMENT = BaseSegmentData
 else:
     SEGMENT = Any
 
@@ -76,6 +76,7 @@ class MessageEvent(BaseEvent):
 
 class GroupMessageEvent(MessageEvent):
     message_type: Literal["group"] = "group"
+    sub_type: Literal["group"] = "group"
     anonymous: None = None
     sender: Union[GroupSender]
     group_id: int
@@ -83,6 +84,7 @@ class GroupMessageEvent(MessageEvent):
 
 class PrivateMessageEvent(MessageEvent):
     message_type: Literal["private"] = "private"
+    sub_type: Literal["friend"] = "friend"
     sender: Union[PrivateSender]
 
 
@@ -187,7 +189,7 @@ class GroupRequestEvent(RequestEvent):
 
 
 class MateEvent(BaseEvent):
-    request_type: Literal["mate"] = "mate"
+    post_type: Literal["mate"] = "mate"
     mate_event_type: Literal["lifecycle", "heartbeat"]
 
 

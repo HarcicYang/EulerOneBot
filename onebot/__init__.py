@@ -1,22 +1,30 @@
+import asyncio
 import traceback
-from typing import Literal, NoReturn, Union
+from typing import Literal, NoReturn, Union, TYPE_CHECKING, Any
 from pydantic import TypeAdapter, ValidationError
 
 from .connector import Connector
 from .api import *
 from .events import *
+from hyperogger import Logger
 
-from ..hyperogger import Logger
 
-logger = Logger.create("euler", "INFO")
+if TYPE_CHECKING:
+    from ..config import AdapterConfig, ForwardWebsocketConfig
+
+    ADAPTER_CONFIG = AdapterConfig
+    FORWARD_WEBSOCKET_CONFIG = ForwardWebsocketConfig
+else:
+    ADAPTER_CONFIG = Any
+    FORWARD_WEBSOCKET_CONFIG = Any
+
+logger = Logger.fetch("euler")
+
 
 
 class Adapter:
-    def __init__(
-            self, host: str, port: int,
-            impls: list[Literal["http", "http_post", "forward_websocket", "reverse_websocket"]]
-    ):
-        self.connector = Connector(host, port, impls)
+    def __init__(self, impls: list[ADAPTER_CONFIG]):
+        self.connector = Connector(impls)
         self.api_validation = TypeAdapter(
             Union[
                 SendPrivateMessage,
@@ -52,6 +60,7 @@ class Adapter:
         self.connector =  await self.connector.setup()
 
     async def cycle(self) -> NoReturn:
+        asyncio.create_task(self.connector.run())
         while True:
             data = await self.connector.received.get()
             try:

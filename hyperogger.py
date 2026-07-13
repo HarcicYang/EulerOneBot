@@ -54,7 +54,6 @@ class Logger:
 
     @classmethod
     def fetch(cls, key: str):
-        print(cls.running_loggers)
         return cls.running_loggers.get(key)
 
     def set_level(self, level: str):
