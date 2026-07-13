@@ -151,7 +151,7 @@ async def handle_group_reaction(client: "Client", event: "GroupReaction"):
 lag = Lagrange(
     3591992788,
     "linux",
-    os.environ.get("LAGRANGE_SIGN_URL", "")
+    "https://sign.lagrangecore.org"
 )
 install_loguru()  # optional, for better logging
 lag.log.set_level("DEBUG")
