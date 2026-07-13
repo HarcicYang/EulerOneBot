@@ -1,6 +1,6 @@
-from typing import Literal, TypeVar, Generic
+from typing import Literal, TypeVar, Generic, Annotated, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 __all__ = [
     "BaseSegment",
@@ -15,8 +15,8 @@ __all__ = [
     "Image",
     "Record",
     "Video",
+    "SegmentUnion"
 ]
-
 
 SegmentType = TypeVar("SegmentType")
 
@@ -90,7 +90,7 @@ class MarketFace(BaseSegment[MarketFaceData]):
 class NodeData(BaseSegmentData):
     user_id: str
     nickname: str
-    content: list[BaseSegmentData]
+    content: list[BaseSegment]
 
 
 class Node(BaseSegment[NodeData]):
@@ -99,8 +99,8 @@ class Node(BaseSegment[NodeData]):
 
 
 class ForwardData(BaseSegmentData):
-    id: str
-    content: list[Node]
+    id: str = ""
+    content: list[Node] = []
 
 
 class Forward(BaseSegment[ForwardData]):
@@ -110,7 +110,7 @@ class Forward(BaseSegment[ForwardData]):
 
 class MediaBaseData(BaseSegmentData):
     file: str
-    url: str
+    url: str = ""
 
 
 class ImageData(MediaBaseData):
@@ -139,3 +139,21 @@ class VideoData(MediaBaseData):
 class Video(BaseSegment[VideoData]):
     type: Literal["video"] = "video"
     data: VideoData
+
+
+SegmentUnion = Annotated[
+    Union[
+        Text,
+        At,
+        Reply,
+        Face,
+        Poke,
+        MarketFace,
+        Node,
+        Forward,
+        Image,
+        Record,
+        Video,
+    ],
+    Field(discriminator="type")
+]

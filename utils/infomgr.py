@@ -15,6 +15,7 @@ class MsgInfo(BaseModel):
     timestamp: int
     raw_msg: list[elems.BaseElem]
     seq: int
+    text: str = ""
 
 
 class MsgIDPool(BaseModel):

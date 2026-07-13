@@ -4,15 +4,16 @@ from typing import Any, TYPE_CHECKING, Literal, Union
 from versions import NAME, VERSION
 
 if TYPE_CHECKING:
-    from .segments import BaseSegmentData, Node
+    from .segments import BaseSegment, Node, SegmentUnion
     from .events import GroupSender, PrivateSender
 
-    SEGMENT = BaseSegmentData
+    SEGMENT = BaseSegment
     NODE = Node
     GROUP_SENDER = GroupSender
     PRIVATE_SENDER = PrivateSender
 else:
-    SEGMENT = Any
+    from .segments import SegmentUnion
+    SEGMENT = SegmentUnion
     NODE = Any
     GROUP_SENDER = Any
     PRIVATE_SENDER = Any
@@ -72,7 +73,7 @@ class SendGroupMsgData(BaseModel):
 
 
 class SendMsgData(BaseModel):
-    message_type: Literal["private", "group"]
+    message_type: Literal["private", "group", ""] = ""
     user_id: int = 0
     group_id: int = 0
     message: list[SEGMENT]

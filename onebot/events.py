@@ -189,7 +189,7 @@ class GroupRequestEvent(RequestEvent):
 
 
 class MateEvent(BaseEvent):
-    post_type: Literal["mate"] = "mate"
+    post_type: Literal["mate_event"] = "mate_event"
     mate_event_type: Literal["lifecycle", "heartbeat"]
 
 

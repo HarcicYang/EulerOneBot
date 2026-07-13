@@ -2,3 +2,4 @@ pydantic
 pydantic-settings
 fastapi
 uvicorn[standard]
+httpx

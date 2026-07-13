@@ -25,6 +25,7 @@ logger = Logger.fetch("euler")
 class Adapter:
     def __init__(self, impls: list[ADAPTER_CONFIG]):
         self.connector = Connector(impls)
+        self.api_calls: asyncio.Queue[BaseAPICall] = asyncio.Queue()
         self.api_validation = TypeAdapter(
             Union[
                 SendPrivateMessage,
@@ -65,11 +66,14 @@ class Adapter:
             data = await self.connector.received.get()
             try:
                 api_call = self.api_validation.validate_json(data)
+                await self.api_calls.put(api_call)
             except (ValueError, TypeError, ValidationError):
                 logger.error(data)
                 logger.error(traceback.format_exc())
                 continue
-            raise NotImplementedError()
 
     async def trigger(self, event: BaseEvent) -> None:
         await self.connector.trigger(event.model_dump_json())
+
+    async def report(self, rsp: BaseAPIResponse) -> None:
+        await self.connector.trigger(rsp.model_dump_json())
