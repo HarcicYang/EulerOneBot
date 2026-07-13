@@ -2,23 +2,24 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from typing import Optional, Literal, Self
 import asyncio
 
-
 from ..hyperogger import Logger
 
 logger = Logger.create("euler", "INFO")
 
 
 class Connector:
-    def __init__(self, host: str, port: int,
-                 impls: list[Literal["http", "http_post", "forward_websocket", "reverse_websocket"]]):
+    def __init__(
+            self, host: str, port: int,
+            impls: list[Literal["http", "http_post", "forward_websocket", "reverse_websocket"]]
+    ):
         self.host = host
         self.port = port
         self.impls = impls
         self.app = FastAPI()
-        self.received = asyncio.Queue()
+        self.received: asyncio.Queue[str] = asyncio.Queue()
         self.active_websocket_servers: dict[Literal["root", "api", "event"], WebSocket] = dict()
 
-    async def __aenter__(self) -> Self:
+    async def setup(self) -> Self:
         for i in self.impls:
             match i:
                 case "http":
@@ -32,6 +33,9 @@ class Connector:
                 case _:
                     raise RuntimeError(f"Unknown implementation: {i}")
         return self
+
+    async def __aenter__(self) -> Self:
+        return await self.setup()
 
     async def __aexit__(self) -> None:
         del self
@@ -49,7 +53,7 @@ class Connector:
             self.active_websocket_servers["root"] = websocket
             try:
                 while True:
-                    await self.received.put(await websocket.receive_json())
+                    await self.received.put(await websocket.receive_text())
             except WebSocketDisconnect:
                 logger.error("连接断开")
 
@@ -59,7 +63,7 @@ class Connector:
             self.active_websocket_servers["api"] = websocket
             try:
                 while True:
-                    await self.received.put(await websocket.receive_json())
+                    await self.received.put(await websocket.receive_text())
             except WebSocketDisconnect:
                 logger.error("连接断开")
 
@@ -70,20 +74,19 @@ class Connector:
             while True:
                 await asyncio.sleep(1)
 
-
     async def set_reverse_websocket(self) -> None:
         raise NotImplementedError
 
-    async def report(self, data: dict) -> None:
+    async def report(self, data: str) -> None:
         if self.active_websocket_servers:
             if self.active_websocket_servers.get("root"):
-                await self.active_websocket_servers["root"].send_json(data)
+                await self.active_websocket_servers["root"].send_text(data)
             if self.active_websocket_servers.get("api"):
-                await self.active_websocket_servers["api"].send_json(data)
+                await self.active_websocket_servers["api"].send_text(data)
 
-    async def trigger(self, data: dict) -> None:
+    async def trigger(self, data: str) -> None:
         if self.active_websocket_servers:
             if self.active_websocket_servers.get("root"):
-                await self.active_websocket_servers["root"].send_json(data)
+                await self.active_websocket_servers["root"].send_text(data)
             if self.active_websocket_servers.get("event"):
-                await self.active_websocket_servers["event"].send_json(data)
+                await self.active_websocket_servers["event"].send_text(data)

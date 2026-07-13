@@ -10,6 +10,32 @@ if TYPE_CHECKING:
 else:
     SEGMENT = Any
 
+__all__ = [
+    "BaseEvent",
+    "PrivateSender",
+    "GroupSender",
+    "MessageEvent",
+    "GroupMessageEvent",
+    "PrivateMessageEvent",
+    "NoticeEvent",
+    "FileInfo",
+    "GroupFileUploadEvent",
+    "GroupAdminEvent",
+    "GroupDecreaseEvent",
+    "GroupIncreaseEvent",
+    "GroupMuteEvent",
+    "FriendAddEvent",
+    "GroupRecallEvent",
+    "FriendRecallEvent",
+    "GroupPokeEvent",
+    "RequestEvent",
+    "FriendRequestEvent",
+    "GroupRequestEvent",
+    "MateEvent",
+    "LifecycleEvent",
+    "HeartbeatEvent",
+]
+
 
 class BaseEvent(BaseModel):
     time: int
@@ -143,11 +169,13 @@ class GroupPokeEvent(NoticeEvent):
 class RequestEvent(BaseEvent):
     request_type: Literal["friend", "group"]
 
+
 class FriendRequestEvent(RequestEvent):
     request_type: Literal["friend"] = "friend"
     user_id: int
     comment: str
     flag: str
+
 
 class GroupRequestEvent(RequestEvent):
     request_type: Literal["group"] = "group"
@@ -157,9 +185,11 @@ class GroupRequestEvent(RequestEvent):
     comment: str
     flag: str
 
+
 class MateEvent(BaseEvent):
     request_type: Literal["mate"] = "mate"
     mate_event_type: Literal["lifecycle", "heartbeat"]
+
 
 class LifecycleEvent(MateEvent):
     mate_event_type: Literal["lifecycle"] = "lifecycle"

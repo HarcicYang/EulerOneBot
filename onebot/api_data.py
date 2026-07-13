@@ -18,6 +18,49 @@ else:
     PRIVATE_SENDER = Any
 
 
+__all__ = [
+    "SendPrivateMsgData",
+    "SendGroupMsgData",
+    "SendMsgData",
+    "SendMsgRsp",
+    "DeleteMsgData",
+    "EmptyRsp",
+    "GetMsgData",
+    "GetMsgRsp",
+    "GetForwardMsgData",
+    "GetForwardMsgRsp",
+    "SendLikeData",
+    "SetGroupKickData",
+    "SetGroupBanData",
+    "SetGroupWholeBanData",
+    "SetGroupAdminData",
+    "SetGroupCardData",
+    "SetGroupNameData",
+    "SetGroupLeaveData",
+    "SetGroupSpecialTitleData",
+    "SetFriendAddRequestData",
+    "SetGroupAddRequestData",
+    "GetLoginInfoData",
+    "GetLoginInfoRsp",
+    "GetStrangerInfoData",
+    "GetStrangerInfoRsp",
+    "GetFriendListData",
+    "FriendElem",
+    "GetFriendListRsp",
+    "GetGroupInfoData",
+    "GetGroupInfoRsp",
+    "GetGroupListData",
+    "GetGroupListRsp",
+    "GetGroupMemberInfoData",
+    "GetGroupMemberInfoRsp",
+    "GetGroupMemberListData",
+    "GetGroupMemberListRsp",
+    "GetStatusData",
+    "GetVersionInfoData",
+    "GetVersionInfoRsp",
+]
+
+
 class SendPrivateMsgData(BaseModel):
     user_id: int
     message: list[SEGMENT]

@@ -6,6 +6,9 @@ from utils import color_txt, rgb, NerdICONs
 from typing import Any
 
 
+__all__ = ["Logger", "Levels"]
+
+
 class Levels:
     def __init__(self, nf_icons: NerdICONs):
         self.nf_icons = nf_icons
