@@ -4,9 +4,9 @@ from typing import Literal, TYPE_CHECKING, Any, Union
 from .models import BotStatus
 
 if TYPE_CHECKING:
-    from .segments import BaseSegmentData
+    from .segments import BaseSegment
 
-    SEGMENT = BaseSegmentData
+    SEGMENT = BaseSegment
 else:
     SEGMENT = Any
 

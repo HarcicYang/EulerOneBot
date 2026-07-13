@@ -3,7 +3,7 @@ from typing import Literal, TypeVar, Generic
 from pydantic import BaseModel
 
 __all__ = [
-    "BaseSegmentData",
+    "BaseSegment",
     "Text",
     "At",
     "Reply",
