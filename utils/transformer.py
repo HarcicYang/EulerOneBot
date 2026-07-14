@@ -126,7 +126,16 @@ async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: Targ
             path = unquote(url.path)
             if scheme in ["http", "https"]:
                 async with httpx.AsyncClient() as cli:
-                    response = await cli.get(url)  # type: ignore
+                    retried = 0
+                    while retried < 3:
+                        response = await cli.get(url.geturl())
+                        if response.status_code != 200:
+                            retried += 1
+                            continue
+                        else:
+                            break
+                    if retried == 3:
+                        continue
                     if target.target == "group":
                         img = await lgrc.upload_grp_image(grp_id=target.id, image=io.BytesIO(response.content))
                     else:

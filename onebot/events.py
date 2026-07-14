@@ -31,7 +31,7 @@ __all__ = [
     "RequestEvent",
     "FriendRequestEvent",
     "GroupRequestEvent",
-    "MateEvent",
+    "MetaEvent",
     "LifecycleEvent",
     "HeartbeatEvent",
 ]
@@ -89,6 +89,7 @@ class PrivateMessageEvent(MessageEvent):
 
 
 class NoticeEvent(BaseEvent):
+    post_type: Literal["notice"] = "notice"
     notice_type: Literal[
         "group_upload", "group_admin", "group_decrease", "group_increase", "group_ban", "friend_add", "group_recall", "friend_recall", "notify"]
 
@@ -169,6 +170,7 @@ class GroupPokeEvent(NoticeEvent):
 
 
 class RequestEvent(BaseEvent):
+    post_type: Literal["request"] = "request"
     request_type: Literal["friend", "group"]
 
 
@@ -188,17 +190,17 @@ class GroupRequestEvent(RequestEvent):
     flag: str
 
 
-class MateEvent(BaseEvent):
-    post_type: Literal["mate_event"] = "mate_event"
-    mate_event_type: Literal["lifecycle", "heartbeat"]
+class MetaEvent(BaseEvent):
+    post_type: Literal["meta_event"] = "meta_event"
+    meta_event_type: Literal["lifecycle", "heartbeat"]
 
 
-class LifecycleEvent(MateEvent):
-    mate_event_type: Literal["lifecycle"] = "lifecycle"
+class LifecycleEvent(MetaEvent):
+    meta_event_type: Literal["lifecycle"] = "lifecycle"
     sub_type: Literal["enable", "disable", "connect"]
 
 
-class HeartbeatEvent(MateEvent):
-    mate_event_type: Literal["heartbeat"] = "heartbeat"
+class HeartbeatEvent(MetaEvent):
+    meta_event_type: Literal["heartbeat"] = "heartbeat"
     status: BotStatus
     interval: int

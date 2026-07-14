@@ -1,7 +1,7 @@
 import os.path
 
 from pydantic import BaseModel
-from typing import Dict, Literal, Union
+from typing import Dict, Literal, Union, Self
 import random
 
 from lagrange.client.message import elems
@@ -10,12 +10,19 @@ from lagrange.client.message import elems
 class MsgInfo(BaseModel):
     scene_type: Literal["group", "user"]
     scene_id: int
-    uin: int
-    uid: str
-    timestamp: int
-    raw_msg: list[elems.BaseElem]
+    uin: int = 0
+    uid: str = ""
+    timestamp: int = 0
+    raw_msg: list[elems.BaseElem] = []
     seq: int
     text: str = ""
+
+    def __eq__(self, other: Self) -> bool:
+        return (
+            other.scene_type == self.scene_type and
+            other.scene_id == self.scene_id and
+            other.seq == self.seq
+        )
 
 
 class MsgIDPool(BaseModel):

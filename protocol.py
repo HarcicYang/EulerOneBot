@@ -10,11 +10,11 @@ from pydantic import ValidationError
 
 from lagrange import Lagrange
 from lagrange.client.client import Client
-from lagrange.client.events.friend import FriendMessage
-from lagrange.client.events.group import GroupMessage
+from lagrange.client.events.friend import FriendMessage, FriendRecall
+from lagrange.client.events.group import GroupMessage, GroupRecall
 
 from config import load_config
-from onebot.api_data import SendMsgRsp, EmptyRsp
+from onebot.api_data import *
 from onebot.models import TargetInfo
 from utils.infomgr import MsgInfo, info_mgr
 from utils.transformer import to_onebot_msg, to_lagrange_msg
@@ -43,6 +43,8 @@ class LagrangeProtocol:
     async def run(self) -> None:
         self.lag.subscribe(GroupMessage, self.grp_msg_handler)
         self.lag.subscribe(FriendMessage, self.pri_msg_handler)
+        self.lag.subscribe(GroupRecall, self.grp_recall_handler)
+        self.lag.subscribe(FriendRecall, self.pri_recall_handler)
 
         try:
             await self.adapter.setup()
@@ -63,7 +65,7 @@ class LagrangeProtocol:
                 await self.adapter.trigger(
                     onebot.events.HeartbeatEvent(
                         interval=appconfig.heartbeat.interval,
-                        self_id=appconfig.login.uin,
+                        self_id=self.lag.uin,
                         status=onebot.events.BotStatus(good=True, online=True),
                         time=round(time.time())
                     )
@@ -170,6 +172,14 @@ class LagrangeProtocol:
                     echo=call.echo
                 )
                 await self.adapter.report(rsp)
+            elif isinstance(call, GetVersionInfo):
+                rsp = GetVersionInfoResponse(
+                    status="ok",
+                    retcode=0,
+                    data=GetVersionInfoRsp(),
+                    echo=call.echo
+                )
+                await self.adapter.report(rsp)
 
     async def grp_msg_handler(self, client: Client, event: GroupMessage) -> None:
         logger.info(event)
@@ -185,7 +195,7 @@ class LagrangeProtocol:
             role = "member"
         ev = onebot.events.GroupMessageEvent(
             time=event.time,
-            self_id=appconfig.login.uin,
+            self_id=self.lag.uin,
             message_id=info_mgr.msgid_mgr.add(
                 MsgInfo(
                     raw_msg=event.msg_chain,
@@ -223,7 +233,7 @@ class LagrangeProtocol:
         user_info = await client.get_user_info(event.from_uid)
         ev = onebot.events.PrivateMessageEvent(
             time=event.timestamp,
-            self_id=appconfig.login.uin,
+            self_id=self.lag.uin,
             message_id=info_mgr.msgid_mgr.add(
                 MsgInfo(
                     raw_msg=event.msg_chain,
@@ -245,5 +255,48 @@ class LagrangeProtocol:
                 sex=user_info.sex.name,  # type: ignore
                 user_id=event.from_uin
             )
+        )
+        await self.adapter.trigger(ev)
+
+    async def grp_recall_handler(self, client: Client, event: GroupRecall) -> None:
+        logger.info(event)
+        msgid = info_mgr.msgid_mgr.search(
+            MsgInfo(
+                scene_id=event.grp_id,
+                scene_type="group",
+                seq=event.seq
+            )
+        )
+        if not msgid:
+            return
+        real_info = info_mgr.msgid_mgr.fetch(msgid)
+        ev = onebot.events.GroupRecallEvent(
+            group_id=event.grp_id,
+            message_id=msgid,
+            operator_id=0,
+            self_id=self.lag.uin,
+            time=event.time,
+            user_id=real_info.uin
+        )
+        await self.adapter.trigger(ev)
+
+    async def pri_recall_handler(self, client: Client, event: FriendRecall) -> None:
+        if event.from_uin == self.lag.uin:
+            return
+        logger.info(event)
+        msgid = info_mgr.msgid_mgr.search(
+            MsgInfo(
+                scene_id=event.from_uin,
+                scene_type="user",
+                seq=event.seq
+            )
+        )
+        if not msgid:
+            return
+        ev = onebot.events.FriendRecallEvent(
+            message_id=msgid,
+            self_id=self.lag.uin,
+            time=event.timestamp,
+            user_id=event.from_uin
         )
         await self.adapter.trigger(ev)
