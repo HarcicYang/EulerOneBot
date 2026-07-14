@@ -1,14 +1,14 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from typing import Optional, Literal, Self, TYPE_CHECKING, Any
+from typing import Literal, Self
 from uvicorn import Config as UvicornConfig
 from uvicorn import Server as UvicornServer
-from urllib.parse import urlparse, ParseResult
+from urllib.parse import urlparse
 import asyncio
 
 from hyperogger import Logger
 from config import AdapterConfig, ForwardWebsocketConfig
 
-logger = Logger.fetch("euler")
+logger = Logger.fetch("euler").name_custom("euler.onebot.connector")
 
 
 class Connector:
@@ -91,6 +91,7 @@ class Connector:
                         self.forward_app,
                         host=host,
                         port=port,
+                        log_config=None
                     )
                     break
             assert cfg
@@ -100,6 +101,7 @@ class Connector:
 
 
     async def report(self, data: str) -> None:
+        logger.info(f"API report: {data}")
         if self.active_websocket_servers:
             if self.active_websocket_servers.get("root"):
                 await self.active_websocket_servers["root"].send_text(data)
@@ -107,6 +109,7 @@ class Connector:
                 await self.active_websocket_servers["api"].send_text(data)
 
     async def trigger(self, data: str) -> None:
+        logger.trace(f"Event trigger: {data}")
         if self.active_websocket_servers:
             if self.active_websocket_servers.get("root"):
                 await self.active_websocket_servers["root"].send_text(data)

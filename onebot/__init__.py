@@ -1,6 +1,6 @@
 import asyncio
 import traceback
-from typing import Literal, NoReturn, Union, TYPE_CHECKING, Any
+from typing import NoReturn, Union, TYPE_CHECKING, Any
 from pydantic import TypeAdapter, ValidationError
 
 from .connector import Connector
@@ -18,7 +18,7 @@ else:
     ADAPTER_CONFIG = Any
     FORWARD_WEBSOCKET_CONFIG = Any
 
-logger = Logger.fetch("euler")
+logger = Logger.fetch("euler").name_custom("euler.onebot")
 
 
 
@@ -76,4 +76,4 @@ class Adapter:
         await self.connector.trigger(event.model_dump_json())
 
     async def report(self, rsp: BaseAPIResponse) -> None:
-        await self.connector.trigger(rsp.model_dump_json())
+        await self.connector.report(rsp.model_dump_json())

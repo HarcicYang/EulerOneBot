@@ -1,9 +1,10 @@
 import datetime
 import traceback
 import sys
+import logging
 
 from utils import color_txt, rgb, NerdICONs
-from typing import Any
+from typing import Any, Self
 
 
 __all__ = ["Logger", "Levels"]
@@ -43,7 +44,9 @@ class Logger:
 
     def __init__(self, use_nf: bool = True):
         self.levels = Levels(NerdICONs(use_nf))
+        self._use_nf = use_nf
         self.log_level = self.levels.INFO
+        self.log_level_text = ""
 
     @classmethod
     def create(cls, key: str, level: str, use_nf: bool = True):
@@ -53,12 +56,13 @@ class Logger:
         return c
 
     @classmethod
-    def fetch(cls, key: str):
+    def fetch(cls, key: str) -> Self:
         return cls.running_loggers.get(key)
 
     def set_level(self, level: str):
         if level in self.levels.level_names:
             self.log_level = self.levels.level_names[level]
+            self.log_level_text = level
         else:
             self.log("未知的日志等级", self.levels.ERROR)
 
@@ -90,7 +94,18 @@ class Logger:
 
         sys.excepthook = hook
 
-    def log(self, message: str, level: str) -> None:
+    def name_custom(self, name: str) -> "Logger":
+        new_logger = type(self)(self._use_nf)
+        new_logger.set_level(self.log_level_text)
+        new_logger._set_name_bind(name)
+        return new_logger
+
+    def _set_name_bind(self, name: str) -> None:
+        def nlog(message: str, level: str):
+            self._log(f"[{name}] {message}", level)
+        self.log = nlog
+
+    def _log(self, message: str, level: str) -> None:
         if self.levels.level_nums[level] < self.levels.level_nums[self.log_level]:
             return
         time = color_txt(self.levels.nf_icons.nf_weather_time_4 + " " + str(datetime.datetime.now())[:-4], rgb(65, 128, 176))
@@ -106,6 +121,9 @@ class Logger:
         else:
             content = f" {time} {level} {color_txt(message, rgb(215, 255, 255))}"
             print(content)
+
+    def log(self, message: str, level: str) -> None:
+        self._log(message, level)
 
     def info(self, message: Any) -> None:
         self.log(str(message), self.levels.INFO)
@@ -124,3 +142,27 @@ class Logger:
 
     def trace(self, message: Any) -> None:
         self.log(str(message), self.levels.TRACE)
+
+    def set_handler(self) -> None:
+        custom_logger = self
+        class StdHandler(logging.Handler):
+            def emit(self, record: logging.LogRecord) -> None:
+                msg = self.format(record)
+                msg = f"[{record.name}] {msg}"
+                match record.levelno:
+                    case logging.CRITICAL:
+                        custom_logger.critical(msg)
+                    case logging.ERROR:
+                        custom_logger.error(msg)
+                    case logging.WARNING:
+                        custom_logger.warning(msg)
+                    case logging.INFO:
+                        custom_logger.info(msg)
+                    case logging.DEBUG:
+                        custom_logger.trace(msg)
+                    case _:
+                        custom_logger.debug(msg)
+
+        root = logging.getLogger()
+        root.handlers.clear()
+        root.addHandler(StdHandler())

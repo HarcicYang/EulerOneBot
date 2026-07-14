@@ -2,7 +2,7 @@ import asyncio
 import io
 import base64
 import httpx
-from typing import Literal, Union, TYPE_CHECKING
+from typing import Union
 from urllib.parse import urlparse, unquote
 
 from lagrange import Client
@@ -12,7 +12,6 @@ from lagrange.client.events.friend import FriendMessage
 from lagrange.client.message.types import Element as LgrElement
 
 from onebot import segments as seg
-from onebot import events as obev
 from .infomgr import MsgInfo, info_mgr
 from onebot.models import TargetInfo
 
@@ -55,7 +54,7 @@ async def to_onebot_msg(event: Union[GroupMessage, FriendMessage], lgrc: Client)
         elif isinstance(i, elems.Emoji):
             new.append(seg.Face(data=seg.FaceData(id=str(i.id))))
         elif isinstance(i, elems.Reaction):
-            pass  # TODO: As an event
+            pass
         elif isinstance(i, elems.Poke):
             new.append(seg.Poke(data=seg.PokeData(id=str(i.id), type="")))
         elif isinstance(i, elems.MarketFace):

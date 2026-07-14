@@ -25,7 +25,7 @@ from onebot.api import *
 from hyperogger import Logger
 
 appconfig = load_config("appconfig.json")
-logger = Logger.fetch("euler")
+logger = Logger.fetch("euler").name_custom("euler.protocol")
 
 
 class LagrangeProtocol:
