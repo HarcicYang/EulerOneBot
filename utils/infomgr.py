@@ -62,10 +62,10 @@ class UIDPool(BaseModel):
 
     def add_fake(self, uid: str) -> int:
         x = 0
-        while not x or str(x) in list(self.pool.keys()):
+        while not x or str(x) + "0145" in list(self.pool.keys()):
             x = random.randint(1 << 15, (1 << 16) - 1)
         self.add(uid, int(str(x) + "0145"))
-        return x
+        return int(str(x) + "0145")
 
     def from_uid(self, uid: str) -> int:
         if uid in list(self.pool.keys()):

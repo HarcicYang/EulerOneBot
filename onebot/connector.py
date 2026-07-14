@@ -101,7 +101,7 @@ class Connector:
 
 
     async def report(self, data: str) -> None:
-        logger.info(f"API report: {data}")
+        logger.trace(f"API report: {data}")
         if self.active_websocket_servers:
             if self.active_websocket_servers.get("root"):
                 await self.active_websocket_servers["root"].send_text(data)

@@ -76,4 +76,5 @@ class Adapter:
         await self.connector.trigger(event.model_dump_json())
 
     async def report(self, rsp: BaseAPIResponse) -> None:
+        logger.info(f"API Result: {rsp}")
         await self.connector.report(rsp.model_dump_json())

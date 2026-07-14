@@ -186,7 +186,9 @@ class LagrangeProtocol:
                 await self.adapter.report(rsp)
 
     async def grp_msg_handler(self, client: Client, event: GroupMessage) -> None:
-        logger.info(event)
+        if event.uin == self.lag.client.uin:
+            return
+        logger.info(f"[Group] {event.grp_name}({event.grp_id}): @{event.nickname}({event.uin}): {event.msg}")
         if not info_mgr.uid_mgr.is_exist(event.uid):
             info_mgr.uid_mgr.add(event.uid, event.uin)
         guser_info = (await client.get_grp_member_info(event.grp_id, event.uid)).body[0]
@@ -231,7 +233,9 @@ class LagrangeProtocol:
         await self.adapter.trigger(ev)
 
     async def pri_msg_handler(self, client: Client, event: FriendMessage) -> None:
-        logger.info(event)
+        if event.from_uin == self.lag.client.uin:
+            return
+        logger.info(f"[Friend] {event.from_uin} -> {event.to_uin}: {event.msg}")
         if not info_mgr.uid_mgr.is_exist(event.from_uid):
             info_mgr.uid_mgr.add(event.from_uid, event.from_uin)
         user_info = await client.get_user_info(event.from_uid)
@@ -263,7 +267,7 @@ class LagrangeProtocol:
         await self.adapter.trigger(ev)
 
     async def grp_recall_handler(self, client: Client, event: GroupRecall) -> None:
-        logger.info(event)
+        logger.info(f"[Group] {event.grp_id}: message {event.seq} had been deleted")
         msgid = info_mgr.msgid_mgr.search(
             MsgInfo(
                 scene_id=event.grp_id,
@@ -287,7 +291,7 @@ class LagrangeProtocol:
     async def pri_recall_handler(self, client: Client, event: FriendRecall) -> None:
         if event.from_uin == self.lag.client.uin:
             return
-        logger.info(event)
+        logger.info(f"[Friend] {event.from_uin} -> {event.to_uin}: message {event.seq} had been deleted")
         msgid = info_mgr.msgid_mgr.search(
             MsgInfo(
                 scene_id=event.from_uin,
@@ -306,6 +310,7 @@ class LagrangeProtocol:
         await self.adapter.trigger(ev)
 
     async def grp_mute_handler(self, client: Client, event: GroupMuteMember) -> None:
+        logger.info(f"[Group] {event.grp_id}: member {event.target_uid} had been muted by {event.operator_uid} for {event.duration}s")
         try:
             opt_uin = info_mgr.uid_mgr.from_uid(event.operator_uid)
             uin = 0 if not event.target_uid else info_mgr.uid_mgr.from_uid(event.target_uid)
@@ -323,6 +328,7 @@ class LagrangeProtocol:
         await self.adapter.trigger(ev)
 
     async def grp_join_handler(self, client: Client, event: GroupMemberJoined) -> None:
+        logger.info(f"[Group] {event.grp_id}: member {event.uid} has joined")
         try:
             uin = info_mgr.uid_mgr.from_uid(event.uid)
         except ValueError:
@@ -338,6 +344,7 @@ class LagrangeProtocol:
         await self.adapter.trigger(ev)
 
     async def grp_invite_join_handler(self, client: Client, event: GroupMemberJoinedByInvite) -> None:
+        logger.info(f"[Group] {event.grp_id}: member {event.uin} has joined, invited by {event.invitor_uin}")
         ev = onebot.events.GroupIncreaseEvent(
             group_id=event.grp_id,
             operator_id=event.invitor_uin,
@@ -349,6 +356,7 @@ class LagrangeProtocol:
         await self.adapter.trigger(ev)
 
     async def grp_quit_handler(self, client: Client, event: GroupMemberQuit) -> None:
+        logger.info(f"[Group] {event.grp_id}: member {event.uin} has left{', kicked by ' + str(event.operator_uid) if event.is_kicked else ''}")
         opt_uin = 0
         if event.is_kicked or event.is_kicked_self:
             try:
