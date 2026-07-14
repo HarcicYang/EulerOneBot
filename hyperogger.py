@@ -40,7 +40,7 @@ class Levels:
 
 
 class Logger:
-    running_loggers = {}
+    running_loggers: dict[str, "Logger"] = {}
 
     def __init__(self, use_nf: bool = True):
         self.levels = Levels(NerdICONs(use_nf))
@@ -102,7 +102,8 @@ class Logger:
 
     def _set_name_bind(self, name: str) -> None:
         def nlog(message: str, level: str):
-            self._log(f"[{name}] {message}", level)
+            patch = color_txt(f"[{name}]", rgb(97, 192, 224))
+            self._log(f"{patch} {color_txt(message, rgb(215, 255, 255))}", level)
         self.log = nlog
 
     def _log(self, message: str, level: str) -> None:
@@ -148,7 +149,8 @@ class Logger:
         class StdHandler(logging.Handler):
             def emit(self, record: logging.LogRecord) -> None:
                 msg = self.format(record)
-                msg = f"[{record.name}] {msg}"
+                patch = color_txt(f"[{record.name}]", rgb(97, 192, 224))
+                msg = f"{patch} {color_txt(msg, rgb(215, 255, 255))}"
                 match record.levelno:
                     case logging.CRITICAL:
                         custom_logger.critical(msg)
