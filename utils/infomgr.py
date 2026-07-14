@@ -60,6 +60,13 @@ class UIDPool(BaseModel):
         self.pool[uid] = uin
         return uin
 
+    def add_fake(self, uid: str) -> int:
+        x = 0
+        while not x or str(x) in list(self.pool.keys()):
+            x = random.randint(1 << 15, (1 << 16) - 1)
+        self.add(uid, int(str(x) + "0145"))
+        return x
+
     def from_uid(self, uid: str) -> int:
         if uid in list(self.pool.keys()):
             return self.pool[uid]
@@ -74,6 +81,9 @@ class UIDPool(BaseModel):
             raise ValueError(f"未缓存 uin = {uin}")
 
     def is_exist(self, uid_or_uin: Union[int, str]) -> bool:
+        if isinstance(uid_or_uin, str) and uid_or_uin in list(self.pool.keys()):
+            if str(self.from_uid(uid_or_uin)).endswith("0145"):
+                return False
         return uid_or_uin in list(self.pool.keys()) or uid_or_uin in list(self.pool.values())
 
 

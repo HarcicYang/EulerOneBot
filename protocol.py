@@ -1,17 +1,18 @@
 import asyncio
-import os
 import time
-import traceback
 from typing import NoReturn
-from urllib import response
-
-from fastapi import params
-from pydantic import ValidationError
 
 from lagrange import Lagrange
 from lagrange.client.client import Client
 from lagrange.client.events.friend import FriendMessage, FriendRecall
-from lagrange.client.events.group import GroupMessage, GroupRecall
+from lagrange.client.events.group import (
+    GroupMessage,
+    GroupRecall,
+    GroupMuteMember,
+    GroupMemberJoined,
+    GroupMemberJoinedByInvite,
+    GroupMemberQuit
+)
 
 from config import load_config
 from onebot.api_data import *
@@ -45,6 +46,9 @@ class LagrangeProtocol:
         self.lag.subscribe(FriendMessage, self.pri_msg_handler)
         self.lag.subscribe(GroupRecall, self.grp_recall_handler)
         self.lag.subscribe(FriendRecall, self.pri_recall_handler)
+        self.lag.subscribe(GroupMuteMember, self.grp_mute_handler)
+        self.lag.subscribe(GroupMemberJoined, self.grp_join_handler)
+        self.lag.subscribe(GroupMemberJoinedByInvite, self.grp_invite_join_handler)
 
         try:
             await self.adapter.setup()
@@ -65,7 +69,7 @@ class LagrangeProtocol:
                 await self.adapter.trigger(
                     onebot.events.HeartbeatEvent(
                         interval=appconfig.heartbeat.interval,
-                        self_id=self.lag.uin,
+                        self_id=self.lag.client.uin,
                         status=onebot.events.BotStatus(good=True, online=True),
                         time=round(time.time())
                     )
@@ -195,7 +199,7 @@ class LagrangeProtocol:
             role = "member"
         ev = onebot.events.GroupMessageEvent(
             time=event.time,
-            self_id=self.lag.uin,
+            self_id=self.lag.client.uin,
             message_id=info_mgr.msgid_mgr.add(
                 MsgInfo(
                     raw_msg=event.msg_chain,
@@ -233,7 +237,7 @@ class LagrangeProtocol:
         user_info = await client.get_user_info(event.from_uid)
         ev = onebot.events.PrivateMessageEvent(
             time=event.timestamp,
-            self_id=self.lag.uin,
+            self_id=self.lag.client.uin,
             message_id=info_mgr.msgid_mgr.add(
                 MsgInfo(
                     raw_msg=event.msg_chain,
@@ -274,14 +278,14 @@ class LagrangeProtocol:
             group_id=event.grp_id,
             message_id=msgid,
             operator_id=0,
-            self_id=self.lag.uin,
+            self_id=self.lag.client.uin,
             time=event.time,
             user_id=real_info.uin
         )
         await self.adapter.trigger(ev)
 
     async def pri_recall_handler(self, client: Client, event: FriendRecall) -> None:
-        if event.from_uin == self.lag.uin:
+        if event.from_uin == self.lag.client.uin:
             return
         logger.info(event)
         msgid = info_mgr.msgid_mgr.search(
@@ -295,8 +299,76 @@ class LagrangeProtocol:
             return
         ev = onebot.events.FriendRecallEvent(
             message_id=msgid,
-            self_id=self.lag.uin,
+            self_id=self.lag.client.uin,
             time=event.timestamp,
             user_id=event.from_uin
+        )
+        await self.adapter.trigger(ev)
+
+    async def grp_mute_handler(self, client: Client, event: GroupMuteMember) -> None:
+        try:
+            opt_uin = info_mgr.uid_mgr.from_uid(event.operator_uid)
+            uin = 0 if not event.target_uid else info_mgr.uid_mgr.from_uid(event.target_uid)
+        except ValueError:
+            return
+        ev = onebot.events.GroupMuteEvent(
+            duration=event.duration,
+            group_id=event.grp_id,
+            operator_id=opt_uin,
+            self_id=self.lag.client.uin,
+            sub_type="lift_ban" if event.duration == 0 else "ban",
+            time=round(time.time()),
+            user_id=uin
+        )
+        await self.adapter.trigger(ev)
+
+    async def grp_join_handler(self, client: Client, event: GroupMemberJoined) -> None:
+        try:
+            uin = info_mgr.uid_mgr.from_uid(event.uid)
+        except ValueError:
+            uin = info_mgr.uid_mgr.add_fake(event.uid)
+        ev = onebot.events.GroupIncreaseEvent(
+            group_id=event.grp_id,
+            operator_id=0,
+            self_id=self.lag.client.uin,
+            sub_type="approve",
+            time=round(time.time()),
+            user_id=uin
+        )
+        await self.adapter.trigger(ev)
+
+    async def grp_invite_join_handler(self, client: Client, event: GroupMemberJoinedByInvite) -> None:
+        ev = onebot.events.GroupIncreaseEvent(
+            group_id=event.grp_id,
+            operator_id=event.invitor_uin,
+            self_id=self.lag.client.uin,
+            sub_type="invite",
+            time=round(time.time()),
+            user_id=event.uin
+        )
+        await self.adapter.trigger(ev)
+
+    async def grp_quit_handler(self, client: Client, event: GroupMemberQuit) -> None:
+        opt_uin = 0
+        if event.is_kicked or event.is_kicked_self:
+            try:
+                opt_uin = info_mgr.uid_mgr.from_uid(event.operator_uid)
+            except ValueError:
+                opt_uin = 0
+        if event.is_kicked_self:
+            tp = "kick_me"
+        elif event.is_kicked:
+            tp = "kick"
+        else:
+            tp = "leave"
+        if not info_mgr.uid_mgr.is_exist(event.uin):
+            info_mgr.uid_mgr.add(event.uid, event.uin)
+        ev = onebot.events.GroupDecreaseEvent(
+            group_id=event.grp_id,
+            operator_id=opt_uin,
+            self_id=self.lag.client.uin,
+            sub_type=tp,  # type: ignore
+            time=round(time.time()),
+            user_id=event.uin
         )
         await self.adapter.trigger(ev)
