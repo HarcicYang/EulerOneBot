@@ -185,6 +185,51 @@ class LagrangeProtocol:
                 )
                 await self.adapter.report(rsp)
 
+            elif isinstance(call, GetMessage):
+                rsp = rsp = ActionFailedResponse(
+                        status="failed",
+                        retcode=1400,
+                        data=EmptyRsp()
+                    )
+                try:
+                    msg = info_mgr.msgid_mgr.fetch(call.params.message_id)
+                    if msg.uid:
+                        user_info = await self.lag.client.get_user_info(msg.uid)
+                    elif msg.uin:
+                        user_info = await self.lag.client.get_user_info(msg.uin)[0]
+                    else:
+                        user_info = None
+                    rsp = GetMessageResponse(
+                        status="ok",
+                        retcode=0,
+                        data=GetMsgRsp(
+                            message=await to_onebot_msg(msg=msg, lgrc=self.lag.client),
+                            time=msg.timestamp,
+                            message_id=call.params.message_id,
+                            message_type="private" if msg.scene_type == "user" else "group",
+                            real_id=msg.seq,
+                            sender=onebot.events.PrivateSender(
+                                user_id=msg.uin,
+                                nickname="" if not user_info else user_info.name,
+                                sex="unknown",
+                                age=0 if not user_info else user_info.age,
+                            ) if msg.scene_type == "user" else onebot.events.GroupSender(
+                                user_id=msg.uin,
+                                title="",
+                                sex="unknown",
+                                role="member",
+                                age=0 if not user_info else user_info.age,
+                                area="" if not user_info else f"{user_info.country} {user_info.province} {user_info.city}",
+                                card="",
+                                level="",
+                                nickname="" if not user_info else user_info.name,
+                            )
+                        )
+                    )
+                except KeyError:
+                    pass
+                await self.adapter.report(rsp)
+
     async def grp_msg_handler(self, client: Client, event: GroupMessage) -> None:
         if event.uin == self.lag.client.uin:
             return
@@ -215,7 +260,7 @@ class LagrangeProtocol:
                 )
             ),
             user_id=event.uin,
-            message=await to_onebot_msg(event, lgrc=client),
+            message=await to_onebot_msg(event=event, lgrc=self.lag.client),
             group_id=event.grp_id,
             raw_message=event.msg,
             sender=onebot.events.GroupSender(
@@ -255,7 +300,7 @@ class LagrangeProtocol:
                 )
             ),
             user_id=event.from_uin,
-            message=await to_onebot_msg(event, lgrc=client),
+            message=await to_onebot_msg(event=event, lgrc=self.lag.client),
             raw_message=event.msg,
             sender=onebot.events.PrivateSender(
                 age=user_info.age,
@@ -310,7 +355,8 @@ class LagrangeProtocol:
         await self.adapter.trigger(ev)
 
     async def grp_mute_handler(self, client: Client, event: GroupMuteMember) -> None:
-        logger.info(f"[Group] {event.grp_id}: member {event.target_uid} had been muted by {event.operator_uid} for {event.duration}s")
+        logger.info(
+            f"[Group] {event.grp_id}: member {event.target_uid} had been muted by {event.operator_uid} for {event.duration}s")
         try:
             opt_uin = info_mgr.uid_mgr.from_uid(event.operator_uid)
             uin = 0 if not event.target_uid else info_mgr.uid_mgr.from_uid(event.target_uid)
@@ -332,7 +378,10 @@ class LagrangeProtocol:
         try:
             uin = info_mgr.uid_mgr.from_uid(event.uid)
         except ValueError:
-            uin = info_mgr.uid_mgr.add_fake(event.uid)
+            rs = await client.get_grp_member_info(grp_id=event.grp_id, uid=event.uid)
+            uin = rs.body[0].account.uin or 0
+            if uin:
+                info_mgr.uid_mgr.add(event.uid, uin)
         ev = onebot.events.GroupIncreaseEvent(
             group_id=event.grp_id,
             operator_id=0,
@@ -356,7 +405,8 @@ class LagrangeProtocol:
         await self.adapter.trigger(ev)
 
     async def grp_quit_handler(self, client: Client, event: GroupMemberQuit) -> None:
-        logger.info(f"[Group] {event.grp_id}: member {event.uin} has left{', kicked by ' + str(event.operator_uid) if event.is_kicked else ''}")
+        logger.info(
+            f"[Group] {event.grp_id}: member {event.uin} has left{', kicked by ' + str(event.operator_uid) if event.is_kicked else ''}")
         opt_uin = 0
         if event.is_kicked or event.is_kicked_self:
             try:

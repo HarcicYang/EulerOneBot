@@ -63,6 +63,7 @@ __all__ = [
     "GetStatusResponse",
     "GetVersionInfo",
     "GetVersionInfoResponse",
+    "ActionFailedResponse"
 ]
 
 
@@ -284,4 +285,7 @@ class GetVersionInfo(BaseAPICall[GetVersionInfoData]):
 
 
 class GetVersionInfoResponse(BaseAPIResponse[GetVersionInfoRsp]):
+    ...
+
+class ActionFailedResponse(BaseAPIResponse[EmptyRsp]):
     ...

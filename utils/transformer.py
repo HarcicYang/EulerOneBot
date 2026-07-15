@@ -16,28 +16,42 @@ from .infomgr import MsgInfo, info_mgr
 from onebot.models import TargetInfo
 
 
-async def to_onebot_msg(event: Union[GroupMessage, FriendMessage], lgrc: Client) -> list[seg.BaseSegment]:
+async def to_onebot_msg(
+        lgrc: Client,
+        event: Union[GroupMessage, FriendMessage] = None,
+        msg: MsgInfo = None
+) -> list[seg.BaseSegment]:
     new: list[seg.BaseSegment] = []
     info_renewed = False
-    for i in event.msg_chain:
+    if event:
+        msgc = event.msg_chain
+    elif msg:
+        msgc = msg
+    else:
+        return []  # 特喵的泥啥也不给我
+    for i in msgc:
         if isinstance(i, elems.Text):
             new.append(seg.Text(data=seg.TextData(text=i.text)))
-        elif isinstance(i, elems.Quote) and isinstance(event, GroupMessage):
-            info = MsgInfo(
-                scene_type="group",
-                scene_id=event.grp_id,
-                uin=event.uin,
-                uid=event.uid,
-                timestamp=event.time,
-                raw_msg=event.msg_chain,
-                seq=event.seq
-            )
-            if msgid := info_mgr.msgid_mgr.search(info):
-                pass
+        elif isinstance(i, elems.Quote):
+            if event and isinstance(event, GroupMessage):
+                info = MsgInfo(
+                    scene_type="group",
+                    scene_id=event.grp_id,
+                    uin=event.uin,
+                    uid=event.uid,
+                    timestamp=event.time,
+                    raw_msg=event.msg_chain,
+                    seq=event.seq
+                )
+                if msgid := info_mgr.msgid_mgr.search(info):
+                    pass
+                else:
+                    msgid = info_mgr.msgid_mgr.add(info)
+                    info_renewed = True
             else:
-                msgid = info_mgr.msgid_mgr.add(info)
-                info_renewed = True
+                msgid = info_mgr.msgid_mgr.search(msg)
             new.append(seg.Reply(data=seg.ReplyData(id=str(msgid))))
+
         elif isinstance(i, elems.AtAll):
             new.append(seg.At(data=seg.AtData(qq="all")))
         elif isinstance(i, elems.At):

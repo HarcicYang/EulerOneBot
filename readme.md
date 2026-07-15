@@ -30,7 +30,7 @@
 | send_group_msg          | ✅    |
 | send_msg                | ✅    |
 | delete_msg              | ✅    |
-| get_msg                 | ❌    |
+| get_msg                 | ✅    |
 | get_forward_msg         | ❌    |
 | send_like               | ❌    |
 | set_group_kick          | ❌    |
