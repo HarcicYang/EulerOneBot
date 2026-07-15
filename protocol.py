@@ -186,11 +186,12 @@ class LagrangeProtocol:
                 await self.adapter.report(rsp)
 
             elif isinstance(call, GetMessage):
-                rsp = rsp = ActionFailedResponse(
-                        status="failed",
-                        retcode=1400,
-                        data=EmptyRsp()
-                    )
+                rsp = ActionFailedResponse(
+                    status="failed",
+                    retcode=1400,
+                    data=EmptyRsp(),
+                    echo=call.echo
+                )
                 try:
                     msg = info_mgr.msgid_mgr.fetch(call.params.message_id)
                     if msg.uid:
@@ -224,10 +225,55 @@ class LagrangeProtocol:
                                 level="",
                                 nickname="" if not user_info else user_info.name,
                             )
-                        )
+                        ),
+                        echo=call.echo
                     )
+                except Exception as e:
+                    logger.error(repr(e))
+                await self.adapter.report(rsp)
+
+            elif isinstance(call, GetGroupInfo):
+                rsp = ActionFailedResponse(
+                    status="failed",
+                    retcode=1400,
+                    data=EmptyRsp(),
+                    echo=call.echo
+                )
+                grps = await self.lag.client.get_grp_list()
+                try:
+                    info = list(filter(lambda x: x.grp_id == call.params.group_id, grps.grp_list))[0]
+                    rsp = GetGroupInfoResponse(
+                        status="ok",
+                        retcode=0,
+                        data=GetGroupInfoRsp(
+                            group_id=call.params.group_id,
+                            member_count=info.info.now_members,
+                            max_member_count=info.info.max_members,
+                            group_name=info.info.grp_name
+                        ),
+                        echo=call.echo
+                    )
+                except Exception as e:
+                    logger.error(repr(e))
+                await self.adapter.report(rsp)
+
+            elif isinstance(call, GetStrangerInfo):
+                try:
+                    uid = info_mgr.uid_mgr.from_uin(call.params.user_id)
                 except KeyError:
-                    pass
+                    uid = None
+                info = await self.lag.client.get_user_info(uid or call.params.user_id)
+                rsp = GetStrangerInfoResponse(
+                    status="ok",
+                    retcode=0,
+                    data=GetStrangerInfoRsp(
+                        age=info.age,
+                        nickname=info.name,
+                        sex="unknown",
+                        user_id=call.params.user_id
+                    ),
+                    echo=call.echo
+                )
                 await self.adapter.report(rsp)
 
     async def grp_msg_handler(self, client: Client, event: GroupMessage) -> None:
