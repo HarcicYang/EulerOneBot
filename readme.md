@@ -75,6 +75,7 @@
 | notice.notify.poke       | ✅    |
 | notice.notify.lucky_king | ❌    |
 | notice.notify.honor      | ❌    |
+| notice.reaction          | ✅    |
 | request.friend           | ❌    |
 | request.group            | ❌    |
 | meta_event.lifecycle     | ❌    |

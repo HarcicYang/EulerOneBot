@@ -11,7 +11,7 @@ from lagrange.client.events.group import (
     GroupMuteMember,
     GroupMemberJoined,
     GroupMemberJoinedByInvite,
-    GroupMemberQuit, GroupNudge
+    GroupMemberQuit, GroupNudge, GroupReaction
 )
 
 from config import load_config
@@ -50,6 +50,7 @@ class LagrangeProtocol:
         self.lag.subscribe(GroupMemberJoined, self.grp_join_handler)
         self.lag.subscribe(GroupMemberJoinedByInvite, self.grp_invite_join_handler)
         self.lag.subscribe(GroupNudge, self.poke_handler)
+        self.lag.subscribe(GroupReaction, self.reaction_handler)
 
         try:
             await self.adapter.setup()
@@ -485,5 +486,35 @@ class LagrangeProtocol:
             group_id=event.grp_id,
             user_id=event.sender_uin,
             target_id=event.target_uin
+        )
+        await self.adapter.trigger(ev)
+
+    async def reaction_handler(self, client: Client, event: GroupReaction) -> None:
+        try:
+            if event.uid:
+                uid = event.uid
+                uin = info_mgr.uid_mgr.from_uid(event.uid)
+            else:
+                uid = info_mgr.uid_mgr.from_uin(event.uin)
+                uin = event.uin
+        except KeyError:
+            if event.uid:
+                uid = event.uid
+                uin = 0
+            else:
+                uid = ""
+                uin = event.uin
+        try:
+            msgid = info_mgr.msgid_mgr.search(MsgInfo(scene_type="group", scene_id=event.grp_id, seq=event.seq))
+        except IndexError:
+            msgid = info_mgr.msgid_mgr.add(MsgInfo(scene_type="group", scene_id=event.grp_id, seq=event.seq, uid=uid, uin=uin))
+        ev = onebot.events.ReactionEvent(
+            time=round(time.time()),
+            self_id=self.lag.client.uin,
+            message_id=msgid,
+            operator_id=uin,
+            sub_type="add" if event.is_increase else "remove",
+            code=event.emoji_id,
+            count=event.emoji_count
         )
         await self.adapter.trigger(ev)

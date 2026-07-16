@@ -34,6 +34,7 @@ __all__ = [
     "MetaEvent",
     "LifecycleEvent",
     "HeartbeatEvent",
+    "ReactionEvent"
 ]
 
 
@@ -91,7 +92,7 @@ class PrivateMessageEvent(MessageEvent):
 class NoticeEvent(BaseEvent):
     post_type: Literal["notice"] = "notice"
     notice_type: Literal[
-        "group_upload", "group_admin", "group_decrease", "group_increase", "group_ban", "friend_add", "group_recall", "friend_recall", "notify"]
+        "group_upload", "group_admin", "group_decrease", "group_increase", "group_ban", "friend_add", "group_recall", "friend_recall", "notify", "reaction"]
 
 
 class FileInfo(BaseModel):
@@ -166,6 +167,15 @@ class GroupPokeEvent(NoticeEvent):
     group_id: int
     target_id: int
     user_id: int
+
+
+class ReactionEvent(NoticeEvent):
+    notice_type: Literal["reaction"] = "reaction"
+    message_id: int
+    operator_id: int
+    sub_type: Literal["add", "remove"]
+    code: int
+    count: int
 
 
 class RequestEvent(BaseEvent):
