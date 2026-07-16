@@ -1,5 +1,6 @@
 import asyncio
 import time
+import traceback
 from typing import NoReturn
 
 from lagrange import Lagrange
@@ -82,119 +83,119 @@ class LagrangeProtocol:
     async def api_service(self) -> NoReturn:
         while True:
             call = await self.adapter.api_calls.get()
-            if isinstance(call, SendMessage):  # Do it ahead
-                if call.params.group_id:
-                    call = SendGroupMessage(
-                        params=SendGroupMsgData(
-                            group_id=call.params.group_id,
-                            message=call.params.message
-                        ),
-                        echo=call.echo
+            try:
+                if isinstance(call, SendMessage):  # Do it ahead
+                    if call.params.group_id:
+                        call = SendGroupMessage(
+                            params=SendGroupMsgData(
+                                group_id=call.params.group_id,
+                                message=call.params.message
+                            ),
+                            echo=call.echo
+                        )
+                    else:
+                        call = SendPrivateMessage(
+                            params=SendPrivateMsgData(
+                                user_id=call.params.user_id,
+                                message=call.params.message
+                            ),
+                            echo=call.echo
+                        )
+
+                if isinstance(call, SendPrivateMessage):
+                    new_msg = await to_lagrange_msg(
+                        msg=call.params.message,
+                        lgrc=self.lag.client,
+                        target=(TargetInfo(target="user", id=call.params.user_id))
                     )
-                else:
-                    call = SendPrivateMessage(
-                        params=SendPrivateMsgData(
-                            user_id=call.params.user_id,
-                            message=call.params.message
-                        ),
+                    seq = await self.lag.client.send_friend_msg(
+                        uid=info_mgr.uid_mgr.from_uin(call.params.user_id),
+                        msg_chain=new_msg
+                    )
+                    text = ""
+                    for i in new_msg:
+                        text += i.display
+                    msgid = info_mgr.msgid_mgr.add(
+                        MsgInfo(
+                            raw_msg=new_msg,
+                            scene_type="user",
+                            scene_id=call.params.user_id,
+                            seq=seq,
+                            timestamp=round(time.time()),
+                            uid=self.lag.client.uid,
+                            uin=self.lag.client.uin,
+                            text=text
+                        )
+                    )
+                    rsp = SendPrivateMessageResponse(
+                        status="ok",
+                        retcode=0,
+                        data=SendMsgRsp(message_id=msgid),
                         echo=call.echo
                     )
 
-            if isinstance(call, SendPrivateMessage):
-                new_msg = await to_lagrange_msg(
-                    msg=call.params.message,
-                    lgrc=self.lag.client,
-                    target=(TargetInfo(target="user", id=call.params.user_id))
-                )
-                seq = await self.lag.client.send_friend_msg(
-                    uid=info_mgr.uid_mgr.from_uin(call.params.user_id),
-                    msg_chain=new_msg
-                )
-                text = ""
-                for i in new_msg:
-                    text += i.display
-                msgid = info_mgr.msgid_mgr.add(
-                    MsgInfo(
-                        raw_msg=new_msg,
-                        scene_type="user",
-                        scene_id=call.params.user_id,
-                        seq=seq,
-                        timestamp=round(time.time()),
-                        uid=self.lag.client.uid,
-                        uin=self.lag.client.uin,
-                        text=text
+                elif isinstance(call, SendGroupMessage):
+                    new_msg = await to_lagrange_msg(
+                        msg=call.params.message,
+                        lgrc=self.lag.client,
+                        target=(TargetInfo(target="group", id=call.params.group_id))
                     )
-                )
-                rsp = SendPrivateMessageResponse(
-                    status="ok",
-                    retcode=0,
-                    data=SendMsgRsp(message_id=msgid),
-                    echo=call.echo
-                )
-                await self.adapter.report(rsp)
-            elif isinstance(call, SendGroupMessage):
-                new_msg = await to_lagrange_msg(
-                    msg=call.params.message,
-                    lgrc=self.lag.client,
-                    target=(TargetInfo(target="group", id=call.params.group_id))
-                )
-                seq = await self.lag.client.send_grp_msg(
-                    grp_id=call.params.group_id,
-                    msg_chain=new_msg
-                )
-                text = ""
-                for i in new_msg:
-                    text += i.display
-                msgid = info_mgr.msgid_mgr.add(
-                    MsgInfo(
-                        raw_msg=new_msg,
-                        scene_type="group",
-                        scene_id=call.params.group_id,
-                        seq=seq,
-                        timestamp=round(time.time()),
-                        uid=self.lag.client.uid,
-                        uin=self.lag.client.uin,
-                        text=text
+                    seq = await self.lag.client.send_grp_msg(
+                        grp_id=call.params.group_id,
+                        msg_chain=new_msg
                     )
-                )
-                rsp = SendGroupMessageResponse(
-                    status="ok",
-                    retcode=0,
-                    data=SendMsgRsp(message_id=msgid),
-                    echo=call.echo
-                )
-                await self.adapter.report(rsp)
-            elif isinstance(call, DeleteMessage):
-                msgid = call.params.message_id
-                msg_info = info_mgr.msgid_mgr.fetch(msgid)
-                if msg_info.scene_type == "user":
-                    pass
-                else:
-                    await self.lag.client.recall_grp_msg(grp_id=msg_info.scene_id, seq=msg_info.seq)
-                rsp = DeleteMessageResponse(
-                    status="ok",
-                    retcode=0,
-                    data=EmptyRsp(),
-                    echo=call.echo
-                )
-                await self.adapter.report(rsp)
-            elif isinstance(call, GetVersionInfo):
-                rsp = GetVersionInfoResponse(
-                    status="ok",
-                    retcode=0,
-                    data=GetVersionInfoRsp(),
-                    echo=call.echo
-                )
-                await self.adapter.report(rsp)
+                    text = ""
+                    for i in new_msg:
+                        text += i.display
+                    msgid = info_mgr.msgid_mgr.add(
+                        MsgInfo(
+                            raw_msg=new_msg,
+                            scene_type="group",
+                            scene_id=call.params.group_id,
+                            seq=seq,
+                            timestamp=round(time.time()),
+                            uid=self.lag.client.uid,
+                            uin=self.lag.client.uin,
+                            text=text
+                        )
+                    )
+                    rsp = SendGroupMessageResponse(
+                        status="ok",
+                        retcode=0,
+                        data=SendMsgRsp(message_id=msgid),
+                        echo=call.echo
+                    )
 
-            elif isinstance(call, GetMessage):
-                rsp = ActionFailedResponse(
-                    status="failed",
-                    retcode=1400,
-                    data=EmptyRsp(),
-                    echo=call.echo
-                )
-                try:
+                elif isinstance(call, DeleteMessage):
+                    msgid = call.params.message_id
+                    msg_info = info_mgr.msgid_mgr.fetch(msgid)
+                    if msg_info.scene_type == "user":
+                        pass
+                    else:
+                        await self.lag.client.recall_grp_msg(grp_id=msg_info.scene_id, seq=msg_info.seq)
+                    rsp = DeleteMessageResponse(
+                        status="ok",
+                        retcode=0,
+                        data=EmptyRsp(),
+                        echo=call.echo
+                    )
+
+                elif isinstance(call, GetVersionInfo):
+                    rsp = GetVersionInfoResponse(
+                        status="ok",
+                        retcode=0,
+                        data=GetVersionInfoRsp(),
+                        echo=call.echo
+                    )
+
+
+                elif isinstance(call, GetMessage):
+                    rsp = ActionFailedResponse(
+                        status="failed",
+                        retcode=1400,
+                        data=EmptyRsp(),
+                        echo=call.echo
+                    )
                     msg = info_mgr.msgid_mgr.fetch(call.params.message_id)
                     if msg.uid:
                         user_info = await self.lag.client.get_user_info(msg.uid)
@@ -214,12 +215,12 @@ class LagrangeProtocol:
                             sender=onebot.events.PrivateSender(
                                 user_id=msg.uin,
                                 nickname="" if not user_info else user_info.name,
-                                sex="unknown",
+                                sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",
                                 age=0 if not user_info else user_info.age,
                             ) if msg.scene_type == "user" else onebot.events.GroupSender(
                                 user_id=msg.uin,
                                 title="",
-                                sex="unknown",
+                                sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",
                                 role="member",
                                 age=0 if not user_info else user_info.age,
                                 area="" if not user_info else f"{user_info.country} {user_info.province} {user_info.city}",
@@ -230,19 +231,10 @@ class LagrangeProtocol:
                         ),
                         echo=call.echo
                     )
-                except Exception as e:
-                    logger.error(repr(e))
-                await self.adapter.report(rsp)
 
-            elif isinstance(call, GetGroupInfo):
-                rsp = ActionFailedResponse(
-                    status="failed",
-                    retcode=1400,
-                    data=EmptyRsp(),
-                    echo=call.echo
-                )
-                grps = await self.lag.client.get_grp_list()
-                try:
+
+                elif isinstance(call, GetGroupInfo):
+                    grps = await self.lag.client.get_grp_list()
                     info = list(filter(lambda x: x.grp_id == call.params.group_id, grps.grp_list))[0]
                     rsp = GetGroupInfoResponse(
                         status="ok",
@@ -255,25 +247,40 @@ class LagrangeProtocol:
                         ),
                         echo=call.echo
                     )
-                except Exception as e:
-                    logger.error(repr(e))
-                await self.adapter.report(rsp)
 
-            elif isinstance(call, GetStrangerInfo):
-                try:
-                    uid = info_mgr.uid_mgr.from_uin(call.params.user_id)
-                except KeyError:
-                    uid = None
-                info = await self.lag.client.get_user_info(uid or call.params.user_id)
-                rsp = GetStrangerInfoResponse(
-                    status="ok",
-                    retcode=0,
-                    data=GetStrangerInfoRsp(
-                        age=info.age,
-                        nickname=info.name,
-                        sex="unknown",
-                        user_id=call.params.user_id
-                    ),
+
+                elif isinstance(call, GetStrangerInfo):
+                    try:
+                        uid = info_mgr.uid_mgr.from_uin(call.params.user_id)
+                    except KeyError:
+                        uid = None
+                    info = await self.lag.client.get_user_info(uid or call.params.user_id)
+                    rsp = GetStrangerInfoResponse(
+                        status="ok",
+                        retcode=0,
+                        data=GetStrangerInfoRsp(
+                            age=info.age,
+                            nickname=info.name,
+                            sex=info.sex.name if info.sex.name != "notset" else "unknown",
+                            user_id=call.params.user_id
+                        ),
+                        echo=call.echo
+                    )
+                else:
+                    rsp = ActionFailedResponse(
+                        status="failed",
+                        retcode=1404,
+                        data=EmptyRsp(),
+                        echo=call.echo
+                    )
+                await self.adapter.report(rsp)
+            except Exception as e:
+                logger.error(repr(e))
+                logger.error(traceback.format_exc())
+                rsp = ActionFailedResponse(
+                    status="failed",
+                    retcode=1400,
+                    data=EmptyRsp(),
                     echo=call.echo
                 )
                 await self.adapter.report(rsp)
@@ -507,7 +514,8 @@ class LagrangeProtocol:
         try:
             msgid = info_mgr.msgid_mgr.search(MsgInfo(scene_type="group", scene_id=event.grp_id, seq=event.seq))
         except IndexError:
-            msgid = info_mgr.msgid_mgr.add(MsgInfo(scene_type="group", scene_id=event.grp_id, seq=event.seq, uid=uid, uin=uin))
+            msgid = info_mgr.msgid_mgr.add(
+                MsgInfo(scene_type="group", scene_id=event.grp_id, seq=event.seq, uid=uid, uin=uin))
         ev = onebot.events.ReactionEvent(
             time=round(time.time()),
             self_id=self.lag.client.uin,
