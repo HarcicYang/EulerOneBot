@@ -15,8 +15,8 @@
 
 1. clone 本项目;
 2. 下载 `lagrange` (即 [lagrange-python](https://github.com/LagrangeDev/lagrange-python) 的 package 部分)，放在本项目
-   `main.py`的同目录;
-3. 运行，填写配置文件，签名要求与其他 Lagrange（V2） 系列项目相同，请自行解决;
+   `main.py`的同目录 (为什么不走pypi呢？啊他有点延后（）);
+3. 运行，填写配置文件，签名要求与其他 [LagrangeV2](https://github.com/LagrangeDev/SignApiGuide) 系列项目相同，请自行解决;
 4. 大功告成！
 
 ## 支持情况
