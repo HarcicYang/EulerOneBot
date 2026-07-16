@@ -72,7 +72,7 @@
 | notice.friend_add        | ❌    |
 | notice.group_recall      | ✅    |
 | notice.friend_recall     | ✅    |
-| notice.notify.poke       | ❌    |
+| notice.notify.poke       | ✅    |
 | notice.notify.lucky_king | ❌    |
 | notice.notify.honor      | ❌    |
 | request.friend           | ❌    |

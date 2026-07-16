@@ -161,9 +161,8 @@ class FriendRecallEvent(NoticeEvent):
 
 class GroupPokeEvent(NoticeEvent):
     notice_type: Literal["notify"] = "notify"
-    sub_type: Literal["poke"]
+    sub_type: Literal["poke"] = "poke"
     group_id: int
-    operator_id: int
     group_id: int
     target_id: int
     user_id: int

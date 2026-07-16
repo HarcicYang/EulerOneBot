@@ -11,7 +11,7 @@ from lagrange.client.events.group import (
     GroupMuteMember,
     GroupMemberJoined,
     GroupMemberJoinedByInvite,
-    GroupMemberQuit
+    GroupMemberQuit, GroupNudge
 )
 
 from config import load_config
@@ -49,6 +49,7 @@ class LagrangeProtocol:
         self.lag.subscribe(GroupMuteMember, self.grp_mute_handler)
         self.lag.subscribe(GroupMemberJoined, self.grp_join_handler)
         self.lag.subscribe(GroupMemberJoinedByInvite, self.grp_invite_join_handler)
+        self.lag.subscribe(GroupNudge, self.poke_handler)
 
         try:
             await self.adapter.setup()
@@ -474,5 +475,15 @@ class LagrangeProtocol:
             sub_type=tp,  # type: ignore
             time=round(time.time()),
             user_id=event.uin
+        )
+        await self.adapter.trigger(ev)
+
+    async def poke_handler(self, client: Client, event: GroupNudge) -> None:
+        ev = onebot.events.GroupPokeEvent(
+            time=round(time.time()),
+            self_id=self.lag.client.uin,
+            group_id=event.grp_id,
+            user_id=event.sender_uin,
+            target_id=event.target_uin
         )
         await self.adapter.trigger(ev)
