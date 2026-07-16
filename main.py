@@ -1,14 +1,13 @@
 from hyperogger import Logger
+from config import load_config
 
-logger = Logger.create("euler", "INFO")
+cfg = load_config("appconfig.json")
+logger = Logger.create("euler", cfg.log_level)
 
 from protocol import LagrangeProtocol
 from onebot import Adapter
-from config import load_config
 
 import asyncio
-
-cfg = load_config("appconfig.json")
 
 logger.set_handler()
 logger.info("Euler OneBot")
