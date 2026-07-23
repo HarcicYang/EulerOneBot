@@ -15,11 +15,24 @@
 
 ## 安装使用
 
-1. clone 本项目;
+1. 获取本项目;
+   - 方式1：直接clone
+   - 方式2：下载包裹并编写主文件
+       ```shell
+      pip install euler-onebot
+      ```
 2. 下载 `lagrange` (即 [lagrange-python](https://github.com/LagrangeDev/lagrange-python) 的 package 部分)，放在本项目
    `main.py`的同目录 (为什么不走pypi呢？啊他有点延后（）);
 3. 运行，填写配置文件，签名要求与其他 [LagrangeV2](https://github.com/LagrangeDev/SignApiGuide) 系列项目相同，请自行解决;
 4. 大功告成！
+
+## 另类使用
+
+从 0.0.2 版本开始，Euler OneBot 也作为独立的 PyPi Package 存在，您可以安装后把它当作一个 OneBot 风格 API 的 NTQQ 协议库使用。
+
+## 开发
+
+Euler OneBot 使用 uv
 
 ## 支持情况
 

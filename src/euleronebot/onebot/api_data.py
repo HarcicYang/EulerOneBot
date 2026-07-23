@@ -1,7 +1,7 @@
 from pydantic import BaseModel, RootModel
 from typing import Any, TYPE_CHECKING, Literal, Union
 
-from versions import NAME, VERSION
+from ..versions import NAME, VERSION
 
 if TYPE_CHECKING:
     from .segments import BaseSegment, Node, SegmentUnion

@@ -2,9 +2,10 @@ import datetime
 import traceback
 import sys
 import logging
-
-from utils import color_txt, rgb, NerdICONs
 from typing import Any, Self
+
+from .utils import color_txt, rgb, NerdICONs
+
 
 
 __all__ = ["Logger", "Levels"]

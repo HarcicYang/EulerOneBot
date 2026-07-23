@@ -6,7 +6,7 @@ from pydantic import TypeAdapter, ValidationError
 from .connector import Connector
 from .api import *
 from .events import *
-from hyperogger import Logger
+from ..hyperogger import Logger
 
 
 if TYPE_CHECKING:
