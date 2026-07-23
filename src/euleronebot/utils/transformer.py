@@ -26,7 +26,7 @@ async def to_onebot_msg(
     if event:
         msgc = event.msg_chain
     elif msg:
-        msgc = msg
+        msgc = msg.raw_msg
     else:
         return []  # 特喵的泥啥也不给我
     for i in msgc:
@@ -37,11 +37,10 @@ async def to_onebot_msg(
                 info = MsgInfo(
                     scene_type="group",
                     scene_id=event.grp_id,
-                    uin=event.uin,
-                    uid=event.uid,
-                    timestamp=event.time,
-                    raw_msg=event.msg_chain,
-                    seq=event.seq
+                    uin=i.uin,
+                    uid=i.uid,
+                    timestamp=i.timestamp,
+                    seq=i.seq
                 )
                 if msgid := info_mgr.msgid_mgr.search(info):
                     pass
@@ -49,7 +48,16 @@ async def to_onebot_msg(
                     msgid = info_mgr.msgid_mgr.add(info)
                     info_renewed = True
             else:
-                msgid = info_mgr.msgid_mgr.search(msg)
+                msgid = info_mgr.msgid_mgr.search(
+                    MsgInfo(
+                        scene_type=msg.scene_type,
+                        scene_id=msg.scene_id,
+                        uin=i.uin,
+                        uid=i.uid,
+                        timestamp=i.timestamp,
+                        seq=i.seq
+                    )
+                )
             new.append(seg.Reply(data=seg.ReplyData(id=str(msgid))))
 
         elif isinstance(i, elems.AtAll):
