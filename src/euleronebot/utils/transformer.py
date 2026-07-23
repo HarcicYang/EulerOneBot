@@ -11,9 +11,9 @@ from lagrange.client.events.group import GroupMessage
 from lagrange.client.events.friend import FriendMessage
 from lagrange.client.message.types import Element as LgrElement
 
-from onebot import segments as seg
+from ..onebot import segments as seg
 from .infomgr import MsgInfo, info_mgr
-from onebot.models import TargetInfo
+from ..onebot.models import TargetInfo
 
 
 async def to_onebot_msg(

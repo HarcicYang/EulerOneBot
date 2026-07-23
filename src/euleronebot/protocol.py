@@ -15,17 +15,17 @@ from lagrange.client.events.group import (
     GroupMemberQuit, GroupNudge, GroupReaction
 )
 
-from config import load_config
-from onebot.api_data import *
-from onebot.models import TargetInfo
-from utils.infomgr import MsgInfo, info_mgr
-from utils.transformer import to_onebot_msg, to_lagrange_msg
-import onebot.events
-from onebot import Adapter as OneBotAdapter
-from onebot.api import *
-from hyperogger import Logger
+from .config import load_config
+from .onebot.api_data import *
+from .onebot.models import TargetInfo
+from .utils.infomgr import MsgInfo, info_mgr
+from .utils.transformer import to_onebot_msg, to_lagrange_msg
+from .onebot import events as onebot_events
+from .onebot import Adapter as OneBotAdapter
+from .onebot.api import *
+from .hyperogger import Logger
 
-appconfig = load_config("appconfig.json")
+appconfig = load_config("./appconfig.json")
 logger = Logger.fetch("euler").name_custom("euler.protocol")
 
 
@@ -70,10 +70,10 @@ class LagrangeProtocol:
             await asyncio.sleep(appconfig.heartbeat.interval / 1000)
             try:
                 await self.adapter.trigger(
-                    onebot.events.HeartbeatEvent(
+                    onebot_events.HeartbeatEvent(
                         interval=appconfig.heartbeat.interval,
                         self_id=self.lag.client.uin,
-                        status=onebot.events.BotStatus(good=True, online=True),
+                        status=onebot_events.BotStatus(good=True, online=True),
                         time=round(time.time())
                     )
                 )
@@ -212,12 +212,12 @@ class LagrangeProtocol:
                             message_id=call.params.message_id,
                             message_type="private" if msg.scene_type == "user" else "group",
                             real_id=msg.seq,
-                            sender=onebot.events.PrivateSender(
+                            sender=onebot_events.PrivateSender(
                                 user_id=msg.uin,
                                 nickname="" if not user_info else user_info.name,
                                 sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",
                                 age=0 if not user_info else user_info.age,
-                            ) if msg.scene_type == "user" else onebot.events.GroupSender(
+                            ) if msg.scene_type == "user" else onebot_events.GroupSender(
                                 user_id=msg.uin,
                                 title="",
                                 sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",
@@ -299,7 +299,7 @@ class LagrangeProtocol:
             role = "admin"
         else:
             role = "member"
-        ev = onebot.events.GroupMessageEvent(
+        ev = onebot_events.GroupMessageEvent(
             time=event.time,
             self_id=self.lag.client.uin,
             message_id=info_mgr.msgid_mgr.add(
@@ -318,7 +318,7 @@ class LagrangeProtocol:
             message=await to_onebot_msg(event=event, lgrc=self.lag.client),
             group_id=event.grp_id,
             raw_message=event.msg,
-            sender=onebot.events.GroupSender(
+            sender=onebot_events.GroupSender(
                 age=user_info.age,
                 area=f"{user_info.country} {user_info.province} {user_info.city}",
                 card="" if not guser_info.name else guser_info.name.string,
@@ -339,7 +339,7 @@ class LagrangeProtocol:
         if not info_mgr.uid_mgr.is_exist(event.from_uid):
             info_mgr.uid_mgr.add(event.from_uid, event.from_uin)
         user_info = await client.get_user_info(event.from_uid)
-        ev = onebot.events.PrivateMessageEvent(
+        ev = onebot_events.PrivateMessageEvent(
             time=event.timestamp,
             self_id=self.lag.client.uin,
             message_id=info_mgr.msgid_mgr.add(
@@ -357,10 +357,10 @@ class LagrangeProtocol:
             user_id=event.from_uin,
             message=await to_onebot_msg(event=event, lgrc=self.lag.client),
             raw_message=event.msg,
-            sender=onebot.events.PrivateSender(
+            sender=onebot_events.PrivateSender(
                 age=user_info.age,
                 nickname=user_info.name,
-                sex=user_info.sex.name,  # type: ignore
+                sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",  # type: ignore
                 user_id=event.from_uin
             )
         )
@@ -378,7 +378,7 @@ class LagrangeProtocol:
         if not msgid:
             return
         real_info = info_mgr.msgid_mgr.fetch(msgid)
-        ev = onebot.events.GroupRecallEvent(
+        ev = onebot_events.GroupRecallEvent(
             group_id=event.grp_id,
             message_id=msgid,
             operator_id=0,
@@ -401,7 +401,7 @@ class LagrangeProtocol:
         )
         if not msgid:
             return
-        ev = onebot.events.FriendRecallEvent(
+        ev = onebot_events.FriendRecallEvent(
             message_id=msgid,
             self_id=self.lag.client.uin,
             time=event.timestamp,
@@ -417,7 +417,7 @@ class LagrangeProtocol:
             uin = 0 if not event.target_uid else info_mgr.uid_mgr.from_uid(event.target_uid)
         except ValueError:
             return
-        ev = onebot.events.GroupMuteEvent(
+        ev = onebot_events.GroupMuteEvent(
             duration=event.duration,
             group_id=event.grp_id,
             operator_id=opt_uin,
@@ -437,7 +437,7 @@ class LagrangeProtocol:
             uin = rs.body[0].account.uin or 0
             if uin:
                 info_mgr.uid_mgr.add(event.uid, uin)
-        ev = onebot.events.GroupIncreaseEvent(
+        ev = onebot_events.GroupIncreaseEvent(
             group_id=event.grp_id,
             operator_id=0,
             self_id=self.lag.client.uin,
@@ -449,7 +449,7 @@ class LagrangeProtocol:
 
     async def grp_invite_join_handler(self, client: Client, event: GroupMemberJoinedByInvite) -> None:
         logger.info(f"[Group] {event.grp_id}: member {event.uin} has joined, invited by {event.invitor_uin}")
-        ev = onebot.events.GroupIncreaseEvent(
+        ev = onebot_events.GroupIncreaseEvent(
             group_id=event.grp_id,
             operator_id=event.invitor_uin,
             self_id=self.lag.client.uin,
@@ -476,7 +476,7 @@ class LagrangeProtocol:
             tp = "leave"
         if not info_mgr.uid_mgr.is_exist(event.uin):
             info_mgr.uid_mgr.add(event.uid, event.uin)
-        ev = onebot.events.GroupDecreaseEvent(
+        ev = onebot_events.GroupDecreaseEvent(
             group_id=event.grp_id,
             operator_id=opt_uin,
             self_id=self.lag.client.uin,
@@ -487,7 +487,7 @@ class LagrangeProtocol:
         await self.adapter.trigger(ev)
 
     async def poke_handler(self, client: Client, event: GroupNudge) -> None:
-        ev = onebot.events.GroupPokeEvent(
+        ev = onebot_events.GroupPokeEvent(
             time=round(time.time()),
             self_id=self.lag.client.uin,
             group_id=event.grp_id,
@@ -516,7 +516,7 @@ class LagrangeProtocol:
         except IndexError:
             msgid = info_mgr.msgid_mgr.add(
                 MsgInfo(scene_type="group", scene_id=event.grp_id, seq=event.seq, uid=uid, uin=uin))
-        ev = onebot.events.ReactionEvent(
+        ev = onebot_events.ReactionEvent(
             time=round(time.time()),
             self_id=self.lag.client.uin,
             message_id=msgid,

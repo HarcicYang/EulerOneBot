@@ -5,8 +5,8 @@ from uvicorn import Server as UvicornServer
 from urllib.parse import urlparse
 import asyncio
 
-from hyperogger import Logger
-from config import AdapterConfig, ForwardWebsocketConfig
+from ..hyperogger import Logger
+from ..config import AdapterConfig, ForwardWebsocketConfig
 
 logger = Logger.fetch("euler").name_custom("euler.onebot.connector")
 
