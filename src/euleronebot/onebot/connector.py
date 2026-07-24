@@ -114,12 +114,12 @@ class Connector:
             if self.active_websocket_servers.get("root"):
                 socket = self.active_websocket_servers["root"]
                 if socket.client_state == socket.client_state.DISCONNECTED:
-                    logger.warning("连接断开，不能推送事件")
+                    logger.warning("Unable to trigger")
                     return
                 await socket.send_text(data)
             if self.active_websocket_servers.get("event"):
                 socket = self.active_websocket_servers["event"]
                 if socket.client_state == socket.client_state.DISCONNECTED:
-                    logger.warning("连接断开，不能推送事件")
+                    logger.warning("Unable to trigger")
                     return
                 await socket.send_text(data)

@@ -46,6 +46,8 @@ class LagrangeProtocol:
         self.info_updated = False
 
     async def run(self) -> None:
+        self.lag.subscribe(ClientOnline, self.online_handler)
+        self.lag.subscribe(ServerKick, self.kick_handler)
         self.lag.subscribe(GroupMessage, self.grp_msg_handler)
         self.lag.subscribe(FriendMessage, self.pri_msg_handler)
         self.lag.subscribe(GroupRecall, self.grp_recall_handler)
@@ -308,7 +310,7 @@ class LagrangeProtocol:
 
     @staticmethod
     async def kick_handler(client: Client, event: ServerKick) -> None:
-        logger.error(f"下线通知：{event.title} {event.tips}")
+        logger.error(f"Kicked by server: {event.title} {event.tips}")
 
     async def grp_msg_handler(self, client: Client, event: GroupMessage) -> None:
         if event.uin == self.lag.client.uin:
