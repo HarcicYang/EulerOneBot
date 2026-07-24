@@ -1,7 +1,6 @@
 import asyncio
 import time
 import traceback
-from token import AWAIT
 from typing import NoReturn, Optional
 
 from lagrange import Lagrange, Client
@@ -707,10 +706,13 @@ class LagrangeProtocol:
         )
         await self.adapter.trigger(ev)
 
-    async def grp_request_service(self) -> NoReturn:
+    async def grp_request_service(self) -> None:
         while True:
             await asyncio.sleep(5)
-            rev = await self.lag.client.fetch_grp_request()
+            try:
+                rev = await self.lag.client.fetch_grp_request()
+            except AttributeError:
+                continue
             for i in rev.requests:
                 flag = info_mgr.req_mgr.set_group(
                     grp_id=i.group.grp_id,
