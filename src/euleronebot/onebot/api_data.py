@@ -13,11 +13,11 @@ if TYPE_CHECKING:
     PRIVATE_SENDER = PrivateSender
 else:
     from .segments import SegmentUnion
+
     SEGMENT = SegmentUnion
     NODE = Any
     GROUP_SENDER = Any
     PRIVATE_SENDER = Any
-
 
 __all__ = [
     "SendPrivateMsgData",
@@ -31,6 +31,7 @@ __all__ = [
     "GetForwardMsgData",
     "GetForwardMsgRsp",
     "SendLikeData",
+    "SendPokeData",
     "SetGroupKickData",
     "SetGroupBanData",
     "SetGroupWholeBanData",
@@ -115,6 +116,11 @@ class GetForwardMsgRsp(BaseModel):
 class SendLikeData(BaseModel):
     user_id: int
     times: int = 1
+
+
+class SendPokeData(BaseModel):
+    group_id: int = 0
+    user_id: int
 
 
 class SetGroupKickData(BaseModel):

@@ -25,6 +25,8 @@ __all__ = [
     "GetForwardMessageResponse",
     "SendLike",
     "SendLikeResponse",
+    "SendPoke",
+    "SendPokeResponse",
     "SetGroupKick",
     "SetGroupKickResponse",
     "SetGroupBan",
@@ -132,9 +134,18 @@ class SendLike(BaseAPICall[SendLikeData]):
     action: Literal["send_like"] = "send_like"
 
 
+
+
+
 class SendLikeResponse(BaseAPIResponse[EmptyRsp]):
     ...
 
+
+class SendPoke(BaseAPICall[SendPokeData]):
+    action: Literal["send_like"] = "send_like"
+
+class SendPokeResponse(BaseAPIResponse[EmptyRsp]):
+    ...
 
 class SetGroupKick(BaseAPICall[SetGroupKickData]):
     action: Literal["set_group_kick"] = "set_group_kick"
@@ -286,6 +297,7 @@ class GetVersionInfo(BaseAPICall[GetVersionInfoData]):
 
 class GetVersionInfoResponse(BaseAPIResponse[GetVersionInfoRsp]):
     ...
+
 
 class ActionFailedResponse(BaseAPIResponse[EmptyRsp]):
     ...

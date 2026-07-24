@@ -89,13 +89,32 @@ async def to_onebot_msg(
                 seg.Forward(
                     data=seg.ForwardData(
                         id=str(i.resid),
-                        content=[
-                            seg.Node(data=seg.NodeData(content=[], nickname=x.sender_nick, user_id=str(x.sender_uin)))
-                            for x in i.messages
-                        ]
+                        content=await to_onebot_msg(  # type: ignore
+                            lgrc, msg=MsgInfo(
+                                scene_type="user",
+                                scene_id=0,
+                                seq=0,
+                                raw_msg=i.messages
+                            )
+                        )
                     )
                 )
-            )  # TODO: Real content
+            )
+        elif isinstance(i, elems.ForwardNode):
+            new.append(
+                seg.Node(
+                    data=seg.NodeData(
+                        content=await to_onebot_msg(
+                            lgrc, msg=MsgInfo(
+                                scene_type="user",
+                                scene_id=i.sender_uin,
+                                seq=0,
+                                raw_msg=i.content
+                            )
+                        )
+                    )
+                )
+            )
         else:
             continue
     if info_renewed:
@@ -128,7 +147,7 @@ async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: Targ
             faceid = int(i.data.id)
             new.append(elems.Emoji(id=faceid))
         elif isinstance(i, seg.Poke):
-            new.append(elems.Poke(id=114514))
+            pass
         elif isinstance(i, seg.MarketFace):
             new.append(elems.MarketFace(face_id=i.data.face_id.encode(), name=i.data.name, tab_id=int(i.data.tab_id),
                                         width=512, height=512))

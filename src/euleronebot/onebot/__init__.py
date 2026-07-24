@@ -35,6 +35,7 @@ class Adapter:
                 GetMessage,
                 GetForwardMessage,
                 SendLike,
+                SendPoke,
                 SetGroupKick,
                 SetGroupBan,
                 SetGroupWholeBan,

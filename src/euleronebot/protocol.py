@@ -1,9 +1,10 @@
 import asyncio
 import time
 import traceback
+from token import AWAIT
 from typing import NoReturn, Optional
 
-from lagrange import Lagrange
+from lagrange import Lagrange, Client
 from lagrange.client.client import Client
 from lagrange.client.events.service import ClientOnline, ServerKick
 from lagrange.client.events.friend import FriendMessage, FriendRecall
@@ -15,6 +16,7 @@ from lagrange.client.events.group import (
     GroupMemberJoinedByInvite,
     GroupMemberQuit, GroupNudge, GroupReaction
 )
+from lagrange.pb.highway import req
 
 from .config import load_config
 from .onebot.api_data import *
@@ -57,6 +59,7 @@ class LagrangeProtocol:
         self.lag.subscribe(GroupMemberJoinedByInvite, self.grp_invite_join_handler)
         self.lag.subscribe(GroupNudge, self.poke_handler)
         self.lag.subscribe(GroupReaction, self.reaction_handler)
+        asyncio.create_task(self.grp_request_service())
 
         try:
             await self.adapter.setup()
@@ -193,7 +196,6 @@ class LagrangeProtocol:
                         echo=call.echo
                     )
 
-
                 elif isinstance(call, GetMessage):
                     rsp = ActionFailedResponse(
                         status="failed",
@@ -237,7 +239,6 @@ class LagrangeProtocol:
                         echo=call.echo
                     )
 
-
                 elif isinstance(call, GetGroupInfo):
                     grps = await self.lag.client.get_grp_list()
                     info = list(filter(lambda x: x.grp_id == call.params.group_id, grps.grp_list))[0]
@@ -252,7 +253,6 @@ class LagrangeProtocol:
                         ),
                         echo=call.echo
                     )
-
 
                 elif isinstance(call, GetStrangerInfo):
                     try:
@@ -271,6 +271,159 @@ class LagrangeProtocol:
                         ),
                         echo=call.echo
                     )
+
+                elif isinstance(call, GetForwardMessage):
+                    res_id = call.params.id
+                    msg = await self.lag.client.get_forward_msg(res_id)
+                    rsp = GetForwardMessageResponse(
+                        status="ok",
+                        retcode=0,
+                        data=GetForwardMsgRsp(
+                            message=await to_onebot_msg(  # type: ignore
+                                lgrc=self.lag.client,
+                                msg=MsgInfo(scene_type="user", scene_id=0, seq=0, raw_msg=msg.messages)
+                            )
+                        ),
+                        echo=call.echo
+                    )
+
+                elif isinstance(call, SetGroupKick):
+                    await self.lag.client.kick_grp_member(
+                        grp_id=call.params.group_id,
+                        uin=call.params.user_id,
+                        permanent=call.params.reject_add_request
+                    )
+                    rsp = SetGroupKickResponse(
+                        status="ok",
+                        retcode=0,
+                        data=EmptyRsp(),
+                        echo=call.echo
+                    )
+
+                elif isinstance(call, SetGroupBan):
+                    await self.lag.client.set_mute_member(
+                        grp_id=call.params.group_id,
+                        uin=call.params.user_id,
+                        duration=call.params.duration
+                    )
+                    rsp = SetGroupBanResponse(
+                        status="ok",
+                        retcode=0,
+                        data=EmptyRsp(),
+                        echo=call.echo
+                    )
+                elif isinstance(call, SetGroupWholeBan):
+                    await self.lag.client.set_mute_grp(grp_id=call.params.group_id, enable=call.params.enable)
+                    rsp = SetGroupWholeBanResponse(
+                        status="ok",
+                        retcode=0,
+                        data=EmptyRsp(),
+                        echo=call.echo
+                    )
+
+                elif isinstance(call, SetGroupCard):
+                    await self.lag.client.rename_grp_member(
+                        grp_id=call.params.group_id,
+                        target_uid=info_mgr.uid_mgr.from_uin(call.params.user_id),
+                        name=call.params.card
+                    )
+                    rsp = SetGroupCardResponse(
+                        status="ok",
+                        retcode=0,
+                        data=EmptyRsp(),
+                        echo=call.echo
+                    )
+
+                elif isinstance(call, SetGroupName):
+                    await self.lag.client.rename_grp_name(grp_id=call.params.group_id, name=call.params.group_name)
+                    rsp = SetGroupNameResponse(
+                        status="ok",
+                        retcode=0,
+                        data=EmptyRsp(),
+                        echo=call.echo
+                    )
+
+                elif isinstance(call, SendPoke):
+                    await self.lag.client.send_nudge(uin=call.params.user_id, grp_id=call.params.group_id)
+                    rsp = SendPokeResponse(
+                        status="ok",
+                        retcode=0,
+                        data=EmptyRsp(),
+                        echo=call.echo
+                    )
+
+                elif isinstance(call, SetGroupLeave):
+                    await self.lag.client.leave_grp(grp_id=call.params.group_id)
+                    rsp = SetGroupLeaveResponse(
+                        status="ok",
+                        retcode=0,
+                        data=EmptyRsp(),
+                        echo=call.echo
+                    )
+
+                elif isinstance(call, SetGroupAddRequest):
+                    info = info_mgr.req_mgr.fetch(call.params.flag)
+                    if info.type == "group":
+                        await self.lag.client.set_grp_request(
+                            grp_id=info.id,
+                            grp_req_seq=info.seq,
+                            ev_type=info.ev_type,
+                            action=1 if call.params.approve else 2
+                        )
+                        rsp = SetGroupAddRequestResponse(
+                            status="ok",
+                            retcode=0,
+                            data=EmptyRsp(),
+                            echo=call.echo
+                        )
+                    else:
+                        raise NotImplementedError()
+
+                elif isinstance(call, GetLoginInfo):
+                    info = await self.lag.client.get_user_info(self.lag.client.uin)
+                    rsp = GetLoginInfoResponse(
+                        status="ok",
+                        retcode=0,
+                        data=GetLoginInfoRsp(
+                            user_id=self.lag.client.uin,
+                            nickname=info.name
+                        ),
+                        echo=call.echo
+                    )
+
+                elif isinstance(call, GetGroupMemberInfo):
+                    info = (
+                        await self.lag.client.get_grp_member_info(
+                            call.params.group_id,
+                            info_mgr.uid_mgr.from_uin(call.params.user_id)
+                        )
+                    ).body[0]
+                    user_info = await self.lag.client.get_user_info(call.params.user_id)
+                    role = "member"
+                    if info.is_owner:
+                        role = "owner"
+                    elif info.is_admin:
+                        role = "admin"
+                    rsp = GetGroupMemberInfoResponse(
+                        status="ok",
+                        retcode=0,
+                        data=GetGroupMemberInfoRsp(
+                            group_id=call.params.group_id,
+                            user_id=call.params.user_id,
+                            nickname=info.nickname,
+                            card=str(info.name.string),
+                            sex=user_info.sex if user_info.sex != "notset" else "unknown",
+                            age=user_info.age,
+                            area=f"{user_info.country} {user_info.province} {user_info.city}",
+                            join_time=info.joined_time,
+                            last_sent_time=info.last_seen,
+                            level=str(info.level.num),
+                            role=role,
+                            title=""
+                        ),
+                        echo=call.echo
+                    )
+
                 else:
                     rsp = ActionFailedResponse(
                         status="failed",
@@ -553,3 +706,28 @@ class LagrangeProtocol:
             count=event.emoji_count
         )
         await self.adapter.trigger(ev)
+
+    async def grp_request_service(self) -> NoReturn:
+        while True:
+            await asyncio.sleep(5)
+            rev = await self.lag.client.fetch_grp_request()
+            for i in rev.requests:
+                flag = info_mgr.req_mgr.set_group(
+                    grp_id=i.group.grp_id,
+                    seq=i.seq,
+                    ev_type=i.event_type
+                )
+                try:
+                    uin = await info_mgr.uid_mgr.from_uid(i.target.uid)
+                except ValueError:
+                    uin = 0
+                ev = onebot_events.GroupRequestEvent(
+                    time=round(time.time()),
+                    self_id=self.lag.client.uin,
+                    sub_type="add",
+                    group_id=i.group.grp_id,
+                    user_id=uin,
+                    comment=i.comment,
+                    flag=flag
+                )
+                await self.adapter.trigger(ev)

@@ -43,7 +43,7 @@ class MsgIDPool(BaseModel):
         if str(nid) in list(self.pool.keys()):
             return self.pool[str(nid)]
         else:
-            raise KeyError(f"message_id = {nid} 没有对应的消息")
+            raise KeyError(f"Unknown message_id = {nid} ")
 
     def search(self, info: MsgInfo) -> int:
         if info in list(self.pool.values()):
@@ -71,14 +71,14 @@ class UIDPool(BaseModel):
         if uid in list(self.pool.keys()):
             return self.pool[uid]
         else:
-            raise ValueError(f"未缓存 uid = {uid}")
+            raise ValueError(f"Unknown uid = {uid}")
 
     def from_uin(self, uin: int) -> str:
         if uin in list(self.pool.values()):
             index = list(self.pool.values()).index(uin)
             return list(self.pool.keys())[index]
         else:
-            raise ValueError(f"未缓存 uin = {uin}")
+            raise ValueError(f"Unknown uin = {uin}")
 
     def is_exist(self, uid_or_uin: Union[int, str]) -> bool:
         if isinstance(uid_or_uin, str) and uid_or_uin in list(self.pool.keys()):
@@ -87,9 +87,43 @@ class UIDPool(BaseModel):
         return uid_or_uin in list(self.pool.keys()) or uid_or_uin in list(self.pool.values())
 
 
+class RequestInfo(BaseModel):
+    type: Literal["friend", "group"] = "group"
+    id: int
+    seq: int
+    ev_type: int
+
+
+class RequestPool(BaseModel):
+    pool: Dict[str, RequestInfo] = {}
+
+    def _get_flag(self) -> str:
+        x = 0
+        while not x or str(x) in list(self.pool.keys()):
+            x = random.randint(1 << 15, (1 << 18) - 1)
+        return str(x)
+
+    def set_group(self, grp_id: int, seq: int, ev_type: int) -> str:
+        flag = self._get_flag()
+        self.pool[flag] = RequestInfo(
+            type="group",
+            id=grp_id,
+            seq=seq,
+            ev_type=ev_type
+        )
+        return flag
+
+    def fetch(self, flag: str) -> RequestInfo:
+        if flag in list(self.pool.keys()):
+            return self.pool[flag]
+        else:
+            raise ValueError(f"Unknown flag: {flag}")
+
+
 class InfoManager(BaseModel):
     msgid_mgr: MsgIDPool = MsgIDPool()
     uid_mgr: UIDPool = UIDPool()
+    req_mgr: RequestPool = RequestPool()
 
     async def save(self) -> None:
         with open("cache.json", "w", encoding="utf-8") as f:
@@ -100,6 +134,6 @@ if os.path.exists("cache.json"):
     with open("cache.json", "r", encoding="utf-8") as f:
         info_mgr = InfoManager.model_validate_json(f.read())
 else:
-    info_mgr = InfoManager()
+    info_mgr = InfoManager()  # type: ignore
     with open("cache.json", "w", encoding="utf-8") as f:
         f.write(info_mgr.model_dump_json(indent=2))
