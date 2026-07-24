@@ -1,10 +1,11 @@
 import asyncio
 import time
 import traceback
-from typing import NoReturn
+from typing import NoReturn, Optional
 
 from lagrange import Lagrange
 from lagrange.client.client import Client
+from lagrange.client.events.service import ClientOnline, ServerKick
 from lagrange.client.events.friend import FriendMessage, FriendRecall
 from lagrange.client.events.group import (
     GroupMessage,
@@ -41,6 +42,8 @@ class LagrangeProtocol:
         )
 
         self.lag.log.set_level("DEBUG")
+
+        self.info_updated = False
 
     async def run(self) -> None:
         self.lag.subscribe(GroupMessage, self.grp_msg_handler)
@@ -252,7 +255,7 @@ class LagrangeProtocol:
                 elif isinstance(call, GetStrangerInfo):
                     try:
                         uid = info_mgr.uid_mgr.from_uin(call.params.user_id)
-                    except KeyError:
+                    except ValueError:
                         uid = None
                     info = await self.lag.client.get_user_info(uid or call.params.user_id)
                     rsp = GetStrangerInfoResponse(
@@ -284,6 +287,28 @@ class LagrangeProtocol:
                     echo=call.echo
                 )
                 await self.adapter.report(rsp)
+
+    async def online_handler(self, client: Client, event: Optional[ClientOnline] = None) -> None:
+        if self.info_updated:
+            return
+        grps = await client.get_grp_list()
+        for i in grps.grp_list:
+            gid = i.grp_id
+            members = await client.get_grp_members(grp_id=gid)
+            for j in members.body:
+                if j.account.uin and not info_mgr.uid_mgr.is_exist(j.account.uin):
+                    info_mgr.uid_mgr.add(j.account.uid, j.account.uin)
+
+        users = await client.get_friend_list()
+        for i in users:
+            if i.uid and not info_mgr.uid_mgr.is_exist(i.uin):
+                info_mgr.uid_mgr.add(i.uid, i.uin)
+
+        self.info_updated = True
+
+    @staticmethod
+    async def kick_handler(client: Client, event: ServerKick) -> None:
+        logger.error(f"下线通知：{event.title} {event.tips}")
 
     async def grp_msg_handler(self, client: Client, event: GroupMessage) -> None:
         if event.uin == self.lag.client.uin:
@@ -504,7 +529,7 @@ class LagrangeProtocol:
             else:
                 uid = info_mgr.uid_mgr.from_uin(event.uin)
                 uin = event.uin
-        except KeyError:
+        except ValueError:
             if event.uid:
                 uid = event.uid
                 uin = 0

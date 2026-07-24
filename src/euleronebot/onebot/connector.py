@@ -112,6 +112,14 @@ class Connector:
         logger.trace(f"Event trigger: {data}")
         if self.active_websocket_servers:
             if self.active_websocket_servers.get("root"):
-                await self.active_websocket_servers["root"].send_text(data)
+                socket = self.active_websocket_servers["root"]
+                if socket.client_state == socket.client_state.DISCONNECTED:
+                    logger.warning("连接断开，不能推送事件")
+                    return
+                await socket.send_text(data)
             if self.active_websocket_servers.get("event"):
-                await self.active_websocket_servers["event"].send_text(data)
+                socket = self.active_websocket_servers["event"]
+                if socket.client_state == socket.client_state.DISCONNECTED:
+                    logger.warning("连接断开，不能推送事件")
+                    return
+                await socket.send_text(data)
