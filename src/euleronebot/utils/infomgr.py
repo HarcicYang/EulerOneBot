@@ -76,7 +76,7 @@ class UIDPool(BaseModel):
     def from_uin(self, uin: int) -> str:
         if uin in list(self.pool.values()):
             index = list(self.pool.values()).index(uin)
-            return list(self.pool.keys())[index]
+            return list(self.pool.keys())[index].replace("b'", "").replace("'", "")
         else:
             raise ValueError(f"Unknown uin = {uin}")
 
