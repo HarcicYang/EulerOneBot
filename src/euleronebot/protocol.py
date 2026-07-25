@@ -687,7 +687,7 @@ class LagrangeProtocol:
             self_id=self.lag.client.uin,
             sub_type=tp,  # type: ignore
             time=round(time.time()),
-            user_id=await info_mgr.uid_mgr.from_uid(event.uid)
+            user_id=info_mgr.uid_mgr.from_uid(event.uid)
         )
         await self.adapter.trigger(ev)
 
