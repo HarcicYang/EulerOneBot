@@ -721,7 +721,7 @@ class LagrangeProtocol:
                     ev_type=i.event_type
                 )
                 try:
-                    uin = await info_mgr.uid_mgr.from_uid(i.target.uid)
+                    uin = info_mgr.uid_mgr.from_uid(i.target.uid)
                 except ValueError:
                     uin = 0
                 ev = onebot_events.GroupRequestEvent(
