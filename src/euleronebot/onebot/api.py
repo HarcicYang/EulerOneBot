@@ -83,7 +83,7 @@ class BaseAPIResponse(BaseModel, Generic[ResponseType]):
 
 
 class SendPrivateMessage(BaseAPICall[SendPrivateMsgData]):
-    action: Literal["send_private_msg"] = "send_private_msg"
+    action: Literal["send_private_msg"] = "send_private_msg"  # type: ignore
 
 
 class SendPrivateMessageResponse(BaseAPIResponse[SendMsgRsp]):
@@ -91,7 +91,7 @@ class SendPrivateMessageResponse(BaseAPIResponse[SendMsgRsp]):
 
 
 class SendGroupMessage(BaseAPICall[SendGroupMsgData]):
-    action: Literal["send_group_msg"] = "send_group_msg"
+    action: Literal["send_group_msg"] = "send_group_msg"  # type: ignore
 
 
 class SendGroupMessageResponse(BaseAPIResponse[SendMsgRsp]):
@@ -99,7 +99,7 @@ class SendGroupMessageResponse(BaseAPIResponse[SendMsgRsp]):
 
 
 class SendMessage(BaseAPICall[SendMsgData]):
-    action: Literal["send_msg"] = "send_msg"
+    action: Literal["send_msg"] = "send_msg"  # type: ignore
 
 
 class SendMessageResponse(BaseAPIResponse[SendMsgRsp]):
@@ -107,7 +107,7 @@ class SendMessageResponse(BaseAPIResponse[SendMsgRsp]):
 
 
 class DeleteMessage(BaseAPICall[DeleteMsgData]):
-    action: Literal["delete_msg"] = "delete_msg"
+    action: Literal["delete_msg"] = "delete_msg"  # type: ignore
 
 
 class DeleteMessageResponse(BaseAPIResponse[EmptyRsp]):
@@ -115,7 +115,7 @@ class DeleteMessageResponse(BaseAPIResponse[EmptyRsp]):
 
 
 class GetMessage(BaseAPICall[GetMsgData]):
-    action: Literal["get_msg"] = "get_msg"
+    action: Literal["get_msg"] = "get_msg"  # type: ignore
 
 
 class GetMessageResponse(BaseAPIResponse[GetMsgRsp]):
@@ -123,7 +123,7 @@ class GetMessageResponse(BaseAPIResponse[GetMsgRsp]):
 
 
 class GetForwardMessage(BaseAPICall[GetForwardMsgData]):
-    action: Literal["get_forward_msg"] = "get_forward_msg"
+    action: Literal["get_forward_msg"] = "get_forward_msg"  # type: ignore
 
 
 class GetForwardMessageResponse(BaseAPIResponse[GetForwardMsgRsp]):
@@ -131,7 +131,7 @@ class GetForwardMessageResponse(BaseAPIResponse[GetForwardMsgRsp]):
 
 
 class SendLike(BaseAPICall[SendLikeData]):
-    action: Literal["send_like"] = "send_like"
+    action: Literal["send_like"] = "send_like"  # type: ignore
 
 
 
@@ -142,13 +142,13 @@ class SendLikeResponse(BaseAPIResponse[EmptyRsp]):
 
 
 class SendPoke(BaseAPICall[SendPokeData]):
-    action: Literal["send_like"] = "send_like"
+    action: Literal["send_like"] = "send_like"  # type: ignore
 
 class SendPokeResponse(BaseAPIResponse[EmptyRsp]):
     ...
 
 class SetGroupKick(BaseAPICall[SetGroupKickData]):
-    action: Literal["set_group_kick"] = "set_group_kick"
+    action: Literal["set_group_kick"] = "set_group_kick"  # type: ignore
 
 
 class SetGroupKickResponse(BaseAPIResponse[EmptyRsp]):
@@ -156,7 +156,7 @@ class SetGroupKickResponse(BaseAPIResponse[EmptyRsp]):
 
 
 class SetGroupBan(BaseAPICall[SetGroupBanData]):
-    action: Literal["set_group_ban"] = "set_group_ban"
+    action: Literal["set_group_ban"] = "set_group_ban"  # type: ignore
 
 
 class SetGroupBanResponse(BaseAPIResponse[EmptyRsp]):
@@ -164,7 +164,7 @@ class SetGroupBanResponse(BaseAPIResponse[EmptyRsp]):
 
 
 class SetGroupWholeBan(BaseAPICall[SetGroupWholeBanData]):
-    action: Literal["set_group_whole_ban"] = "set_group_whole_ban"
+    action: Literal["set_group_whole_ban"] = "set_group_whole_ban"  # type: ignore
 
 
 class SetGroupWholeBanResponse(BaseAPIResponse[EmptyRsp]):
@@ -172,7 +172,7 @@ class SetGroupWholeBanResponse(BaseAPIResponse[EmptyRsp]):
 
 
 class SetGroupAdmin(BaseAPICall[SetGroupAdminData]):
-    action: Literal["set_group_admin"] = "set_group_admin"
+    action: Literal["set_group_admin"] = "set_group_admin"  # type: ignore
 
 
 class SetGroupAdminResponse(BaseAPIResponse[EmptyRsp]):
@@ -180,7 +180,7 @@ class SetGroupAdminResponse(BaseAPIResponse[EmptyRsp]):
 
 
 class SetGroupCard(BaseAPICall[SetGroupCardData]):
-    action: Literal["set_group_card"] = "set_group_card"
+    action: Literal["set_group_card"] = "set_group_card"  # type: ignore
 
 
 class SetGroupCardResponse(BaseAPIResponse[EmptyRsp]):
@@ -188,7 +188,7 @@ class SetGroupCardResponse(BaseAPIResponse[EmptyRsp]):
 
 
 class SetGroupName(BaseAPICall[SetGroupNameData]):
-    action: Literal["set_group_name"] = "set_group_name"
+    action: Literal["set_group_name"] = "set_group_name"  # type: ignore
 
 
 class SetGroupNameResponse(BaseAPIResponse[EmptyRsp]):
@@ -196,7 +196,7 @@ class SetGroupNameResponse(BaseAPIResponse[EmptyRsp]):
 
 
 class SetGroupLeave(BaseAPICall[SetGroupLeaveData]):
-    action: Literal["set_group_leave"] = "set_group_leave"
+    action: Literal["set_group_leave"] = "set_group_leave"  # type: ignore
 
 
 class SetGroupLeaveResponse(BaseAPIResponse[EmptyRsp]):
@@ -204,7 +204,7 @@ class SetGroupLeaveResponse(BaseAPIResponse[EmptyRsp]):
 
 
 class SetGroupSpecialTitle(BaseAPICall[SetGroupSpecialTitleData]):
-    action: Literal["set_group_special_title"] = "set_group_special_title"
+    action: Literal["set_group_special_title"] = "set_group_special_title"  # type: ignore
 
 
 class SetGroupSpecialTitleResponse(BaseAPIResponse[EmptyRsp]):
@@ -212,7 +212,7 @@ class SetGroupSpecialTitleResponse(BaseAPIResponse[EmptyRsp]):
 
 
 class SetFriendAddRequest(BaseAPICall[SetFriendAddRequestData]):
-    action: Literal["set_friend_add_request"] = "set_friend_add_request"
+    action: Literal["set_friend_add_request"] = "set_friend_add_request"  # type: ignore
 
 
 class SetFriendAddRequestResponse(BaseAPIResponse[EmptyRsp]):
@@ -220,7 +220,7 @@ class SetFriendAddRequestResponse(BaseAPIResponse[EmptyRsp]):
 
 
 class SetGroupAddRequest(BaseAPICall[SetGroupAddRequestData]):
-    action: Literal["set_group_add_request"] = "set_group_add_request"
+    action: Literal["set_group_add_request"] = "set_group_add_request"  # type: ignore
 
 
 class SetGroupAddRequestResponse(BaseAPIResponse[EmptyRsp]):
@@ -228,7 +228,7 @@ class SetGroupAddRequestResponse(BaseAPIResponse[EmptyRsp]):
 
 
 class GetLoginInfo(BaseAPICall[GetLoginInfoData]):
-    action: Literal["get_login_info"] = "get_login_info"
+    action: Literal["get_login_info"] = "get_login_info"  # type: ignore
 
 
 class GetLoginInfoResponse(BaseAPIResponse[GetLoginInfoRsp]):
@@ -236,7 +236,7 @@ class GetLoginInfoResponse(BaseAPIResponse[GetLoginInfoRsp]):
 
 
 class GetStrangerInfo(BaseAPICall[GetStrangerInfoData]):
-    action: Literal["get_stranger_info"] = "get_stranger_info"
+    action: Literal["get_stranger_info"] = "get_stranger_info"  # type: ignore
 
 
 class GetStrangerInfoResponse(BaseAPIResponse[GetStrangerInfoRsp]):
@@ -244,7 +244,7 @@ class GetStrangerInfoResponse(BaseAPIResponse[GetStrangerInfoRsp]):
 
 
 class GetFriendList(BaseAPICall[GetFriendListData]):
-    action: Literal["get_friend_list"] = "get_friend_list"
+    action: Literal["get_friend_list"] = "get_friend_list"  # type: ignore
 
 
 class GetFriendListResponse(BaseAPIResponse[GetFriendListRsp]):
@@ -252,7 +252,7 @@ class GetFriendListResponse(BaseAPIResponse[GetFriendListRsp]):
 
 
 class GetGroupInfo(BaseAPICall[GetGroupInfoData]):
-    action: Literal["get_group_info"] = "get_group_info"
+    action: Literal["get_group_info"] = "get_group_info"  # type: ignore
 
 
 class GetGroupInfoResponse(BaseAPIResponse[GetGroupInfoRsp]):
@@ -260,7 +260,7 @@ class GetGroupInfoResponse(BaseAPIResponse[GetGroupInfoRsp]):
 
 
 class GetGroupList(BaseAPICall[GetGroupListData]):
-    action: Literal["get_group_list"] = "get_group_list"
+    action: Literal["get_group_list"] = "get_group_list"  # type: ignore
 
 
 class GetGroupListResponse(BaseAPIResponse[GetGroupListRsp]):
@@ -268,7 +268,7 @@ class GetGroupListResponse(BaseAPIResponse[GetGroupListRsp]):
 
 
 class GetGroupMemberInfo(BaseAPICall[GetGroupMemberInfoData]):
-    action: Literal["get_group_member_info"] = "get_group_member_info"
+    action: Literal["get_group_member_info"] = "get_group_member_info"  # type: ignore
 
 
 class GetGroupMemberInfoResponse(BaseAPIResponse[GetGroupMemberInfoRsp]):
@@ -276,7 +276,7 @@ class GetGroupMemberInfoResponse(BaseAPIResponse[GetGroupMemberInfoRsp]):
 
 
 class GetGroupMemberList(BaseAPICall[GetGroupMemberListData]):
-    action: Literal["get_group_member_list"] = "get_group_member_list"
+    action: Literal["get_group_member_list"] = "get_group_member_list"  # type: ignore
 
 
 class GetGroupMemberListResponse(BaseAPIResponse[GetGroupMemberListRsp]):
@@ -284,7 +284,7 @@ class GetGroupMemberListResponse(BaseAPIResponse[GetGroupMemberListRsp]):
 
 
 class GetStatus(BaseAPICall[GetStatusData]):
-    action: Literal["get_status"] = "get_status"
+    action: Literal["get_status"] = "get_status"  # type: ignore
 
 
 class GetStatusResponse(BaseAPIResponse[EmptyRsp]):
@@ -292,7 +292,7 @@ class GetStatusResponse(BaseAPIResponse[EmptyRsp]):
 
 
 class GetVersionInfo(BaseAPICall[GetVersionInfoData]):
-    action: Literal["get_version_info"] = "get_version_info"
+    action: Literal["get_version_info"] = "get_version_info"  # type: ignore
 
 
 class GetVersionInfoResponse(BaseAPIResponse[GetVersionInfoRsp]):

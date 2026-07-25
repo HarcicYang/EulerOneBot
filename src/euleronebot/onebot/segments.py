@@ -35,7 +35,7 @@ class TextData(BaseSegmentData):
 
 
 class Text(BaseSegment[TextData]):
-    type: Literal["text"] = "text"
+    type: Literal["text"] = "text"  # type: ignore
     data: TextData
 
 
@@ -44,7 +44,7 @@ class AtData(BaseSegmentData):
 
 
 class At(BaseSegment[AtData]):
-    type: Literal["at"] = "at"
+    type: Literal["at"] = "at"  # type: ignore
     data: AtData
 
 
@@ -53,7 +53,7 @@ class ReplyData(BaseSegmentData):
 
 
 class Reply(BaseSegment[ReplyData]):
-    type: Literal["reply"] = "reply"
+    type: Literal["reply"] = "reply"  # type: ignore
     data: ReplyData
 
 
@@ -62,7 +62,7 @@ class FaceData(BaseSegmentData):
 
 
 class Face(BaseSegment[FaceData]):
-    type: Literal["face"] = "face"
+    type: Literal["face"] = "face"  # type: ignore
     data: FaceData
 
 
@@ -72,7 +72,7 @@ class PokeData(BaseSegmentData):
 
 
 class Poke(BaseSegment[PokeData]):
-    type: Literal["poke"] = "poke"
+    type: Literal["poke"] = "poke"  # type: ignore
     data: PokeData
 
 
@@ -83,7 +83,7 @@ class MarketFaceData(BaseSegmentData):
 
 
 class MarketFace(BaseSegment[MarketFaceData]):
-    type: Literal["mface"] = "mface"
+    type: Literal["mface"] = "mface"  # type: ignore
     data: MarketFaceData
 
 
@@ -94,7 +94,7 @@ class NodeData(BaseSegmentData):
 
 
 class Node(BaseSegment[NodeData]):
-    type: Literal["node"] = "node"
+    type: Literal["node"] = "node"  # type: ignore
     data: NodeData
 
 
@@ -104,7 +104,7 @@ class ForwardData(BaseSegmentData):
 
 
 class Forward(BaseSegment[ForwardData]):
-    type: Literal["forward"] = "forward"
+    type: Literal["forward"] = "forward"  # type: ignore
     data: ForwardData
 
 
@@ -119,7 +119,7 @@ class ImageData(MediaBaseData):
 
 
 class Image(BaseSegment[ImageData]):
-    type: Literal["image"] = "image"
+    type: Literal["image"] = "image"  # type: ignore
     data: ImageData
 
 
@@ -128,7 +128,7 @@ class RecordData(MediaBaseData):
 
 
 class Record(BaseSegment[RecordData]):
-    type: Literal["record"] = "record"
+    type: Literal["record"] = "record"  # type: ignore
     data: RecordData
 
 
@@ -137,7 +137,7 @@ class VideoData(MediaBaseData):
 
 
 class Video(BaseSegment[VideoData]):
-    type: Literal["video"] = "video"
+    type: Literal["video"] = "video"  # type: ignore
     data: VideoData
 
 

@@ -1,7 +1,6 @@
 import asyncio
 import io
 import base64
-import time
 import httpx
 from typing import Union, Optional, TYPE_CHECKING, Any
 from urllib.parse import urlparse, unquote
@@ -56,6 +55,7 @@ async def to_onebot_msg(
                     msgid = info_mgr.msgid_mgr.add(info)
                     info_renewed = True
             else:
+                assert msg
                 msgid = info_mgr.msgid_mgr.search(
                     MsgInfo(
                         scene_type=msg.scene_type,
@@ -93,7 +93,7 @@ async def to_onebot_msg(
         elif isinstance(i, elems.File) and event and isinstance(event, GroupMessage):
             ev = onebot_events.GroupFileUploadEvent(
                 time=event.time,
-                self_id=adp.lag.clinet.uin,
+                self_id=adp.lag.client.uin,
                 group_id=event.grp_id,
                 user_id=event.uin,
                 file=FileInfo(

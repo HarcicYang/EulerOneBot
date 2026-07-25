@@ -4,7 +4,6 @@ import traceback
 from typing import NoReturn, Optional
 
 from lagrange import Lagrange, Client
-from lagrange.client.client import Client
 from lagrange.client.events.service import ClientOnline, ServerKick
 from lagrange.client.events.friend import FriendMessage, FriendRecall
 from lagrange.client.events.group import (
@@ -15,7 +14,6 @@ from lagrange.client.events.group import (
     GroupMemberJoinedByInvite,
     GroupMemberQuit, GroupNudge, GroupReaction
 )
-from lagrange.pb.highway import req
 
 from .config import load_config
 from .onebot.api_data import *
@@ -207,9 +205,12 @@ class LagrangeProtocol:
                     if msg.uid:
                         user_info = await self.lag.client.get_user_info(msg.uid)
                     elif msg.uin:
-                        user_info = await self.lag.client.get_user_info(msg.uin)[0]
+                        user_info = await self.lag.client.get_user_info(msg.uin)
                     else:
-                        user_info = None
+                        raise ValueError(f"Invalid message: {msg}")
+                    if isinstance(user_info, list):
+                        user_info = user_info[0]
+
                     rsp = GetMessageResponse(
                         status="ok",
                         retcode=0,
@@ -222,12 +223,12 @@ class LagrangeProtocol:
                             sender=onebot_events.PrivateSender(
                                 user_id=msg.uin,
                                 nickname="" if not user_info else user_info.name,
-                                sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",
+                                sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",  # type: ignore
                                 age=0 if not user_info else user_info.age,
                             ) if msg.scene_type == "user" else onebot_events.GroupSender(
                                 user_id=msg.uin,
                                 title="",
-                                sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",
+                                sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",  # type: ignore
                                 role="member",
                                 age=0 if not user_info else user_info.age,
                                 area="" if not user_info else f"{user_info.country} {user_info.province} {user_info.city}",
@@ -269,7 +270,7 @@ class LagrangeProtocol:
                         data=GetStrangerInfoRsp(
                             age=info.age,
                             nickname=info.name,
-                            sex=info.sex.name if info.sex.name != "notset" else "unknown",
+                            sex=info.sex.name if info.sex.name != "notset" else "unknown",  # type: ignore
                             user_id=call.params.user_id
                         ),
                         echo=call.echo
@@ -414,13 +415,13 @@ class LagrangeProtocol:
                             group_id=call.params.group_id,
                             user_id=call.params.user_id,
                             nickname=info.nickname,
-                            card=str(info.name.string),
-                            sex=user_info.sex if user_info.sex != "notset" else "unknown",
+                            card="" if not info.name else info.name.string,
+                            sex=user_info.sex if user_info.sex != "notset" else "unknown",  # type: ignore
                             age=user_info.age,
                             area=f"{user_info.country} {user_info.province} {user_info.city}",
                             join_time=info.joined_time,
                             last_sent_time=info.last_seen,
-                            level=str(info.level.num),
+                            level="" if not info.level else str(info.level.num),
                             role=role,
                             title=""
                         ),
@@ -644,7 +645,7 @@ class LagrangeProtocol:
 
     async def grp_quit_handler(self, client: Client, event: GroupMemberQuit) -> None:
         logger.info(
-            f"[Group] {event.grp_id}: member {event.uin} has left{', kicked by ' + str(event.operator_uid) if event.is_kicked else ''}")
+            f"[Group] {event.grp_id}: member {event.uin} has left{', kicked by ' + event.operator_uid if event.is_kicked else ''}")
         opt_uin = 0
         if event.is_kicked or event.is_kicked_self:
             try:
@@ -683,15 +684,15 @@ class LagrangeProtocol:
                 uid = event.uid
                 uin = info_mgr.uid_mgr.from_uid(event.uid)
             else:
-                uid = info_mgr.uid_mgr.from_uin(event.uin)
-                uin = event.uin
+                uid = info_mgr.uid_mgr.from_uin(event.uin)  # type: ignore
+                uin = event.uin  # type: ignore
         except ValueError:
             if event.uid:
                 uid = event.uid
                 uin = 0
             else:
                 uid = ""
-                uin = event.uin
+                uin = event.uin  # type: ignore
         try:
             msgid = info_mgr.msgid_mgr.search(MsgInfo(scene_type="group", scene_id=event.grp_id, seq=event.seq))
         except IndexError:
@@ -776,7 +777,7 @@ class LagrangeProtocol:
                             self_id=self.lag.client.uin,
                             sub_type=tp,  # type: ignore
                             group_id=i.group.grp_id,
-                            operator_id=info_mgr.uid_mgr.from_uid(i.invitor.uid),
+                            operator_id=0 if not i.invitor else info_mgr.uid_mgr.from_uid(i.invitor.uid),
                             user_id=info_mgr.uid_mgr.from_uid(i.target.uid)
                         )
                         await self.adapter.trigger(ev)

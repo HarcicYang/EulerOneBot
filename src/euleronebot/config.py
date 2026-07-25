@@ -15,12 +15,12 @@ class BaseAdapterConfig(BaseModel):
 
 
 class ForwardWebsocketConfig(BaseAdapterConfig):
-    type: Literal["ForwardWebSocket"] = "ForwardWebSocket"
+    type: Literal["ForwardWebSocket"] = "ForwardWebSocket"  # type: ignore
     ...
 
 
 class ReverseWebsocketConfig(BaseAdapterConfig):
-    type: Literal["ReverseWebSocket"] = "ReverseWebSocket"
+    type: Literal["ReverseWebSocket"] = "ReverseWebSocket"  # type: ignore
     api_url: str = ""
     event_url: str = ""
     use_universal_client: bool = False
@@ -28,11 +28,11 @@ class ReverseWebsocketConfig(BaseAdapterConfig):
 
 
 class HTTPConfig(BaseAdapterConfig):
-    type: Literal["HTTP"] = "HTTP"
+    type: Literal["HTTP"] = "HTTP"  # type: ignore
 
 
 class HTTPPostConfig(BaseAdapterConfig):
-    type: Literal["HTTPPost"] = "HTTPPost"
+    type: Literal["HTTPPost"] = "HTTPPost"  # type: ignore
     timeout: int = 0
     secret: str = ""
 
@@ -61,7 +61,7 @@ class BotConfig(BaseSettings):
     heartbeat: HeartbeatConfig = HeartbeatConfig()
 
 
-loaded_config: BotConfig = None
+loaded_config: BotConfig = BotConfig()
 
 
 def load_config(file: str) -> BotConfig:
