@@ -2,7 +2,7 @@ import asyncio
 import io
 import base64
 import httpx
-from typing import Union
+from typing import Union, Optional
 from urllib.parse import urlparse, unquote
 
 from lagrange import Client
@@ -18,8 +18,8 @@ from ..onebot.models import TargetInfo
 
 async def to_onebot_msg(
         lgrc: Client,
-        event: Union[GroupMessage, FriendMessage] = None,
-        msg: MsgInfo = None
+        event: Optional[Union[GroupMessage, FriendMessage]] = None,
+        msg: Optional[MsgInfo] = None
 ) -> list[seg.BaseSegment]:
     new: list[seg.BaseSegment] = []
     info_renewed = False
@@ -111,7 +111,9 @@ async def to_onebot_msg(
                                 seq=0,
                                 raw_msg=i.content
                             )
-                        )
+                        ),
+                        user_id=str(i.sender_uin),
+                        nickname=i.sender_nick
                     )
                 )
             )
