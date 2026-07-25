@@ -469,7 +469,7 @@ class LagrangeProtocol:
         logger.error(f"Kicked by server: {event.title} {event.tips}")
 
     async def grp_msg_handler(self, client: Client, event: GroupMessage) -> None:
-        if event.uin == self.lag.client.uin:
+        if event.uin == self.lag.client.uin or len(event.msg_chain) == 0:
             return
         logger.info(f"[Group] {event.grp_name}({event.grp_id}): @{event.nickname}({event.uin}): {event.msg}")
         if not info_mgr.uid_mgr.is_exist(event.uid):
@@ -516,7 +516,7 @@ class LagrangeProtocol:
         await self.adapter.trigger(ev)
 
     async def pri_msg_handler(self, client: Client, event: FriendMessage) -> None:
-        if event.from_uin == self.lag.client.uin:
+        if event.from_uin == self.lag.client.uin or len(event.msg_chain) == 0:
             return
         logger.info(f"[Friend] {event.from_uin} -> {event.to_uin}: {event.msg}")
         if not info_mgr.uid_mgr.is_exist(event.from_uid):
