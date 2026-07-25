@@ -214,7 +214,7 @@ class LagrangeProtocol:
                         status="ok",
                         retcode=0,
                         data=GetMsgRsp(
-                            message=await to_onebot_msg(msg=msg, lgrc=self.lag.client),
+                            message=await to_onebot_msg(msg=msg, adp=self.lag.client),
                             time=msg.timestamp,
                             message_id=call.params.message_id,
                             message_type="private" if msg.scene_type == "user" else "group",
@@ -280,7 +280,7 @@ class LagrangeProtocol:
                         retcode=0,
                         data=GetForwardMsgRsp(
                             message=await to_onebot_msg(  # type: ignore
-                                lgrc=self.lag.client,
+                                adp=self.lag.client,
                                 msg=MsgInfo(scene_type="user", scene_id=0, seq=0, raw_msg=msg.messages)
                             )
                         ),
@@ -495,7 +495,7 @@ class LagrangeProtocol:
                 )
             ),
             user_id=event.uin,
-            message=await to_onebot_msg(event=event, lgrc=self.lag.client),
+            message=await to_onebot_msg(event=event, adp=self.lag.client),
             group_id=event.grp_id,
             raw_message=event.msg,
             sender=onebot_events.GroupSender(
@@ -535,7 +535,7 @@ class LagrangeProtocol:
                 )
             ),
             user_id=event.from_uin,
-            message=await to_onebot_msg(event=event, lgrc=self.lag.client),
+            message=await to_onebot_msg(event=event, adp=self.lag.client),
             raw_message=event.msg,
             sender=onebot_events.PrivateSender(
                 age=user_info.age,

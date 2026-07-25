@@ -1,8 +1,9 @@
 import asyncio
 import io
 import base64
+import time
 import httpx
-from typing import Union, Optional
+from typing import Union, Optional, TYPE_CHECKING, Any
 from urllib.parse import urlparse, unquote
 
 from lagrange import Client
@@ -11,13 +12,20 @@ from lagrange.client.events.group import GroupMessage
 from lagrange.client.events.friend import FriendMessage
 from lagrange.client.message.types import Element as LgrElement
 
-from ..onebot import segments as seg
+from ..onebot import segments as seg, FileInfo
+from ..onebot import events as onebot_events
 from .infomgr import MsgInfo, info_mgr
 from ..onebot.models import TargetInfo
 
 
+if TYPE_CHECKING:
+    from ..protocol import LagrangeProtocol
+else:
+    LagrangeProtocol = Any
+
+
 async def to_onebot_msg(
-        lgrc: Client,
+        adp: LagrangeProtocol,
         event: Optional[Union[GroupMessage, FriendMessage]] = None,
         msg: Optional[MsgInfo] = None
 ) -> list[seg.BaseSegment]:
@@ -82,15 +90,28 @@ async def to_onebot_msg(
         elif isinstance(i, elems.MarketFace):
             new.append(
                 seg.MarketFace(data=seg.MarketFaceData(face_id=str(i.face_id), tab_id=str(i.tab_id), name=i.name)))
-        elif isinstance(i, elems.File):
-            pass  # TODO: As an event
+        elif isinstance(i, elems.File) and event and isinstance(event, GroupMessage):
+            ev = onebot_events.GroupFileUploadEvent(
+                time=event.time,
+                self_id=adp.lag.clinet.uin,
+                group_id=event.grp_id,
+                user_id=event.uin,
+                file=FileInfo(
+                    id=str(i.file_id),
+                    name=i.file_name,
+                    size=i.file_size,
+                    busid=0
+                )
+            )
+            await adp.adapter.trigger(ev)
+            new.append(seg.Text(data=seg.TextData(text="")))
         elif isinstance(i, elems.MulitMsg):
             new.append(
                 seg.Forward(
                     data=seg.ForwardData(
                         id=str(i.resid),
                         content=await to_onebot_msg(  # type: ignore
-                            lgrc, msg=MsgInfo(
+                            adp, msg=MsgInfo(
                                 scene_type="user",
                                 scene_id=0,
                                 seq=0,
@@ -105,7 +126,7 @@ async def to_onebot_msg(
                 seg.Node(
                     data=seg.NodeData(
                         content=await to_onebot_msg(
-                            lgrc, msg=MsgInfo(
+                            adp, msg=MsgInfo(
                                 scene_type="user",
                                 scene_id=i.sender_uin,
                                 seq=0,
