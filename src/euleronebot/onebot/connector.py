@@ -1,9 +1,9 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import asyncio
 from typing import Literal, Self, Optional
+from urllib.parse import urlparse
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from uvicorn import Config as UvicornConfig
 from uvicorn import Server as UvicornServer
-from urllib.parse import urlparse
-import asyncio
 
 from ..hyperogger import Logger
 from ..config import AdapterConfig, ForwardWebsocketConfig
@@ -97,8 +97,6 @@ class Connector:
             assert cfg
             server = UvicornServer(cfg)
             await server.serve()
-
-
 
     async def report(self, data: str) -> None:
         logger.trace(f"API report: {data}")

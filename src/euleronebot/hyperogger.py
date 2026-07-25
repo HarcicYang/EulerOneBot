@@ -2,7 +2,7 @@ import datetime
 import traceback
 import sys
 import logging
-from typing import Any, Self
+from typing import Any
 
 from .utils import color_txt, rgb, NerdICONs
 
@@ -57,8 +57,8 @@ class Logger:
         return c
 
     @classmethod
-    def fetch(cls, key: str) -> Self:
-        return cls.running_loggers.get(key)
+    def fetch(cls, key: str) -> "Logger":
+        return cls.running_loggers.get(key) or cls()
 
     def set_level(self, level: str):
         if level in self.levels.level_names:
@@ -84,8 +84,8 @@ class Logger:
                 f" in {color_txt(func_name, rgb(70, 172, 107))}\n"
                 f"      {color_txt(code, rgb(255, 255, 255))}\n\n"
             )
-        formatted += f"{color_txt(exc_type.__name__, rgb(255, 47, 47))}: "
-        formatted += color_txt(exc_value, rgb(255, 255, 255)) + "\n"
+        formatted += f"{color_txt(exc_type.__name__, rgb(255, 47, 47))}: "  # type: ignore
+        formatted += color_txt(exc_value, rgb(255, 255, 255)) + "\n"  # type: ignore
 
         return formatted
 

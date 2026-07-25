@@ -17,9 +17,9 @@ from lagrange.client.events.group import (
 
 from .config import load_config
 from .onebot.api_data import *
-from .onebot.models import TargetInfo
 from .utils.infomgr import MsgInfo, info_mgr, RequestInfo
 from .utils.transformer import to_onebot_msg, to_lagrange_msg
+from .onebot.models import TargetInfo
 from .onebot import events as onebot_events
 from .onebot import Adapter as OneBotAdapter
 from .onebot.api import *
