@@ -121,6 +121,8 @@ async def to_onebot_msg(
             continue
     if info_renewed:
         asyncio.create_task(info_mgr.save())
+    if len(new) == 0:
+        print(msgc)
     return new
 
 

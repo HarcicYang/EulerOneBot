@@ -28,19 +28,21 @@
    ```
 
 2. 安装依赖：
+
+   Euler OneBot 使用 uv，您可以如是设置：
+
    ```shell
-   pip install .
+   uv sync
+   pip install .  # 若您不希望使用uv
    ```
 
-3. 下载 `lagrange`（[lagrange-python](https://github.com/LagrangeDev/lagrange-python) 的 package 部分），放在项目根目录
-   `main.py` 同级。*（PyPI有，但是怎么说呢，更新有点慢）*
-
-4. 运行，首次启动会自动生成 `appconfig.json` 配置模板：
+3. 运行，首次启动会自动生成 `appconfig.json` 配置模板：
    ```shell
-   python main.py
+   uv run main.py
+   python main.py  # 若您不希望使用uv
    ```
 
-5. 填写配置文件后重启即可。
+4.填写配置文件后重启即可。
 
 ### 方式二：作为 Python 库安装
 
