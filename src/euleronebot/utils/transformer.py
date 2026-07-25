@@ -89,20 +89,35 @@ async def to_onebot_msg(
         elif isinstance(i, elems.MarketFace):
             new.append(
                 seg.MarketFace(data=seg.MarketFaceData(face_id=str(i.face_id), tab_id=str(i.tab_id), name=i.name)))
-        elif isinstance(i, elems.File) and event and isinstance(event, GroupMessage):
-            ev = onebot_events.GroupFileUploadEvent(
-                time=event.time,
-                self_id=adp.lag.client.uin,
-                group_id=event.grp_id,
-                user_id=event.uin,
-                file=FileInfo(
-                    id=str(i.file_id),
-                    name=i.file_name,
-                    size=i.file_size,
-                    busid=0
+        elif isinstance(i, elems.File) and event:
+            if isinstance(event, GroupMessage):
+                ev = onebot_events.GroupFileUploadEvent(
+                    time=event.time,
+                    self_id=adp.lag.client.uin,
+                    group_id=event.grp_id,
+                    user_id=event.uin,
+                    file=FileInfo(
+                        id=str(i.file_id),
+                        name=i.file_name,
+                        size=i.file_size,
+                        busid=0
+                    )
                 )
-            )
-            await adp.adapter.trigger(ev)
+                await adp.adapter.trigger(ev)
+            elif isinstance(event, FriendMessage):
+                ev = onebot_events.FriendFileUploadEvent(
+                    time=event.timestamp,
+                    self_id=adp.lag.client.uin,
+                    user_id=event.from_uin,
+                    file=FileInfo(
+                        id=str(i.file_uuid),
+                        name=i.file_name,
+                        size=i.file_size,
+                        busid=0,
+                        hash=str(i.file_hash)
+                    )
+                )
+                await adp.adapter.trigger(ev)
             new.append(seg.Text(data=seg.TextData(text="")))
         elif isinstance(i, elems.MulitMsg):
             new.append(

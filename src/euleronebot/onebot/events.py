@@ -20,6 +20,7 @@ __all__ = [
     "NoticeEvent",
     "FileInfo",
     "GroupFileUploadEvent",
+    "FriendFileUploadEvent",
     "GroupAdminEvent",
     "GroupDecreaseEvent",
     "GroupIncreaseEvent",
@@ -100,11 +101,18 @@ class FileInfo(BaseModel):
     name: str
     size: int
     busid: int
+    hash: str = ""
 
 
 class GroupFileUploadEvent(NoticeEvent):
     notice_type: Literal["group_upload"] = "group_upload"
     group_id: int
+    user_id: int
+    file: FileInfo
+
+
+class FriendFileUploadEvent(NoticeEvent):
+    notice_type: Literal["group_upload"] = "group_upload"
     user_id: int
     file: FileInfo
 
