@@ -17,7 +17,7 @@ class MsgInfo(BaseModel):
     seq: int
     text: str = ""
 
-    def __eq__(self, other: Self) -> bool:
+    def __eq__(self, other: Self) -> bool:  # type: ignore
         return (
             other.scene_type == self.scene_type and
             other.scene_id == self.scene_id and
