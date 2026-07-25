@@ -161,7 +161,7 @@ uv sync
 | notice.notify.honor      | ❌    |
 | notice.reaction          | ✅    |
 | request.friend           | ❌    |
-| request.group            | ❌    |
+| request.group            | ✅    |
 | meta_event.lifecycle     | ❌    |
 | meta_event.heartbeat     | ✅    |
 
