@@ -20,7 +20,7 @@ from lagrange.pb.highway import req
 from .config import load_config
 from .onebot.api_data import *
 from .onebot.models import TargetInfo
-from .utils.infomgr import MsgInfo, info_mgr
+from .utils.infomgr import MsgInfo, info_mgr, RequestInfo
 from .utils.transformer import to_onebot_msg, to_lagrange_msg
 from .onebot import events as onebot_events
 from .onebot import Adapter as OneBotAdapter
@@ -214,7 +214,7 @@ class LagrangeProtocol:
                         status="ok",
                         retcode=0,
                         data=GetMsgRsp(
-                            message=await to_onebot_msg(msg=msg, adp=self.lag.client),
+                            message=await to_onebot_msg(msg=msg, adp=self),
                             time=msg.timestamp,
                             message_id=call.params.message_id,
                             message_type="private" if msg.scene_type == "user" else "group",
@@ -280,7 +280,7 @@ class LagrangeProtocol:
                         retcode=0,
                         data=GetForwardMsgRsp(
                             message=await to_onebot_msg(  # type: ignore
-                                adp=self.lag.client,
+                                adp=self,
                                 msg=MsgInfo(scene_type="user", scene_id=0, seq=0, raw_msg=msg.messages)
                             )
                         ),
@@ -495,7 +495,7 @@ class LagrangeProtocol:
                 )
             ),
             user_id=event.uin,
-            message=await to_onebot_msg(event=event, adp=self.lag.client),
+            message=await to_onebot_msg(event=event, adp=self),
             group_id=event.grp_id,
             raw_message=event.msg,
             sender=onebot_events.GroupSender(
@@ -535,7 +535,7 @@ class LagrangeProtocol:
                 )
             ),
             user_id=event.from_uin,
-            message=await to_onebot_msg(event=event, adp=self.lag.client),
+            message=await to_onebot_msg(event=event, adp=self),
             raw_message=event.msg,
             sender=onebot_events.PrivateSender(
                 age=user_info.age,
@@ -648,10 +648,8 @@ class LagrangeProtocol:
                 opt_uin = info_mgr.uid_mgr.from_uid(event.operator_uid)
             except ValueError:
                 opt_uin = 0
-        if event.is_kicked_self:
-            tp = "kick_me"
-        elif event.is_kicked:
-            tp = "kick"
+        if event.is_kicked_self or event.is_kicked:
+            return
         else:
             tp = "leave"
         if not info_mgr.uid_mgr.is_exist(event.uin):
@@ -715,22 +713,76 @@ class LagrangeProtocol:
             except AttributeError:
                 continue
             for i in rev.requests:
-                flag = info_mgr.req_mgr.set_group(
-                    grp_id=i.group.grp_id,
-                    seq=i.seq,
-                    ev_type=i.event_type
-                )
                 try:
-                    uin = info_mgr.uid_mgr.from_uid(i.target.uid)
+                    if info_mgr.req_mgr.has(
+                            RequestInfo(
+                                type="group",
+                                id=i.group.grp_id,
+                                seq=i.seq,
+                                ev_type=i.event_type
+                            )
+                    ):
+                        continue
+                    if i.event_type == 1:  # type = 1: group req
+                        flag = info_mgr.req_mgr.set_group(
+                            grp_id=i.group.grp_id,
+                            seq=i.seq,
+                            ev_type=i.event_type
+                        )
+                        try:
+                            uin = info_mgr.uid_mgr.from_uid(i.target.uid)
+                        except ValueError:
+                            uin = 0
+                        ev = onebot_events.GroupRequestEvent(
+                            time=round(time.time()),
+                            self_id=self.lag.client.uin,
+                            sub_type="add",
+                            group_id=i.group.grp_id,
+                            user_id=uin,
+                            comment=i.comment,
+                            flag=flag
+                        )
+                        await self.adapter.trigger(ev)
+                    elif i.event_type == 3:  # type = 3: group admin
+                        info_mgr.req_mgr.set_group(
+                            grp_id=i.group.grp_id,
+                            seq=i.seq,
+                            ev_type=i.event_type
+                        )
+                        ev = onebot_events.GroupAdminEvent(
+                            time=round(time.time()),
+                            self_id=self.lag.client.uin,
+                            sub_type="set",  # can't figure
+                            group_id=i.group.grp_id,
+                            user_id=info_mgr.uid_mgr.from_uid(i.target.uid)
+                        )
+                        await self.adapter.trigger(ev)
+                    elif i.event_type == 6:  # type = 6: group kick
+                        info_mgr.req_mgr.set_group(
+                            grp_id=i.group.grp_id,
+                            seq=i.seq,
+                            ev_type=i.event_type
+                        )
+                        if i.target.uid == self.lag.client.uid:
+                            tp = "kick_me"
+                        else:
+                            tp = "kick"
+
+                        ev = onebot_events.GroupDecreaseEvent(
+                            time=round(time.time()),
+                            self_id=self.lag.client.uin,
+                            sub_type=tp,  # type: ignore
+                            group_id=i.group.grp_id,
+                            operator_id=info_mgr.uid_mgr.from_uid(i.invitor.uid),
+                            user_id=info_mgr.uid_mgr.from_uid(i.target.uid)
+                        )
+                        await self.adapter.trigger(ev)
+                    else:
+                        info_mgr.req_mgr.set_group(
+                            grp_id=i.group.grp_id,
+                            seq=i.seq,
+                            ev_type=i.event_type
+                        )
+                        logger.warning(f"Unknown req: {i}")
                 except ValueError:
-                    uin = 0
-                ev = onebot_events.GroupRequestEvent(
-                    time=round(time.time()),
-                    self_id=self.lag.client.uin,
-                    sub_type="add",
-                    group_id=i.group.grp_id,
-                    user_id=uin,
-                    comment=i.comment,
-                    flag=flag
-                )
-                await self.adapter.trigger(ev)
+                    pass

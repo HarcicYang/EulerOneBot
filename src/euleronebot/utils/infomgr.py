@@ -113,6 +113,9 @@ class RequestPool(BaseModel):
         )
         return flag
 
+    def has(self, info: RequestInfo) -> bool:
+        return info in list(self.pool.values())
+
     def fetch(self, flag: str) -> RequestInfo:
         if flag in list(self.pool.keys()):
             return self.pool[flag]
