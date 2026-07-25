@@ -786,13 +786,9 @@ class LagrangeProtocol:
                             user_id=info_mgr.uid_mgr.from_uid(i.target.uid)
                         )
                         await self.adapter.trigger(ev)
-                    elif i.event_type == 6:  # type = 6: group kick
-                        info_mgr.req_mgr.set_group(
-                            grp_id=i.group.grp_id,
-                            seq=i.seq,
-                            ev_type=i.event_type
-                        )
                     else:
+                        # type = 6: group kick
+                        # type = 13: group leave
                         info_mgr.req_mgr.set_group(
                             grp_id=i.group.grp_id,
                             seq=i.seq,
