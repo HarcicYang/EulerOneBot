@@ -1,7 +1,7 @@
-from typing import Literal, Annotated, Union
+import os
+from typing import Literal, Annotated, Union, cast
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
-import os
 
 
 class SignerConfig(BaseModel):
@@ -61,7 +61,7 @@ class BotConfig(BaseSettings):
     heartbeat: HeartbeatConfig = HeartbeatConfig()
 
 
-loaded_config: BotConfig = BotConfig()
+loaded_config: BotConfig = cast(BotConfig, cast(object, None))
 
 
 def load_config(file: str) -> BotConfig:

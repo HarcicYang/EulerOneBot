@@ -1,5 +1,5 @@
-from pydantic import BaseModel, RootModel
 from typing import Any, TYPE_CHECKING, Literal, Union
+from pydantic import BaseModel, RootModel
 
 from ..versions import NAME, VERSION
 

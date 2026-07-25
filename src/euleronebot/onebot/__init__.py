@@ -8,7 +8,6 @@ from .api import *
 from .events import *
 from ..hyperogger import Logger
 
-
 if TYPE_CHECKING:
     from ..config import AdapterConfig, ForwardWebsocketConfig
 
@@ -19,7 +18,6 @@ else:
     FORWARD_WEBSOCKET_CONFIG = Any
 
 logger = Logger.fetch("euler").name_custom("euler.onebot")
-
 
 
 class Adapter:
@@ -59,7 +57,7 @@ class Adapter:
         )
 
     async def setup(self) -> None:
-        self.connector =  await self.connector.setup()
+        self.connector = await self.connector.setup()
 
     async def cycle(self) -> NoReturn:
         asyncio.create_task(self.connector.run())

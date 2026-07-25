@@ -1,9 +1,12 @@
 import asyncio
 import time
 import traceback
-from typing import NoReturn, Optional
+from typing import (
+    NoReturn, Optional, Protocol, runtime_checkable, Callable, Coroutine, Any, Type
+)
 
 from lagrange import Lagrange, Client
+from lagrange.client.events import BaseEvent
 from lagrange.client.events.service import ClientOnline, ServerKick
 from lagrange.client.events.friend import FriendMessage, FriendRecall
 from lagrange.client.events.group import (
@@ -27,6 +30,18 @@ from .hyperogger import Logger
 
 appconfig = load_config("./appconfig.json")
 logger = Logger.fetch("euler").name_custom("euler.protocol")
+LagrangeEvent = Type[BaseEvent]
+LagrangeHandler = Callable[["LagrangeProtocol", Client, LagrangeEvent], Coroutine[Any, Any, None]]
+
+@runtime_checkable
+class RegisteredHandler(Protocol):
+    ev_type: LagrangeEvent
+
+def on(ev_type: LagrangeEvent) -> Callable[[LagrangeHandler], LagrangeHandler]:
+    def dec(func: LagrangeHandler) -> LagrangeHandler:
+        func.ev_type = ev_type
+        return func
+    return dec
 
 
 class LagrangeProtocol:
@@ -41,22 +56,15 @@ class LagrangeProtocol:
         )
 
         self.lag.log.set_level("DEBUG")
-
         self.info_updated = False
 
+    def _subscribe(self) -> None:
+        for i in dir(self):
+            if isinstance(getattr(self, i), RegisteredHandler):
+                self.lag.subscribe(getattr(self, i).ev_type, getattr(self, i))
+
     async def run(self) -> None:
-        self.lag.subscribe(ClientOnline, self.online_handler)
-        self.lag.subscribe(ServerKick, self.kick_handler)
-        self.lag.subscribe(GroupMessage, self.grp_msg_handler)
-        self.lag.subscribe(FriendMessage, self.pri_msg_handler)
-        self.lag.subscribe(GroupRecall, self.grp_recall_handler)
-        self.lag.subscribe(FriendRecall, self.pri_recall_handler)
-        self.lag.subscribe(GroupMuteMember, self.grp_mute_handler)
-        self.lag.subscribe(GroupMemberJoined, self.grp_join_handler)
-        self.lag.subscribe(GroupMemberJoinedByInvite, self.grp_invite_join_handler)
-        self.lag.subscribe(GroupMemberQuit, self.grp_quit_handler)
-        self.lag.subscribe(GroupNudge, self.poke_handler)
-        self.lag.subscribe(GroupReaction, self.reaction_handler)
+        self._subscribe()
         asyncio.create_task(self.grp_request_service())
 
         try:
@@ -447,6 +455,7 @@ class LagrangeProtocol:
                 )
                 await self.adapter.report(rsp)
 
+    @on(ClientOnline)
     async def online_handler(self, client: Client, event: Optional[ClientOnline] = None) -> None:
         if self.info_updated:
             return
@@ -465,10 +474,11 @@ class LagrangeProtocol:
 
         self.info_updated = True
 
-    @staticmethod
-    async def kick_handler(client: Client, event: ServerKick) -> None:
+    @on(ServerKick)
+    async def kick_handler(self, client: Client, event: ServerKick) -> None:
         logger.error(f"Kicked by server: {event.title} {event.tips}")
 
+    @on(GroupMessage)
     async def grp_msg_handler(self, client: Client, event: GroupMessage) -> None:
         if event.uin == self.lag.client.uin or len(event.msg_chain) == 0:
             return
@@ -516,6 +526,7 @@ class LagrangeProtocol:
         )
         await self.adapter.trigger(ev)
 
+    @on(FriendMessage)
     async def pri_msg_handler(self, client: Client, event: FriendMessage) -> None:
         if event.from_uin == self.lag.client.uin or len(event.msg_chain) == 0:
             return
@@ -550,6 +561,7 @@ class LagrangeProtocol:
         )
         await self.adapter.trigger(ev)
 
+    @on(GroupRecall)
     async def grp_recall_handler(self, client: Client, event: GroupRecall) -> None:
         logger.info(f"[Group] {event.grp_id}: message {event.seq} had been deleted")
         msgid = info_mgr.msgid_mgr.search(
@@ -572,6 +584,7 @@ class LagrangeProtocol:
         )
         await self.adapter.trigger(ev)
 
+    @on(FriendRecall)
     async def pri_recall_handler(self, client: Client, event: FriendRecall) -> None:
         if event.from_uin == self.lag.client.uin:
             return
@@ -593,6 +606,7 @@ class LagrangeProtocol:
         )
         await self.adapter.trigger(ev)
 
+    @on(GroupMuteMember)
     async def grp_mute_handler(self, client: Client, event: GroupMuteMember) -> None:
         logger.info(
             f"[Group] {event.grp_id}: member {event.target_uid} had been muted by {event.operator_uid} for {event.duration}s")
@@ -612,6 +626,7 @@ class LagrangeProtocol:
         )
         await self.adapter.trigger(ev)
 
+    @on(GroupMemberJoined)
     async def grp_join_handler(self, client: Client, event: GroupMemberJoined) -> None:
         logger.info(f"[Group] {event.grp_id}: member {event.uid} has joined")
         try:
@@ -631,6 +646,7 @@ class LagrangeProtocol:
         )
         await self.adapter.trigger(ev)
 
+    @on(GroupMemberJoinedByInvite)
     async def grp_invite_join_handler(self, client: Client, event: GroupMemberJoinedByInvite) -> None:
         logger.info(f"[Group] {event.grp_id}: member {event.uin} has joined, invited by {event.invitor_uin}")
         ev = onebot_events.GroupIncreaseEvent(
@@ -643,6 +659,7 @@ class LagrangeProtocol:
         )
         await self.adapter.trigger(ev)
 
+    @on(GroupMemberQuit)
     async def grp_quit_handler(self, client: Client, event: GroupMemberQuit) -> None:
         logger.info(
             f"[Group] {event.grp_id}: member {event.uin} has left{', kicked by ' + event.operator_uid if event.is_kicked else ''}")
@@ -668,6 +685,7 @@ class LagrangeProtocol:
         )
         await self.adapter.trigger(ev)
 
+    @on(GroupNudge)
     async def poke_handler(self, client: Client, event: GroupNudge) -> None:
         ev = onebot_events.GroupPokeEvent(
             time=round(time.time()),
@@ -678,6 +696,7 @@ class LagrangeProtocol:
         )
         await self.adapter.trigger(ev)
 
+    @on(GroupReaction)
     async def reaction_handler(self, client: Client, event: GroupReaction) -> None:
         try:
             if event.uid:

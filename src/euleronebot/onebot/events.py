@@ -1,11 +1,14 @@
+from typing import Literal, TYPE_CHECKING, Any, Union
 from pydantic import BaseModel
-from typing import Literal, TYPE_CHECKING, Union
 
 from .models import BotStatus
 
 if TYPE_CHECKING:
     from .segments import BaseSegment
 
+    SEGMENT = BaseSegment
+else:
+    SEGMENT = Any
 
 __all__ = [
     "BaseEvent",
@@ -61,36 +64,35 @@ class GroupSender(BaseModel):
 
 
 class MessageEvent(BaseEvent):
-    post_type: Literal["message"] = "message"  # type: ignore
+    post_type: Literal["message"] = "message"
     message_type: Literal["private", "group"]
     sub_type: Literal["friend", "group", "other"]
     message_id: int
     user_id: int
-    message: list[BaseSegment]
+    message: list[SEGMENT]
     raw_message: str
     font: int = 0
     sender: Union[PrivateSender, GroupSender]
 
 
 class GroupMessageEvent(MessageEvent):
-    message_type: Literal["group"] = "group"  # type: ignore
-    sub_type: Literal["group"] = "group"  # type: ignore
+    message_type: Literal["group"] = "group"
+    sub_type: Literal["group"] = "group"
     anonymous: None = None
-    sender: Union[GroupSender]  # type: ignore
+    sender: Union[GroupSender]
     group_id: int
 
 
 class PrivateMessageEvent(MessageEvent):
-    message_type: Literal["private"] = "private"  # type: ignore
-    sub_type: Literal["friend"] = "friend"  # type: ignore
-    sender: Union[PrivateSender]  # type: ignore
+    message_type: Literal["private"] = "private"
+    sub_type: Literal["friend"] = "friend"
+    sender: Union[PrivateSender]
 
 
 class NoticeEvent(BaseEvent):
-    post_type: Literal["notice"] = "notice"  # type: ignore
+    post_type: Literal["notice"] = "notice"
     notice_type: Literal[
-        "group_upload", "group_admin", "group_decrease", "group_increase", "group_ban", "friend_add", "group_recall", "friend_recall", "notify", "reaction"
-    ]
+        "group_upload", "group_admin", "group_decrease", "group_increase", "group_ban", "friend_add", "group_recall", "friend_recall", "notify", "reaction"]
 
 
 class FileInfo(BaseModel):
@@ -101,21 +103,21 @@ class FileInfo(BaseModel):
 
 
 class GroupFileUploadEvent(NoticeEvent):
-    notice_type: Literal["group_upload"] = "group_upload"  # type: ignore
+    notice_type: Literal["group_upload"] = "group_upload"
     group_id: int
     user_id: int
     file: FileInfo
 
 
 class GroupAdminEvent(NoticeEvent):
-    notice_type: Literal["group_admin"] = "group_admin"  # type: ignore
+    notice_type: Literal["group_admin"] = "group_admin"
     sub_type: Literal["set", "unset"]
     group_id: int
     user_id: int
 
 
 class GroupDecreaseEvent(NoticeEvent):
-    notice_type: Literal["group_decrease"] = "group_decrease"  # type: ignore
+    notice_type: Literal["group_decrease"] = "group_decrease"
     sub_type: Literal["leave", "kick", "kick_me"]
     group_id: int
     operator_id: int
@@ -123,7 +125,7 @@ class GroupDecreaseEvent(NoticeEvent):
 
 
 class GroupIncreaseEvent(NoticeEvent):
-    notice_type: Literal["group_increase"] = "group_increase"  # type: ignore
+    notice_type: Literal["group_increase"] = "group_increase"
     sub_type: Literal["approve", "invite"]
     group_id: int
     operator_id: int
@@ -131,7 +133,7 @@ class GroupIncreaseEvent(NoticeEvent):
 
 
 class GroupMuteEvent(NoticeEvent):
-    notice_type: Literal["group_ban"] = "group_ban"  # type: ignore
+    notice_type: Literal["group_ban"] = "group_ban"
     sub_type: Literal["ban", "lift_ban"]
     group_id: int
     operator_id: int
@@ -140,12 +142,12 @@ class GroupMuteEvent(NoticeEvent):
 
 
 class FriendAddEvent(NoticeEvent):
-    notice_type: Literal["friend_add"] = "friend_add"  # type: ignore
+    notice_type: Literal["friend_add"] = "friend_add"
     user_id: int
 
 
 class GroupRecallEvent(NoticeEvent):
-    notice_type: Literal["group_recall"] = "group_recall"  # type: ignore
+    notice_type: Literal["group_recall"] = "group_recall"
     group_id: int
     operator_id: int
     user_id: int
@@ -153,13 +155,13 @@ class GroupRecallEvent(NoticeEvent):
 
 
 class FriendRecallEvent(NoticeEvent):
-    notice_type: Literal["friend_recall"] = "friend_recall"  # type: ignore
+    notice_type: Literal["friend_recall"] = "friend_recall"
     user_id: int
     message_id: int
 
 
 class GroupPokeEvent(NoticeEvent):
-    notice_type: Literal["notify"] = "notify"  # type: ignore
+    notice_type: Literal["notify"] = "notify"
     sub_type: Literal["poke"] = "poke"
     group_id: int
     group_id: int
@@ -168,7 +170,7 @@ class GroupPokeEvent(NoticeEvent):
 
 
 class ReactionEvent(NoticeEvent):
-    notice_type: Literal["reaction"] = "reaction"  # type: ignore
+    notice_type: Literal["reaction"] = "reaction"
     message_id: int
     operator_id: int
     sub_type: Literal["add", "remove"]
@@ -177,19 +179,19 @@ class ReactionEvent(NoticeEvent):
 
 
 class RequestEvent(BaseEvent):
-    post_type: Literal["request"] = "request"  # type: ignore
+    post_type: Literal["request"] = "request"
     request_type: Literal["friend", "group"]
 
 
 class FriendRequestEvent(RequestEvent):
-    request_type: Literal["friend"] = "friend"  # type: ignore
+    request_type: Literal["friend"] = "friend"
     user_id: int
     comment: str
     flag: str
 
 
 class GroupRequestEvent(RequestEvent):
-    request_type: Literal["group"] = "group"  # type: ignore
+    request_type: Literal["group"] = "group"
     sub_type: Literal["add", "invite"]
     group_id: int
     user_id: int
@@ -198,16 +200,16 @@ class GroupRequestEvent(RequestEvent):
 
 
 class MetaEvent(BaseEvent):
-    post_type: Literal["meta_event"] = "meta_event"  # type: ignore
+    post_type: Literal["meta_event"] = "meta_event"
     meta_event_type: Literal["lifecycle", "heartbeat"]
 
 
 class LifecycleEvent(MetaEvent):
-    meta_event_type: Literal["lifecycle"] = "lifecycle"  # type: ignore
+    meta_event_type: Literal["lifecycle"] = "lifecycle"
     sub_type: Literal["enable", "disable", "connect"]
 
 
 class HeartbeatEvent(MetaEvent):
-    meta_event_type: Literal["heartbeat"] = "heartbeat"  # type: ignore
+    meta_event_type: Literal["heartbeat"] = "heartbeat"
     status: BotStatus
     interval: int

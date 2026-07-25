@@ -1,5 +1,4 @@
 from typing import Literal, TypeVar, Generic, Annotated, Union
-
 from pydantic import BaseModel, Field
 
 __all__ = [
@@ -35,7 +34,7 @@ class TextData(BaseSegmentData):
 
 
 class Text(BaseSegment[TextData]):
-    type: Literal["text"] = "text"  # type: ignore
+    type: Literal["text"] = "text"
     data: TextData
 
 
@@ -44,7 +43,7 @@ class AtData(BaseSegmentData):
 
 
 class At(BaseSegment[AtData]):
-    type: Literal["at"] = "at"  # type: ignore
+    type: Literal["at"] = "at"
     data: AtData
 
 
@@ -53,7 +52,7 @@ class ReplyData(BaseSegmentData):
 
 
 class Reply(BaseSegment[ReplyData]):
-    type: Literal["reply"] = "reply"  # type: ignore
+    type: Literal["reply"] = "reply"
     data: ReplyData
 
 
@@ -62,7 +61,7 @@ class FaceData(BaseSegmentData):
 
 
 class Face(BaseSegment[FaceData]):
-    type: Literal["face"] = "face"  # type: ignore
+    type: Literal["face"] = "face"
     data: FaceData
 
 
@@ -72,7 +71,7 @@ class PokeData(BaseSegmentData):
 
 
 class Poke(BaseSegment[PokeData]):
-    type: Literal["poke"] = "poke"  # type: ignore
+    type: Literal["poke"] = "poke"
     data: PokeData
 
 
@@ -83,7 +82,7 @@ class MarketFaceData(BaseSegmentData):
 
 
 class MarketFace(BaseSegment[MarketFaceData]):
-    type: Literal["mface"] = "mface"  # type: ignore
+    type: Literal["mface"] = "mface"
     data: MarketFaceData
 
 
@@ -94,7 +93,7 @@ class NodeData(BaseSegmentData):
 
 
 class Node(BaseSegment[NodeData]):
-    type: Literal["node"] = "node"  # type: ignore
+    type: Literal["node"] = "node"
     data: NodeData
 
 
@@ -104,7 +103,7 @@ class ForwardData(BaseSegmentData):
 
 
 class Forward(BaseSegment[ForwardData]):
-    type: Literal["forward"] = "forward"  # type: ignore
+    type: Literal["forward"] = "forward"
     data: ForwardData
 
 
@@ -119,7 +118,7 @@ class ImageData(MediaBaseData):
 
 
 class Image(BaseSegment[ImageData]):
-    type: Literal["image"] = "image"  # type: ignore
+    type: Literal["image"] = "image"
     data: ImageData
 
 
@@ -128,7 +127,7 @@ class RecordData(MediaBaseData):
 
 
 class Record(BaseSegment[RecordData]):
-    type: Literal["record"] = "record"  # type: ignore
+    type: Literal["record"] = "record"
     data: RecordData
 
 
@@ -137,7 +136,7 @@ class VideoData(MediaBaseData):
 
 
 class Video(BaseSegment[VideoData]):
-    type: Literal["video"] = "video"  # type: ignore
+    type: Literal["video"] = "video"
     data: VideoData
 
 

@@ -1,9 +1,7 @@
 import os.path
-
-from pydantic import BaseModel
-from typing import Dict, Literal, Union, Self
 import random
-
+from typing import Dict, Literal, Union, Self
+from pydantic import BaseModel
 from lagrange.client.message import elems
 
 
@@ -19,9 +17,9 @@ class MsgInfo(BaseModel):
 
     def __eq__(self, other: Self) -> bool:  # type: ignore
         return (
-            other.scene_type == self.scene_type and
-            other.scene_id == self.scene_id and
-            other.seq == self.seq
+                other.scene_type == self.scene_type and
+                other.scene_id == self.scene_id and
+                other.seq == self.seq
         )
 
 

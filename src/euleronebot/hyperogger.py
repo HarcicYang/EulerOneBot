@@ -6,8 +6,6 @@ from typing import Any
 
 from .utils import color_txt, rgb, NerdICONs
 
-
-
 __all__ = ["Logger", "Levels"]
 
 
@@ -105,12 +103,14 @@ class Logger:
         def nlog(message: str, level: str):
             patch = color_txt(f"[{name}]", rgb(97, 192, 224))
             self._log(f"{patch} {color_txt(message, rgb(215, 255, 255))}", level)
+
         self.log = nlog
 
     def _log(self, message: str, level: str) -> None:
         if self.levels.level_nums[level] < self.levels.level_nums[self.log_level]:
             return
-        time = color_txt(self.levels.nf_icons.nf_weather_time_4 + " " + str(datetime.datetime.now())[:-4], rgb(65, 128, 176))
+        time = color_txt(self.levels.nf_icons.nf_weather_time_4 + " " + str(datetime.datetime.now())[:-4],
+                         rgb(65, 128, 176))
         if "\n" in message:
             listed = message.split("\n")
             for i in listed:
@@ -147,6 +147,7 @@ class Logger:
 
     def set_handler(self) -> None:
         custom_logger = self
+
         class StdHandler(logging.Handler):
             def emit(self, record: logging.LogRecord) -> None:
                 msg = self.format(record)

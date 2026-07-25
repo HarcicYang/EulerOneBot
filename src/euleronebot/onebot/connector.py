@@ -1,9 +1,10 @@
+import asyncio
 from typing import Literal, Self, cast
+from urllib.parse import urlparse
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from uvicorn import Config as UvicornConfig
 from uvicorn import Server as UvicornServer
-from urllib.parse import urlparse
-import asyncio
+
 
 from ..hyperogger import Logger
 from ..config import AdapterConfig, ForwardWebsocketConfig
