@@ -161,7 +161,10 @@ async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: Targ
                 except TypeError:
                     continue
                 uid = info_mgr.uid_mgr.from_uin(qq)
-                info = await lgrc.get_user_info(uid)
+                try:
+                    info = await lgrc.get_user_info(uid)
+                except AttributeError:
+                    info = await lgrc.get_user_info(qq)
                 new.append(elems.At(text=f"@{info.name}", uin=qq, uid=uid))
         elif isinstance(i, seg.Reply):
             msgid = int(i.data.id)

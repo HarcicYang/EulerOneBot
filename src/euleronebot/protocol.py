@@ -259,7 +259,10 @@ class LagrangeProtocol:
                         uid = info_mgr.uid_mgr.from_uin(call.params.user_id)
                     except ValueError:
                         uid = None
-                    info = await self.lag.client.get_user_info(uid or call.params.user_id)
+                    try:
+                        info = await self.lag.client.get_user_info(uid or call.params.user_id)
+                    except AttributeError:
+                        info = await self.lag.client.get_user_info(call.params.user_id)
                     rsp = GetStrangerInfoResponse(
                         status="ok",
                         retcode=0,
