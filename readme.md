@@ -185,7 +185,7 @@ uv sync
 | forward  | ✅    |
 | image    | ✅    |
 | record   | ✅    |
-| video    | ✅    |
+| video    | 🚧   |
 | contact  | ❌    |
 | location | ❌    |
 | music    | ❌    |
@@ -194,7 +194,7 @@ uv sync
 | rps      | ❌    |
 | dice     | ❌    |
 | shake    | ❌    |
-| json     | ❌    |
+| json     | ✅    |
 | xml      | ❌    |
 | markdown | ❌    |
 

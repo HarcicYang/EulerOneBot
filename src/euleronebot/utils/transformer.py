@@ -14,13 +14,15 @@ from ..onebot import segments as seg, FileInfo
 from ..onebot import events as onebot_events
 from .infomgr import MsgInfo, info_mgr
 from ..onebot.models import TargetInfo
-
+from ..hyperogger import Logger
+from ..onebot.segments import JsonData
 
 if TYPE_CHECKING:
     from ..protocol import LagrangeProtocol
 else:
     LagrangeProtocol = Any
 
+logger = Logger.fetch("euler").name_custom("euler.transformer")
 
 async def to_onebot_msg(
         adp: LagrangeProtocol,
@@ -152,12 +154,18 @@ async def to_onebot_msg(
                     )
                 )
             )
+        elif isinstance(i, elems.Json):
+            new.append(
+                seg.Json(
+                    data=JsonData(data=i.raw.decode())
+                )
+            )
         else:
             continue
     if info_renewed:
         asyncio.create_task(info_mgr.save())
     if len(new) == 0:
-        print(msgc)
+        logger.warning(f"Empty message: {msgc}")
     return new
 
 

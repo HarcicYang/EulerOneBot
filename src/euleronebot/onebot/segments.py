@@ -14,6 +14,7 @@ __all__ = [
     "Image",
     "Record",
     "Video",
+    "Json",
     "SegmentUnion"
 ]
 
@@ -25,7 +26,7 @@ class BaseSegmentData(BaseModel):
 
 
 class BaseSegment(BaseModel, Generic[SegmentType]):
-    type: Literal["text", "at", "reply", "face", "poke", "mface", "node", "forward", "image", "record", "video"]
+    type: Literal["text", "at", "reply", "face", "poke", "mface", "node", "forward", "image", "record", "video", "json"]
     data: SegmentType
 
 
@@ -139,6 +140,12 @@ class Video(BaseSegment[VideoData]):
     type: Literal["video"] = "video"
     data: VideoData
 
+class JsonData(BaseSegmentData):
+    data: str
+
+class Json(BaseSegment[JsonData]):
+    type: Literal["json"] = "json"
+    data: JsonData
 
 SegmentUnion = Annotated[
     Union[
@@ -153,6 +160,7 @@ SegmentUnion = Annotated[
         Image,
         Record,
         Video,
+        Json
     ],
     Field(discriminator="type")
 ]
