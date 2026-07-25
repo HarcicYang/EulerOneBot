@@ -56,6 +56,7 @@ class LagrangeProtocol:
         self.lag.subscribe(GroupMuteMember, self.grp_mute_handler)
         self.lag.subscribe(GroupMemberJoined, self.grp_join_handler)
         self.lag.subscribe(GroupMemberJoinedByInvite, self.grp_invite_join_handler)
+        self.lag.subscribe(GroupMemberQuit, self.grp_quit_handler)
         self.lag.subscribe(GroupNudge, self.poke_handler)
         self.lag.subscribe(GroupReaction, self.reaction_handler)
         asyncio.create_task(self.grp_request_service())
