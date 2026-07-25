@@ -4,3 +4,8 @@
 /device.json
 /sig.bin
 /uv.lock
+/src/euler_onebot.egg-info/
+/src/EulerOneBot.egg-info/
+/dist/
+/build/
+/.venv/

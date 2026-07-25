@@ -33,14 +33,17 @@ logger = Logger.fetch("euler").name_custom("euler.protocol")
 LagrangeEvent = Type[BaseEvent]
 LagrangeHandler = Callable[["LagrangeProtocol", Client, LagrangeEvent], Coroutine[Any, Any, None]]
 
+
 @runtime_checkable
 class RegisteredHandler(Protocol):
     ev_type: LagrangeEvent
+
 
 def on(ev_type: LagrangeEvent) -> Callable[[LagrangeHandler], LagrangeHandler]:
     def dec(func: LagrangeHandler) -> LagrangeHandler:
         func.ev_type = ev_type
         return func
+
     return dec
 
 
@@ -669,8 +672,11 @@ class LagrangeProtocol:
                 opt_uin = info_mgr.uid_mgr.from_uid(event.operator_uid)
             except ValueError:
                 opt_uin = 0
-        if event.is_kicked_self or event.is_kicked:
-            return
+
+        if event.is_kicked:
+            tp = "kick"
+        elif event.is_kicked_self:
+            tp = "kick_me"
         else:
             tp = "leave"
         if not info_mgr.uid_mgr.is_exist(event.uin):
@@ -681,7 +687,7 @@ class LagrangeProtocol:
             self_id=self.lag.client.uin,
             sub_type=tp,  # type: ignore
             time=round(time.time()),
-            user_id=event.uin
+            user_id=await info_mgr.uid_mgr.from_uid(event.uid)
         )
         await self.adapter.trigger(ev)
 
@@ -786,20 +792,6 @@ class LagrangeProtocol:
                             seq=i.seq,
                             ev_type=i.event_type
                         )
-                        if i.target.uid == self.lag.client.uid:
-                            tp = "kick_me"
-                        else:
-                            tp = "kick"
-
-                        ev = onebot_events.GroupDecreaseEvent(
-                            time=round(time.time()),
-                            self_id=self.lag.client.uin,
-                            sub_type=tp,  # type: ignore
-                            group_id=i.group.grp_id,
-                            operator_id=0 if not i.invitor else info_mgr.uid_mgr.from_uid(i.invitor.uid),
-                            user_id=info_mgr.uid_mgr.from_uid(i.target.uid)
-                        )
-                        await self.adapter.trigger(ev)
                     else:
                         info_mgr.req_mgr.set_group(
                             grp_id=i.group.grp_id,
