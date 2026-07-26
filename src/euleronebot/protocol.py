@@ -15,7 +15,7 @@ from lagrange.client.events.group import (
     GroupMuteMember,
     GroupMemberJoined,
     GroupMemberJoinedByInvite,
-    GroupMemberQuit, GroupNudge, GroupReaction
+    GroupMemberQuit, GroupNudge, GroupReaction, GroupMemberJoinRequest
 )
 
 from .config import load_config
@@ -734,6 +734,36 @@ class LagrangeProtocol:
         )
         await self.adapter.trigger(ev)
 
+    @on(GroupMemberJoinRequest)
+    async def join_req_handler(self, client: Client, event: GroupMemberJoinRequest) -> None:
+        rev = await self.lag.client.fetch_grp_request()
+        req = None
+        for i in rev.requests:
+            if i.event_type == 1 and i.group.grp_id == event.grp_id and i.target.uid == event.uid:
+                req = i
+                break
+        assert req
+        try:
+            uin = info_mgr.uid_mgr.from_uid(event.uid)
+        except ValueError:
+            uin = 0
+        flag = info_mgr.req_mgr.set_group(
+            grp_id=req.group.grp_id,
+            seq=req.seq,
+            ev_type=req.event_type
+        )
+        ev = onebot_events.GroupRequestEvent(
+            time=round(time.time()),
+            self_id=self.lag.client.uin,
+            sub_type="add" if not event.invitor_uid else "invite",
+            group_id=req.group.grp_id,
+            user_id=uin,
+            comment=req.comment,
+            flag=flag,
+        )
+        await self.adapter.trigger(ev)
+
+
     async def grp_request_service(self) -> None:
         while True:
             await asyncio.sleep(5)
@@ -753,25 +783,7 @@ class LagrangeProtocol:
                     ):
                         continue
                     if i.event_type == 1:  # type = 1: group req
-                        flag = info_mgr.req_mgr.set_group(
-                            grp_id=i.group.grp_id,
-                            seq=i.seq,
-                            ev_type=i.event_type
-                        )
-                        try:
-                            uin = info_mgr.uid_mgr.from_uid(i.target.uid)
-                        except ValueError:
-                            uin = 0
-                        ev = onebot_events.GroupRequestEvent(
-                            time=round(time.time()),
-                            self_id=self.lag.client.uin,
-                            sub_type="add",
-                            group_id=i.group.grp_id,
-                            user_id=uin,
-                            comment=i.comment,
-                            flag=flag
-                        )
-                        await self.adapter.trigger(ev)
+                        pass
                     elif i.event_type == 3:  # type = 3: group admin
                         info_mgr.req_mgr.set_group(
                             grp_id=i.group.grp_id,
