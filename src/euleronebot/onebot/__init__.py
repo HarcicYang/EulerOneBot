@@ -53,6 +53,8 @@ class Adapter:
                 GetGroupMemberList,
                 GetStatus,
                 GetVersionInfo,
+                GetCookie,
+                GetCSRFToken
             ]
         )
 

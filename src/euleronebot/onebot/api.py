@@ -65,6 +65,10 @@ __all__ = [
     "GetStatusResponse",
     "GetVersionInfo",
     "GetVersionInfoResponse",
+    "GetCookie",
+    "GetCookieResponse",
+    "GetCSRFToken",
+    "GetCSRFTokenResponse",
     "ActionFailedResponse"
 ]
 
@@ -295,6 +299,22 @@ class GetVersionInfo(BaseAPICall[GetVersionInfoData]):
 
 
 class GetVersionInfoResponse(BaseAPIResponse[GetVersionInfoRsp]):
+    ...
+
+
+class GetCookie(BaseAPICall[GetCookieData]):
+    action: Literal["get_cookies"] = "get_cookies"
+
+
+class GetCookieResponse(BaseAPIResponse[GetCookieRsp]):
+    ...
+
+
+class GetCSRFToken(BaseAPICall[GetCSRFTokenData]):
+    action: Literal["get_csrf_token"] = "get_csrf_token"
+
+
+class GetCSRFTokenResponse(BaseAPIResponse[GetCSRFTokenRsp]):
     ...
 
 

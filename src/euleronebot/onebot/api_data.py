@@ -60,6 +60,10 @@ __all__ = [
     "GetStatusData",
     "GetVersionInfoData",
     "GetVersionInfoRsp",
+    "GetCookieData",
+    "GetCookieRsp",
+    "GetCSRFTokenData",
+    "GetCSRFTokenRsp"
 ]
 
 
@@ -281,3 +285,21 @@ class GetVersionInfoRsp(BaseModel):
     app_name: str = NAME
     app_version: str = VERSION
     protocol_version: str = "v11"
+
+
+class GetCookieData(BaseModel):
+    domain: str
+
+
+
+class GetCookieRsp(BaseModel):
+    cookies: str
+
+
+class GetCSRFTokenData(BaseModel):
+    ...
+
+
+class GetCSRFTokenRsp(BaseModel):
+    token: int
+

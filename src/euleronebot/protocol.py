@@ -442,6 +442,23 @@ class LagrangeProtocol:
                         ),
                         echo=call.echo
                     )
+                elif isinstance(call, GetCookie):
+                    data = (await self.lag.client.get_cookies([call.params.domain]))[0]
+                    rsp = GetCookieResponse(
+                        status="ok",
+                        retcode=0,
+                        data=GetCookieRsp(cookies=data),
+                        echo=call.echo
+                    )
+                elif isinstance(call, GetCSRFToken):
+                    data = await self.lag.client.get_csrf_token()
+                    rsp = GetCSRFTokenResponse(
+                        status="ok",
+                        retcode=0,
+                        data=GetCSRFTokenRsp(token=data),
+                        echo=call.echo
+                    )
+
 
                 else:
                     rsp = ActionFailedResponse(
@@ -580,11 +597,15 @@ class LagrangeProtocol:
         )
         if not msgid:
             return
+        try:
+            opt_uin = info_mgr.uid_mgr.from_uid(event.uid)
+        except ValueError:
+            opt_uin = 0
         real_info = info_mgr.msgid_mgr.fetch(msgid)
         ev = onebot_events.GroupRecallEvent(
             group_id=event.grp_id,
             message_id=msgid,
-            operator_id=0,
+            operator_id=opt_uin,
             self_id=self.lag.client.uin,
             time=event.time,
             user_id=real_info.uin

@@ -129,7 +129,7 @@ uv sync
 | set_group_name          | ✅    |
 | set_group_leave         | ✅    |
 | set_group_special_title | ❌    |
-| set_friend_add_request  | ❌    |
+| set_friend_add_request  | ✅    |
 | set_group_add_request   | ✅    |
 | get_login_info          | ✅    |
 | get_stranger_info       | ✅    |
@@ -138,6 +138,8 @@ uv sync
 | get_group_list          | ❌    |
 | get_group_member_info   | ✅    |
 | get_group_member_list   | ❌    |
+| get_cookies             | ✅    |
+| get_csrf_token          | ✅    |
 | get_status              | ❌    |
 | get_version_info        | ✅    |
 
@@ -152,18 +154,18 @@ uv sync
 | message.group            | ✅    |
 | notice.group_upload      | ✅    |
 | notice.friend_upload     | ✅    |
-| notice.group_admin       | ✅   |
+| notice.group_admin       | ✅    |
 | notice.group_decrease    | ✅    |
 | notice.group_increase    | ✅    |
 | notice.group_ban         | ✅    |
-| notice.friend_add        | ❌    |
+| notice.friend_add        | ✅    |
 | notice.group_recall      | ✅    |
 | notice.friend_recall     | ✅    |
 | notice.notify.poke       | ✅    |
 | notice.notify.lucky_king | ❌    |
 | notice.notify.honor      | ❌    |
 | notice.reaction          | ✅    |
-| request.friend           | ❌    |
+| request.friend           | ✅    |
 | request.group            | ✅    |
 | meta_event.lifecycle     | ❌    |
 | meta_event.heartbeat     | ✅    |
