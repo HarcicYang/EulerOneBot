@@ -1,5 +1,6 @@
 import os.path
 import random
+import hashlib
 from typing import Dict, Literal, Union, Self
 from pydantic import BaseModel
 from lagrange.client.message import elems
@@ -26,14 +27,13 @@ class MsgInfo(BaseModel):
 class MsgIDPool(BaseModel):
     pool: Dict[str, MsgInfo] = {}
 
-    def _gen_id(self) -> int:
-        x = 0
-        while not x or str(x) in list(self.pool.keys()):
-            x = random.randint(1 << 15, (1 << 18) - 1)
-        return x
+    def _gen_id(self, info: MsgInfo) -> int:
+        key = f"{info.scene_type}_{info.scene_id}_{info.seq}_{len(list(self.pool.keys()))}".encode()
+        x = hashlib.sha1(key).digest()
+        return int.from_bytes(x[-4:], "big", signed=False)
 
     def add(self, info: MsgInfo) -> int:
-        nid = self._gen_id()
+        nid = self._gen_id(info)
         self.pool[str(nid)] = info
         return nid
 
