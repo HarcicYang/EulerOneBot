@@ -14,7 +14,7 @@
 ## 环境要求
 
 - Python >= 3.10
-- [lagrange-python](https://github.com/LagrangeDev/lagrange-python)（QQ NT 协议库）
+- [lagrange-python](https://github.com/LagrangeDev/lagrange-python) [^1]
 - Lagrange V2 签名服务（见[签名指南](https://github.com/LagrangeDev/SignApiGuide)）
 
 ## 安装与使用
@@ -119,7 +119,7 @@ uv sync
 | delete_msg              | ✅    |
 | get_msg                 | ✅    |
 | get_forward_msg         | ✅    |
-| send_like               | ❌    |
+| send_like               | ✅    |
 | send_poke               | ✅    |
 | set_group_kick          | ✅    |
 | set_group_ban           | ✅    |
@@ -213,3 +213,7 @@ uv sync
 | 反向 WebSocket | ❌    |
 
 </details>
+
+---
+
+[^1]: 尽管这里的连接指向 [LagrangeDev](https://github.com/LagrangeDev) ，但您或许注意到了，本仓库的依赖项中该包裹指向 [我自己的fork](https://github.com/HarcicYang/lagrange-python)，这是因为我为了该项目，在fork中照葫芦画瓢做了一些自己的实现。因此，如果您安装了 LagrangeDev 提供的包裹，该项目可能无法正常运行。

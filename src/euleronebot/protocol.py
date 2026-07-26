@@ -458,7 +458,15 @@ class LagrangeProtocol:
                         data=GetCSRFTokenRsp(token=data),
                         echo=call.echo
                     )
-
+                elif isinstance(call, SendLike):
+                    uid = info_mgr.uid_mgr.from_uin(call.params.user_id)
+                    await self.lag.client.friend_like(uid, call.params.times)
+                    rsp = SendLikeResponse(
+                        status="ok",
+                        retcode=0,
+                        data=EmptyRsp(),
+                        echo=call.echo
+                    )
 
                 else:
                     rsp = ActionFailedResponse(
