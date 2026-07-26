@@ -152,7 +152,7 @@ uv sync
 | message.group            | ✅    |
 | notice.group_upload      | ✅    |
 | notice.friend_upload     | ✅    |
-| notice.group_admin       | 🚧   |
+| notice.group_admin       | ✅   |
 | notice.group_decrease    | ✅    |
 | notice.group_increase    | ✅    |
 | notice.group_ban         | ✅    |

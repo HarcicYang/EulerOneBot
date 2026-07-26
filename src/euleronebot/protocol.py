@@ -8,14 +8,18 @@ from typing import (
 from lagrange import Lagrange, Client
 from lagrange.client.events import BaseEvent
 from lagrange.client.events.service import ClientOnline, ServerKick
-from lagrange.client.events.friend import FriendMessage, FriendRecall
+from lagrange.client.events.friend import FriendMessage, FriendRecall, FriendRequest, FriendAddNotify
 from lagrange.client.events.group import (
     GroupMessage,
     GroupRecall,
     GroupMuteMember,
     GroupMemberJoined,
     GroupMemberJoinedByInvite,
-    GroupMemberQuit, GroupNudge, GroupReaction, GroupMemberJoinRequest
+    GroupMemberQuit,
+    GroupNudge,
+    GroupReaction,
+    GroupMemberJoinRequest,
+    GroupAdminChange
 )
 
 from .config import load_config
@@ -68,7 +72,7 @@ class LagrangeProtocol:
 
     async def run(self) -> None:
         self._subscribe()
-        asyncio.create_task(self.grp_request_service())
+        # asyncio.create_task(self.grp_request_service())
 
         try:
             await self.adapter.setup()
@@ -763,49 +767,42 @@ class LagrangeProtocol:
         )
         await self.adapter.trigger(ev)
 
+    @on(GroupAdminChange)
+    async def grp_admin_handler(self, client: Client, event: GroupAdminChange) -> None:
+        try:
+            uin = info_mgr.uid_mgr.from_uid(event.uid)
+        except ValueError:
+            uin = 0
 
-    async def grp_request_service(self) -> None:
-        while True:
-            await asyncio.sleep(5)
-            try:
-                rev = await self.lag.client.fetch_grp_request()
-            except AttributeError:
-                continue
-            for i in rev.requests:
-                try:
-                    if info_mgr.req_mgr.has(
-                            RequestInfo(
-                                type="group",
-                                id=i.group.grp_id,
-                                seq=i.seq,
-                                ev_type=i.event_type
-                            )
-                    ):
-                        continue
-                    if i.event_type == 1:  # type = 1: group req
-                        pass
-                    elif i.event_type == 3:  # type = 3: group admin
-                        info_mgr.req_mgr.set_group(
-                            grp_id=i.group.grp_id,
-                            seq=i.seq,
-                            ev_type=i.event_type
-                        )
-                        ev = onebot_events.GroupAdminEvent(
-                            time=round(time.time()),
-                            self_id=self.lag.client.uin,
-                            sub_type="set",  # can't figure
-                            group_id=i.group.grp_id,
-                            user_id=info_mgr.uid_mgr.from_uid(i.target.uid)
-                        )
-                        await self.adapter.trigger(ev)
-                    else:
-                        # type = 6: group kick
-                        # type = 13: group leave
-                        info_mgr.req_mgr.set_group(
-                            grp_id=i.group.grp_id,
-                            seq=i.seq,
-                            ev_type=i.event_type
-                        )
-                        logger.warning(f"Unknown req: {i}")
-                except ValueError:
-                    pass
+        ev = onebot_events.GroupAdminEvent(
+            time=round(time.time()),
+            self_id=self.lag.client.uin,
+            sub_type="set" if event.is_set else "unset",
+            group_id=event.grp_id,
+            user_id=uin
+        )
+        await self.adapter.trigger(ev)
+
+    @on(FriendRequest)
+    async def friend_req_handler(self, client: Client, event: FriendRequest) -> None:
+        if event.from_uid == self.lag.client.uid:
+            return
+        flag = event.from_uid
+        ev = onebot_events.FriendRequestEvent(
+            time=round(time.time()),
+            self_id=self.lag.client.uin,
+            user_id=event.from_uin,
+            comment=event.message,
+            flag=flag
+        )
+        await self.adapter.trigger(ev)
+
+    @on(FriendAddNotify)
+    async def friend_add_handler(self, client: Client, event: FriendAddNotify) -> None:
+        if event.status == 3:
+            ev = onebot_events.FriendAddEvent(
+                time=event.timestamp,
+                self_id=self.lag.client.uin,
+                user_id=event.from_uin if event.from_uin != self.lag.client.uin else event.to_uin
+            )
+            await self.adapter.trigger(ev)
