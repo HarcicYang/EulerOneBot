@@ -46,7 +46,6 @@ class LagrangeImpl:
         self.protocol = protocol
         self.subscriptions: dict[str, APICallHandler] = {}
 
-
     def subscribe(self) -> None:
         for i in dir(self):
             if isinstance(getattr(self, i), RegisteredHandler):
@@ -139,7 +138,12 @@ class LagrangeImpl:
             grp_id=data.group_id,
             msg_chain=new_msg
         )
-        rand = (await self.lag.client.get_grp_msg(grp_id=data.group_id, start=seq, end=seq, filter_deleted_msg=False))[0].rand
+        try:
+            rand = (
+                await self.lag.client.get_grp_msg(grp_id=data.group_id, start=seq, end=seq, filter_deleted_msg=False)
+            )[0].rand
+        except AttributeError:
+            rand = 0
         text = ""
         for i in new_msg:
             text += i.display
@@ -443,5 +447,3 @@ class LagrangeImpl:
             retcode=0,
             data=EmptyRsp()
         )
-
-
