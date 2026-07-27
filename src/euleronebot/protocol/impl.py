@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from lagrange import Lagrange
 
 from ..config import load_config
+from ..onebot.api import GroupReactionResponse
 from ..onebot.api_data import *
 from ..utils.infomgr import MsgInfo, info_mgr
 from ..utils.transformer import to_onebot_msg, to_lagrange_msg
@@ -443,6 +444,73 @@ class LagrangeImpl:
         uid = info_mgr.uid_mgr.from_uin(data.user_id)
         await self.lag.client.friend_like(uid, data.times)
         return SendLikeResponse(
+            status="ok",
+            retcode=0,
+            data=EmptyRsp()
+        )
+
+    @on(SetGroupAdmin)
+    async def set_group_admin(self, data: SetGroupAdminData) -> SetGroupAdminResponse:
+        uid = info_mgr.uid_mgr.from_uin(data.user_id)
+        await self.lag.client.set_grp_admin(grp_id=data.group_id, uid=uid, is_set=data.enable)
+        return SetGroupAdminResponse(
+            status="ok",
+            retcode=0,
+            data=EmptyRsp()
+        )
+
+    @on(GetFriendList)
+    async def get_friend_list(self, data: GetFriendListData) -> GetFriendListResponse:
+        friends = await self.lag.client.get_friend_list()
+        return GetFriendListResponse(
+            status="ok",
+            retcode=0,
+            data=GetFriendListRsp(
+                [
+                    FriendElem(user_id=i.uin, nickname=str(i.nickname), remark=str(i.remark)) for i in friends
+                ]
+            )
+        )
+
+    @on(GetGroupList)
+    async def get_group_list(self, data: GetGroupListData) -> GetGroupListResponse:
+        groups = await self.lag.client.get_grp_list()
+        return GetGroupListResponse(
+            status="ok",
+            retcode=0,
+            data=GetGroupListRsp(
+                [
+                    GetGroupInfoRsp(
+                        group_id=i.grp_id, group_name=i.info.grp_name, member_count=i.info.now_members, max_member_count=i.info.max_members
+                    ) for i in groups.grp_list
+                ]
+            )
+        )
+
+    @on(GetGroupMemberList)
+    async def get_group_member_list(self, data: GetGroupMemberListData) -> GetGroupMemberListResponse:
+        members = await self.lag.client.get_grp_members(grp_id=data.group_id)
+        result = []
+        for i in members.body:
+            if not i.account.uin:
+                try:
+                    uin = info_mgr.uid_mgr.from_uid(i.account.uid)
+                except ValueError:
+                    continue
+            else:
+                uin = i.account.uin
+            result.append((await self.get_group_member_info(GetGroupMemberInfoData(group_id=data.group_id, user_id=uin))).data)
+        return GetGroupMemberListResponse(
+            status="ok",
+            retcode=0,
+            data=GetGroupMemberListRsp(result)
+        )
+
+    @on(GroupReaction)
+    async def group_reaction(self, data: GroupReactionData) -> GroupReactionResponse:
+        msg_info = info_mgr.msgid_mgr.fetch(data.message_id)
+        await self.lag.client.send_grp_reaction(grp_id=data.group_id, msg_seq=msg_info.seq, content=data.emoji or data.code)
+        return GroupReactionResponse(
             status="ok",
             retcode=0,
             data=EmptyRsp()

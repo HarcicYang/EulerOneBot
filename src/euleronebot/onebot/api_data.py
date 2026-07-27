@@ -1,5 +1,5 @@
-from typing import Any, TYPE_CHECKING, Literal, Union
-from pydantic import BaseModel, RootModel
+from typing import Any, TYPE_CHECKING, Literal, Union, Optional
+from pydantic import BaseModel, RootModel, Field
 
 from ..versions import NAME, VERSION
 
@@ -63,7 +63,8 @@ __all__ = [
     "GetCookieData",
     "GetCookieRsp",
     "GetCSRFTokenData",
-    "GetCSRFTokenRsp"
+    "GetCSRFTokenRsp",
+    "GroupReactionData"
 ]
 
 
@@ -303,3 +304,9 @@ class GetCSRFTokenData(BaseModel):
 class GetCSRFTokenRsp(BaseModel):
     token: int
 
+
+class GroupReactionData(BaseModel):
+    group_id: int
+    message_id: str
+    code: Optional[int] = Field(default=None)  # qface
+    emoji: Optional[str] = Field(default=None)  # emoji

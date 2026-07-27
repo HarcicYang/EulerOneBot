@@ -54,7 +54,8 @@ class Adapter:
                 GetStatus,
                 GetVersionInfo,
                 GetCookie,
-                GetCSRFToken
+                GetCSRFToken,
+                GroupReaction
             ]
         )
 

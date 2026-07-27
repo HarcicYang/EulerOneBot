@@ -67,6 +67,7 @@ __all__ = [
     "GetCookieResponse",
     "GetCSRFToken",
     "GetCSRFTokenResponse",
+    "GroupReaction",
     "ActionFailedResponse"
 ]
 
@@ -305,6 +306,14 @@ class GetCSRFToken(BaseAPICall[GetCSRFTokenData]):
 
 
 class GetCSRFTokenResponse(BaseAPIResponse[GetCSRFTokenRsp]):
+    ...
+
+
+class GroupReaction(BaseAPICall[GroupReactionData]):
+    action: Literal["group_reaction"] = "group_reaction"
+
+
+class GroupReactionResponse(BaseAPIResponse[EmptyRsp]):
     ...
 
 
