@@ -35,8 +35,6 @@ class MsgIDPool(BaseModel):
         return int.from_bytes(x[-4:], "big", signed=False)
 
     def add(self, info: MsgInfo) -> int:
-        if info.scene_type == "group" and info.rand == 0:
-            raise AssertionError()
         nid = self._gen_id(info)
         self.pool[str(nid)] = info
         return nid
