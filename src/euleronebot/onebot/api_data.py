@@ -292,7 +292,6 @@ class GetCookieData(BaseModel):
     domain: str
 
 
-
 class GetCookieRsp(BaseModel):
     cookies: str
 

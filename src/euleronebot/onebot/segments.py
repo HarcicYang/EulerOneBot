@@ -89,8 +89,8 @@ class MarketFace(BaseSegment[MarketFaceData]):
 
 class NodeData(BaseSegmentData):
     user_id: str
-    nickname: str
-    content: list[BaseSegment]
+    nick_name: str
+    content: list["SegmentUnion"]
 
 
 class Node(BaseSegment[NodeData]):
@@ -140,12 +140,15 @@ class Video(BaseSegment[VideoData]):
     type: Literal["video"] = "video"
     data: VideoData
 
+
 class JsonData(BaseSegmentData):
     data: str
+
 
 class Json(BaseSegment[JsonData]):
     type: Literal["json"] = "json"
     data: JsonData
+
 
 SegmentUnion = Annotated[
     Union[

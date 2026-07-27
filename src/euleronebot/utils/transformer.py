@@ -150,7 +150,7 @@ async def to_onebot_msg(
                             )
                         ),
                         user_id=str(i.sender_uin),
-                        nickname=i.sender_nick
+                        nick_name=i.sender_nick
                     )
                 )
             )
@@ -203,7 +203,7 @@ async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: Targ
                                         width=512, height=512))
         elif isinstance(i, seg.Node):
             new.append(elems.ForwardNode(content=await to_lagrange_msg(i.data.content, lgrc, target),  # type: ignore
-                                         sender_uin=int(i.data.user_id), sender_nick=i.data.nickname))
+                                         sender_uin=int(i.data.user_id), sender_nick=i.data.nick_name))
         elif isinstance(i, seg.Forward):
             if i.data.content:
                 new.append(elems.MulitMsg(messages=await to_lagrange_msg(i.data.content, lgrc, target)))  # type: ignore

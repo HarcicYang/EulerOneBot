@@ -121,6 +121,7 @@ uv sync
 | get_forward_msg         | ✅    |
 | send_like               | ✅    |
 | send_poke               | ✅    |
+| send_forward_msg        | ✅    |
 | set_group_kick          | ✅    |
 | set_group_ban           | ✅    |
 | set_group_whole_ban     | ✅    |
@@ -128,7 +129,7 @@ uv sync
 | set_group_card          | ✅    |
 | set_group_name          | ✅    |
 | set_group_leave         | ✅    |
-| set_group_special_title | ❌    |
+| set_group_special_title | ✅    |
 | set_friend_add_request  | ✅    |
 | set_group_add_request   | ✅    |
 | group_reaction          | ✅    |
