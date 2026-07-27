@@ -11,10 +11,8 @@ __all__ = [
     "BaseAPIResponse",
     "SendPrivateMessage",
     "SendPrivateMsgData",
-    "SendPrivateMessageResponse",
     "SendGroupMessage",
     "SendGroupMsgData",
-    "SendGroupMessageResponse",
     "SendMessage",
     "SendMessageResponse",
     "DeleteMessage",
@@ -90,16 +88,8 @@ class SendPrivateMessage(BaseAPICall[SendPrivateMsgData]):
     action: Literal["send_private_msg"] = "send_private_msg"
 
 
-class SendPrivateMessageResponse(BaseAPIResponse[SendMsgRsp]):
-    ...
-
-
 class SendGroupMessage(BaseAPICall[SendGroupMsgData]):
     action: Literal["send_group_msg"] = "send_group_msg"
-
-
-class SendGroupMessageResponse(BaseAPIResponse[SendMsgRsp]):
-    ...
 
 
 class SendMessage(BaseAPICall[SendMsgData]):

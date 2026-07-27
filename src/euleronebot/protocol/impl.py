@@ -1,0 +1,447 @@
+import time
+import traceback
+from typing import (
+    NoReturn, Protocol, runtime_checkable, Callable, Coroutine, Any, Type, TYPE_CHECKING
+)
+from pydantic import BaseModel
+from lagrange import Lagrange
+
+from ..config import load_config
+from ..onebot.api_data import *
+from ..utils.infomgr import MsgInfo, info_mgr
+from ..utils.transformer import to_onebot_msg, to_lagrange_msg
+from ..onebot.models import TargetInfo
+from ..onebot import events as onebot_events
+from ..onebot import Adapter as OneBotAdapter
+from ..onebot.api import *
+from ..hyperogger import Logger
+
+if TYPE_CHECKING:
+    from . import LagrangeProtocol
+else:
+    LagrangeProtocol = Any
+
+appconfig = load_config("./appconfig.json")
+logger = Logger.fetch("euler").name_custom("euler.protocol")
+APICallHandler = Callable[["LagrangeImpl", BaseModel], Coroutine[Any, Any, Any]]
+
+
+@runtime_checkable
+class RegisteredHandler(Protocol):
+    call_type: Type[BaseAPICall]
+
+
+def on(call_type: Type[BaseAPICall]) -> Callable[[APICallHandler], APICallHandler]:
+    def dec(func: APICallHandler) -> APICallHandler:
+        func.call_type = call_type
+        return func
+
+    return dec
+
+
+class LagrangeImpl:
+    def __init__(self, onebot_adapter: OneBotAdapter, lag: Lagrange, protocol: LagrangeProtocol):
+        self.adapter = onebot_adapter
+        self.lag = lag
+        self.protocol = protocol
+        self.subscriptions: dict[str, APICallHandler] = {}
+
+
+    def subscribe(self) -> None:
+        for i in dir(self):
+            if isinstance(getattr(self, i), RegisteredHandler):
+                self.subscriptions[getattr(self, i).call_type.model_fields["action"].default] = getattr(self, i)
+
+    async def api_service(self) -> NoReturn:
+        while True:
+            call = await self.adapter.api_calls.get()
+            try:
+                if handler := self.subscriptions.get(call.action, None):
+                    rsp = await handler(call.params)
+                    rsp.echo = call.echo
+                else:
+                    rsp = ActionFailedResponse(
+                        status="failed",
+                        retcode=1404,
+                        data=EmptyRsp(),
+                        echo=call.echo
+                    )
+                await self.adapter.report(rsp)
+            except Exception as e:
+                logger.error(repr(e))
+                logger.error(traceback.format_exc())
+                rsp = ActionFailedResponse(
+                    status="failed",
+                    retcode=1400,
+                    data=EmptyRsp(),
+                    echo=call.echo
+                )
+                await self.adapter.report(rsp)
+
+    @on(SendMessage)
+    async def send_message(self, data: SendMsgData) -> SendMessageResponse:
+        if data.group_id:
+            return await self.send_group_message(
+                SendGroupMsgData(
+                    group_id=data.group_id,
+                    message=data.message
+                )
+            )
+        else:
+            return await self.send_private_message(
+                SendPrivateMsgData(
+                    user_id=data.user_id,
+                    message=data.message
+                )
+            )
+
+    @on(SendPrivateMessage)
+    async def send_private_message(self, data: SendPrivateMsgData) -> SendMessageResponse:
+        new_msg = await to_lagrange_msg(
+            msg=data.message,
+            lgrc=self.lag.client,
+            target=(TargetInfo(target="user", id=data.user_id))
+        )
+        seq = await self.lag.client.send_friend_msg(
+            uid=info_mgr.uid_mgr.from_uin(data.user_id),
+            msg_chain=new_msg
+        )
+        text = ""
+        for i in new_msg:
+            text += i.display
+        msgid = info_mgr.msgid_mgr.add(
+            MsgInfo(
+                raw_msg=new_msg,
+                scene_type="user",
+                scene_id=data.user_id,
+                seq=seq,
+                timestamp=round(time.time()),
+                uid=self.lag.client.uid,
+                uin=self.lag.client.uin,
+                text=text
+            )
+        )
+        return SendMessageResponse(
+            status="ok",
+            retcode=0,
+            data=SendMsgRsp(message_id=msgid)
+
+        )
+
+    @on(SendGroupMessage)
+    async def send_group_message(self, data: SendGroupMsgData) -> SendMessageResponse:
+        new_msg = await to_lagrange_msg(
+            msg=data.message,
+            lgrc=self.lag.client,
+            target=(TargetInfo(target="group", id=data.group_id))
+        )
+        seq = await self.lag.client.send_grp_msg(
+            grp_id=data.group_id,
+            msg_chain=new_msg
+        )
+        rand = (await self.lag.client.get_grp_msg(grp_id=data.group_id, start=seq, end=seq, filter_deleted_msg=False))[0].rand
+        text = ""
+        for i in new_msg:
+            text += i.display
+        msgid = info_mgr.msgid_mgr.add(
+            MsgInfo(
+                raw_msg=new_msg,
+                scene_type="group",
+                scene_id=data.group_id,
+                seq=seq,
+                timestamp=round(time.time()),
+                uid=self.lag.client.uid,
+                uin=self.lag.client.uin,
+                text=text,
+                rand=rand
+            )
+        )
+        return SendMessageResponse(
+            status="ok",
+            retcode=0,
+            data=SendMsgRsp(message_id=msgid)
+
+        )
+
+    @on(DeleteMessage)
+    async def delete_message(self, data: DeleteMsgData) -> DeleteMessageResponse:
+        msgid = data.message_id
+        msg_info = info_mgr.msgid_mgr.fetch(msgid)
+        if msg_info.scene_type == "user":
+            pass
+        else:
+            await self.lag.client.recall_grp_msg(grp_id=msg_info.scene_id, seq=msg_info.seq)
+        return DeleteMessageResponse(
+            status="ok",
+            retcode=0,
+            data=EmptyRsp()
+
+        )
+
+    @on(GetVersionInfo)
+    async def get_version_info(self, data: GetVersionInfoData) -> GetVersionInfoResponse:
+        return GetVersionInfoResponse(
+            status="ok",
+            retcode=0,
+            data=GetVersionInfoRsp()
+
+        )
+
+    @on(GetMessage)
+    async def get_message(self, data: GetMsgData) -> GetMessageResponse:
+        msg = info_mgr.msgid_mgr.fetch(data.message_id)
+        if msg.uid:
+            user_info = await self.lag.client.get_user_info(msg.uid)
+        elif msg.uin:
+            user_info = await self.lag.client.get_user_info(msg.uin)
+        else:
+            raise ValueError(f"Invalid message: {msg}")
+        if isinstance(user_info, list):
+            user_info = user_info[0]
+
+        return GetMessageResponse(
+            status="ok",
+            retcode=0,
+            data=GetMsgRsp(
+                message=await to_onebot_msg(msg=msg, adp=self.protocol),
+                time=msg.timestamp,
+                message_id=data.message_id,
+                message_type="private" if msg.scene_type == "user" else "group",
+                real_id=msg.seq,
+                sender=onebot_events.PrivateSender(
+                    user_id=msg.uin,
+                    nickname="" if not user_info else user_info.name,
+                    sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",  # type: ignore
+                    age=0 if not user_info else user_info.age,
+                ) if msg.scene_type == "user" else onebot_events.GroupSender(
+                    user_id=msg.uin,
+                    title="",
+                    sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",  # type: ignore
+                    role="member",
+                    age=0 if not user_info else user_info.age,
+                    area="" if not user_info else f"{user_info.country} {user_info.province} {user_info.city}",
+                    card="",
+                    level="",
+                    nickname="" if not user_info else user_info.name,
+                )
+            )
+
+        )
+
+    @on(GetGroupInfo)
+    async def get_group_info(self, data: GetGroupInfoData) -> GetGroupInfoResponse:
+        grps = await self.lag.client.get_grp_list()
+        info = list(filter(lambda x: x.grp_id == data.group_id, grps.grp_list))[0]
+        return GetGroupInfoResponse(
+            status="ok",
+            retcode=0,
+            data=GetGroupInfoRsp(
+                group_id=data.group_id,
+                member_count=info.info.now_members,
+                max_member_count=info.info.max_members,
+                group_name=info.info.grp_name
+            )
+        )
+
+    @on(GetStrangerInfo)
+    async def get_stranger_info(self, data: GetStrangerInfoData) -> GetStrangerInfoResponse:
+        try:
+            uid = info_mgr.uid_mgr.from_uin(data.user_id)
+        except ValueError:
+            uid = None
+        try:
+            info = await self.lag.client.get_user_info(uid or data.user_id)
+        except AttributeError:
+            info = await self.lag.client.get_user_info(data.user_id)
+        return GetStrangerInfoResponse(
+            status="ok",
+            retcode=0,
+            data=GetStrangerInfoRsp(
+                age=info.age,
+                nickname=info.name,
+                sex=info.sex.name if info.sex.name != "notset" else "unknown",  # type: ignore
+                user_id=data.user_id
+            )
+        )
+
+    @on(GetForwardMessage)
+    async def get_forward_msg(self, data: GetForwardMsgData) -> GetForwardMessageResponse:
+        res_id = data.id
+        msg = await self.lag.client.get_forward_msg(res_id)
+        return GetForwardMessageResponse(
+            status="ok",
+            retcode=0,
+            data=GetForwardMsgRsp(
+                message=await to_onebot_msg(  # type: ignore
+                    adp=self.protocol,
+                    msg=MsgInfo(scene_type="user", scene_id=0, seq=0, raw_msg=msg.messages)
+                )
+            ),
+        )
+
+    @on(SetGroupKick)
+    async def set_group_kick(self, data: SetGroupKickData) -> SetGroupKickResponse:
+        await self.lag.client.kick_grp_member(
+            grp_id=data.group_id,
+            uin=data.user_id,
+            permanent=data.reject_add_request
+        )
+        return SetGroupKickResponse(
+            status="ok",
+            retcode=0,
+            data=EmptyRsp()
+        )
+
+    @on(SetGroupBan)
+    async def set_group_ban(self, data: SetGroupBanData) -> SetGroupBanResponse:
+        await self.lag.client.set_mute_member(
+            grp_id=data.group_id,
+            uin=data.user_id,
+            duration=data.duration
+        )
+        return SetGroupBanResponse(
+            status="ok",
+            retcode=0,
+            data=EmptyRsp()
+        )
+
+    @on(SetGroupWholeBan)
+    async def set_group_whole_ban(self, data: SetGroupWholeBanData) -> SetGroupWholeBanResponse:
+        await self.lag.client.set_mute_grp(grp_id=data.group_id, enable=data.enable)
+        return SetGroupWholeBanResponse(
+            status="ok",
+            retcode=0,
+            data=EmptyRsp()
+        )
+
+    @on(SetGroupCard)
+    async def set_group_card(self, data: SetGroupCardData) -> SetGroupCardResponse:
+        await self.lag.client.rename_grp_member(
+            grp_id=data.group_id,
+            target_uid=info_mgr.uid_mgr.from_uin(data.user_id),
+            name=data.card
+        )
+        return SetGroupCardResponse(
+            status="ok",
+            retcode=0,
+            data=EmptyRsp()
+        )
+
+    @on(SetGroupName)
+    async def set_group_name(self, data: SetGroupNameData) -> SetGroupNameResponse:
+        await self.lag.client.rename_grp_name(grp_id=data.group_id, name=data.group_name)
+        return SetGroupNameResponse(
+            status="ok",
+            retcode=0,
+            data=EmptyRsp()
+        )
+
+    @on(SendPoke)
+    async def send_poke(self, data: SendPokeData) -> SendPokeResponse:
+        await self.lag.client.send_nudge(uin=data.user_id, grp_id=data.group_id)
+        return SendPokeResponse(
+            status="ok",
+            retcode=0,
+            data=EmptyRsp()
+        )
+
+    @on(SetGroupLeave)
+    async def set_group_leave(self, data: SetGroupLeaveData) -> SetGroupLeaveResponse:
+        await self.lag.client.leave_grp(grp_id=data.group_id)
+        return SetGroupLeaveResponse(
+            status="ok",
+            retcode=0,
+            data=EmptyRsp()
+        )
+
+    @on(SetGroupAddRequest)
+    async def set_group_add_request(self, data: SetGroupAddRequestData) -> SetGroupAddRequestResponse:
+        info = info_mgr.req_mgr.fetch(data.flag)
+        if info.type == "group":
+            await self.lag.client.set_grp_request(
+                grp_id=info.id,
+                grp_req_seq=info.seq,
+                ev_type=info.ev_type,
+                action=1 if data.approve else 2
+            )
+            return SetGroupAddRequestResponse(
+                status="ok",
+                retcode=0,
+                data=EmptyRsp()
+            )
+        raise NotImplementedError()
+
+    @on(GetLoginInfo)
+    async def get_login_info(self, data: GetLoginInfoData) -> GetLoginInfoResponse:
+        info = await self.lag.client.get_user_info(self.lag.client.uin)
+        return GetLoginInfoResponse(
+            status="ok",
+            retcode=0,
+            data=GetLoginInfoRsp(
+                user_id=self.lag.client.uin,
+                nickname=info.name
+            )
+        )
+
+    @on(GetGroupMemberInfo)
+    async def get_group_member_info(self, data: GetGroupMemberInfoData) -> GetGroupMemberInfoResponse:
+        info = (
+            await self.lag.client.get_grp_member_info(
+                data.group_id,
+                info_mgr.uid_mgr.from_uin(data.user_id)
+            )
+        ).body[0]
+        user_info = await self.lag.client.get_user_info(data.user_id)
+        role = "member"
+        if info.is_owner:
+            role = "owner"
+        elif info.is_admin:
+            role = "admin"
+        return GetGroupMemberInfoResponse(
+            status="ok",
+            retcode=0,
+            data=GetGroupMemberInfoRsp(
+                group_id=data.group_id,
+                user_id=data.user_id,
+                nickname=info.nickname,
+                card="" if not info.name else info.name.string,
+                sex=user_info.sex if user_info.sex != "notset" else "unknown",  # type: ignore
+                age=user_info.age,
+                area=f"{user_info.country} {user_info.province} {user_info.city}",
+                join_time=info.joined_time,
+                last_sent_time=info.last_seen,
+                level="" if not info.level else str(info.level.num),
+                role=role,
+                title=""
+            )
+        )
+
+    @on(GetCookie)
+    async def get_cookie(self, data: GetCookieData) -> GetCookieResponse:
+        cookie = (await self.lag.client.get_cookies([data.domain]))[0]
+        return GetCookieResponse(
+            status="ok",
+            retcode=0,
+            data=GetCookieRsp(cookies=cookie)
+        )
+
+    @on(GetCSRFToken)
+    async def get_csrf_token(self, data: GetCSRFTokenData) -> GetCSRFTokenResponse:
+        token = await self.lag.client.get_csrf_token()
+        return GetCSRFTokenResponse(
+            status="ok",
+            retcode=0,
+            data=GetCSRFTokenRsp(token=token)
+        )
+
+    @on(SendLike)
+    async def send_like(self, data: SendLikeData) -> SendLikeResponse:
+        uid = info_mgr.uid_mgr.from_uin(data.user_id)
+        await self.lag.client.friend_like(uid, data.times)
+        return SendLikeResponse(
+            status="ok",
+            retcode=0,
+            data=EmptyRsp()
+        )
+
+

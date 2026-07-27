@@ -1,6 +1,7 @@
 import os.path
 import random
 import hashlib
+from Tools.scripts import ifdef
 from typing import Dict, Literal, Union, Self
 from pydantic import BaseModel
 from lagrange.client.message import elems
@@ -14,6 +15,7 @@ class MsgInfo(BaseModel):
     timestamp: int = 0
     raw_msg: list[elems.BaseElem] = []
     seq: int
+    rand: int = 0
     text: str = ""
 
     def __eq__(self, other: Self) -> bool:  # type: ignore
@@ -33,6 +35,8 @@ class MsgIDPool(BaseModel):
         return int.from_bytes(x[-4:], "big", signed=False)
 
     def add(self, info: MsgInfo) -> int:
+        if info.scene_type == "group" and info.rand == 0:
+            raise AssertionError()
         nid = self._gen_id(info)
         self.pool[str(nid)] = info
         return nid

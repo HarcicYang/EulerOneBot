@@ -216,4 +216,6 @@ uv sync
 
 ---
 
-[^1]: 尽管这里的连接指向 [LagrangeDev](https://github.com/LagrangeDev) ，但您或许注意到了，本仓库的依赖项中该包裹指向 [我自己的fork](https://github.com/HarcicYang/lagrange-python)，这是因为我为了该项目，在fork中照葫芦画瓢做了一些自己的实现。因此，如果您安装了 LagrangeDev 提供的包裹，该项目可能无法正常运行。
+[^1]: 尽管这里的连接指向 [LagrangeDev](https://github.com/LagrangeDev)
+，但您或许注意到了，本仓库的依赖项中该包裹指向 [我自己的fork](https://github.com/HarcicYang/lagrange-python)
+，这是因为我为了该项目，在fork中照葫芦画瓢做了一些自己的实现。因此，如果您安装了 LagrangeDev 提供的包裹，该项目可能无法正常运行。
