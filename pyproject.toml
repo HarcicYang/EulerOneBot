@@ -21,7 +21,7 @@ dependencies = [
     "httpx",
     "qrcode>=8.2",
     "cryptography>=49.0.0",
-    "lagrange-python @ git+https://github.com/HarcicYang/lagrange-python.git",
+    "lagrange-python @ git+https://github.com/LagrangeDev/lagrange-python.git",
 ]
 
 [tool.setuptools.packages.find]
