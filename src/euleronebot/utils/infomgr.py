@@ -91,6 +91,8 @@ class UIDPool(BaseModel):
         await asyncio.gather(self.load_all_users(client), self.load_all_grps(client))
 
     def from_uid(self, uid: str) -> int:
+        if isinstance(uid, bytes):
+            uid = uid.decode()
         if uid in list(self.pool.keys()):
             return self.pool[uid]
         else:
@@ -104,6 +106,8 @@ class UIDPool(BaseModel):
             raise ValueError(f"Unknown uin = {uin}")
 
     def is_exist(self, uid_or_uin: Union[int, str]) -> bool:
+        if isinstance(uid_or_uin, bytes):
+            uid_or_uin = uid_or_uin.decode()
         if isinstance(uid_or_uin, str) and uid_or_uin in list(self.pool.keys()):
             if str(self.from_uid(uid_or_uin)).endswith("0145"):
                 return False
