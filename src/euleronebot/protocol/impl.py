@@ -1,23 +1,29 @@
 import time
 import traceback
 from typing import (
-    NoReturn, Protocol, runtime_checkable, Callable, Coroutine, Any, Type, TYPE_CHECKING
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Coroutine,
+    NoReturn,
+    Protocol,
+    Type,
+    runtime_checkable
 )
 
-from lagrange.client.message.elems import MulitMsg
-from pydantic import BaseModel
 from lagrange import Lagrange
+from lagrange.client.message.elems import MulitMsg
 
 from ..config import load_config
-from ..onebot.api import GroupReactionResponse
-from ..onebot.api_data import *
-from ..utils.infomgr import MsgInfo, info_mgr
-from ..utils.transformer import to_onebot_msg, to_lagrange_msg
-from ..onebot.models import TargetInfo
-from ..onebot import events as onebot_events
-from ..onebot import Adapter as OneBotAdapter
-from ..onebot.api import *
 from ..hyperogger import Logger
+from ..onebot import Adapter as OneBotAdapter
+from ..onebot import events as onebot_events
+from ..onebot.api import *
+from ..onebot.api_data import *
+from ..onebot.models import TargetInfo
+from ..utils import with_retry
+from ..utils.infomgr import MsgInfo, info_mgr
+from ..utils.transformer import to_lagrange_msg, to_onebot_msg
 
 if TYPE_CHECKING:
     from . import LagrangeProtocol
@@ -26,7 +32,7 @@ else:
 
 appconfig = load_config("./appconfig.json")
 logger = Logger.fetch("euler").name_custom("euler.protocol")
-APICallHandler = Callable[["LagrangeImpl", BaseModel], Coroutine[Any, Any, Any]]
+APICallHandler = Callable[..., Coroutine[Any, Any, Any]]
 
 
 @runtime_checkable
@@ -59,7 +65,7 @@ class LagrangeImpl:
             call = await self.adapter.api_calls.get()
             try:
                 if handler := self.subscriptions.get(call.action, None):
-                    rsp = await handler(call.params)
+                    rsp = await with_retry(handler(call.params))
                     rsp.echo = call.echo
                 else:
                     rsp = ActionFailedResponse(
@@ -105,7 +111,8 @@ class LagrangeImpl:
             target=(TargetInfo(target="user", id=data.user_id))
         )
         if len(new_msg) == 1 and isinstance(new_msg[0], MulitMsg):
-            seq = await self.lag.client.send_friend_forward_msg(new_msg[0], info_mgr.uid_mgr.from_uin(data.user_id))  # type: ignore
+            seq = await self.lag.client.send_friend_forward_msg(new_msg[0],
+                                                                info_mgr.uid_mgr.from_uin(data.user_id))  # type: ignore
         else:
             seq = await self.lag.client.send_friend_msg(
                 uid=info_mgr.uid_mgr.from_uin(data.user_id),
@@ -192,7 +199,7 @@ class LagrangeImpl:
         )
 
     @on(GetVersionInfo)
-    async def get_version_info(self, data: GetVersionInfoData) -> GetVersionInfoResponse:
+    async def get_version_info(self, _data: GetVersionInfoData) -> GetVersionInfoResponse:
         return GetVersionInfoResponse(
             status="ok",
             retcode=0,
@@ -385,7 +392,7 @@ class LagrangeImpl:
         raise NotImplementedError()
 
     @on(GetLoginInfo)
-    async def get_login_info(self, data: GetLoginInfoData) -> GetLoginInfoResponse:
+    async def get_login_info(self, _data: GetLoginInfoData) -> GetLoginInfoResponse:
         info = await self.lag.client.get_user_info(self.lag.client.uin)
         return GetLoginInfoResponse(
             status="ok",
@@ -439,7 +446,7 @@ class LagrangeImpl:
         )
 
     @on(GetCSRFToken)
-    async def get_csrf_token(self, data: GetCSRFTokenData) -> GetCSRFTokenResponse:
+    async def get_csrf_token(self, _data: GetCSRFTokenData) -> GetCSRFTokenResponse:
         token = await self.lag.client.get_csrf_token()
         return GetCSRFTokenResponse(
             status="ok",
@@ -468,7 +475,7 @@ class LagrangeImpl:
         )
 
     @on(GetFriendList)
-    async def get_friend_list(self, data: GetFriendListData) -> GetFriendListResponse:
+    async def get_friend_list(self, _data: GetFriendListData) -> GetFriendListResponse:
         friends = await self.lag.client.get_friend_list()
         return GetFriendListResponse(
             status="ok",
@@ -481,7 +488,7 @@ class LagrangeImpl:
         )
 
     @on(GetGroupList)
-    async def get_group_list(self, data: GetGroupListData) -> GetGroupListResponse:
+    async def get_group_list(self, _data: GetGroupListData) -> GetGroupListResponse:
         groups = await self.lag.client.get_grp_list()
         return GetGroupListResponse(
             status="ok",
@@ -489,7 +496,8 @@ class LagrangeImpl:
             data=GetGroupListRsp(
                 [
                     GetGroupInfoRsp(
-                        group_id=i.grp_id, group_name=i.info.grp_name, member_count=i.info.now_members, max_member_count=i.info.max_members
+                        group_id=i.grp_id, group_name=i.info.grp_name, member_count=i.info.now_members,
+                        max_member_count=i.info.max_members
                     ) for i in groups.grp_list
                 ]
             )
@@ -507,7 +515,8 @@ class LagrangeImpl:
                     continue
             else:
                 uin = i.account.uin
-            result.append((await self.get_group_member_info(GetGroupMemberInfoData(group_id=data.group_id, user_id=uin))).data)
+            result.append(
+                (await self.get_group_member_info(GetGroupMemberInfoData(group_id=data.group_id, user_id=uin))).data)
         return GetGroupMemberListResponse(
             status="ok",
             retcode=0,
@@ -517,7 +526,8 @@ class LagrangeImpl:
     @on(GroupReaction)
     async def group_reaction(self, data: GroupReactionData) -> GroupReactionResponse:
         msg_info = info_mgr.msgid_mgr.fetch(data.message_id)
-        await self.lag.client.send_grp_reaction(grp_id=data.group_id, msg_seq=msg_info.seq, content=data.emoji or data.code or 0)
+        await self.lag.client.send_grp_reaction(grp_id=data.group_id, msg_seq=msg_info.seq,
+                                                content=data.emoji or data.code or 0)
         return GroupReactionResponse(
             status="ok",
             retcode=0,

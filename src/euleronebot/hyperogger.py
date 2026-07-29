@@ -1,10 +1,10 @@
 import datetime
-import traceback
-import sys
 import logging
+import sys
+import traceback
 from typing import Any
 
-from .utils import color_txt, rgb, NerdICONs
+from .utils import NerdICONs, color_txt, rgb
 
 __all__ = ["Logger", "Levels"]
 
@@ -72,13 +72,13 @@ class Logger:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         formatted = color_txt("\nTraceback: \n\n", rgb(255, 47, 47))
         tb_frames = traceback.extract_tb(exc_traceback)
-        FILE = color_txt("File", rgb(85, 173, 238))
-        LINE = color_txt("line", rgb(85, 173, 238))
+        file_txt = color_txt("File", rgb(85, 173, 238))
+        line_txt = color_txt("line", rgb(85, 173, 238))
         for frame in tb_frames:
             filename, lineno, func_name, code = frame
             formatted += (
-                f"  {FILE} {color_txt(filename, rgb(104, 255, 244))},"
-                f" {LINE} {color_txt(str(lineno), rgb(215, 255, 255))},"
+                f"  {file_txt} {color_txt(filename, rgb(104, 255, 244))},"
+                f" {line_txt} {color_txt(str(lineno), rgb(215, 255, 255))},"
                 f" in {color_txt(func_name, rgb(70, 172, 107))}\n"
                 f"      {color_txt(code, rgb(255, 255, 255))}\n\n"
             )
@@ -88,7 +88,7 @@ class Logger:
         return formatted
 
     def register_hook(self) -> None:
-        def hook(exc_t: Any, exc_v: Any, exc_tb: Any) -> None:
+        def hook(_exc_t: Any, _exc_v: Any, _exc_tb: Any) -> None:
             self.error(self.format_exec())
 
         sys.excepthook = hook

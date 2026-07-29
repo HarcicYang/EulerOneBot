@@ -1,11 +1,12 @@
-from typing import Any, TYPE_CHECKING, Literal, Union, Optional
-from pydantic import BaseModel, RootModel, Field
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union
+
+from pydantic import BaseModel, Field, RootModel
 
 from ..versions import NAME, VERSION
 
 if TYPE_CHECKING:
-    from .segments import BaseSegment, Node, SegmentUnion
     from .events import GroupSender, PrivateSender
+    from .segments import BaseSegment, Node, SegmentUnion
 
     SEGMENT = BaseSegment
     NODE = Node

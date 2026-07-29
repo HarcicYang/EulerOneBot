@@ -1,13 +1,13 @@
-from euleronebot.hyperogger import Logger
 from euleronebot.config import load_config
+from euleronebot.hyperogger import Logger
 
 cfg = load_config("appconfig.json")
 logger = Logger.create("euler", cfg.log_level)
 
-from euleronebot.protocol import LagrangeProtocol
-from euleronebot.onebot import Adapter
-
 import asyncio
+
+from euleronebot.onebot import Adapter
+from euleronebot.protocol import LagrangeProtocol
 
 logger.set_handler()
 logger.info("Euler OneBot")

@@ -1,5 +1,6 @@
 import os
-from typing import Literal, Annotated, Union, cast
+from typing import Annotated, Literal, Union, cast
+
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 

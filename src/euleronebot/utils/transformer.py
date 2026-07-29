@@ -1,21 +1,24 @@
 import asyncio
-import io
 import base64
-from typing import Union, Optional, TYPE_CHECKING, Any
-from urllib.parse import urlparse, unquote
+import io
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from urllib.parse import unquote, urlparse
+
 import httpx
 from lagrange import Client
-from lagrange.client.message import elems
-from lagrange.client.events.group import GroupMessage
 from lagrange.client.events.friend import FriendMessage
+from lagrange.client.events.group import GroupMessage
+from lagrange.client.message import elems
 from lagrange.client.message.types import Element as LgrElement
+from lagrange.client.models import UserInfo
 
-from ..onebot import segments as seg, FileInfo
-from ..onebot import events as onebot_events
-from .infomgr import MsgInfo, info_mgr
-from ..onebot.models import TargetInfo
 from ..hyperogger import Logger
+from ..onebot import FileInfo
+from ..onebot import events as onebot_events
+from ..onebot import segments as seg
+from ..onebot.models import TargetInfo
 from ..onebot.segments import JsonData
+from .infomgr import MsgInfo, info_mgr
 
 if TYPE_CHECKING:
     from ..protocol import LagrangeProtocol
@@ -24,12 +27,13 @@ else:
 
 logger = Logger.fetch("euler").name_custom("euler.transformer")
 
+
 async def to_onebot_msg(
         adp: LagrangeProtocol,
         event: Optional[Union[GroupMessage, FriendMessage]] = None,
         msg: Optional[MsgInfo] = None
-) -> list[seg.BaseSegment]:
-    new: list[seg.BaseSegment] = []
+) -> list[seg.SegmentUnion]:
+    new: list[seg.SegmentUnion] = []
     info_renewed = False
     if event:
         msgc = event.msg_chain
@@ -187,6 +191,7 @@ async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: Targ
                     info = await lgrc.get_user_info(uid)
                 except AttributeError:
                     info = await lgrc.get_user_info(qq)
+                info = cast(UserInfo, info)
                 new.append(elems.At(text=f"@{info.name}", uin=qq, uid=uid))
         elif isinstance(i, seg.Reply):
             msgid = int(i.data.id)

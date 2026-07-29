@@ -1,4 +1,5 @@
-from typing import Literal, TypeVar, Generic, Annotated, Union
+from typing import Annotated, Generic, Literal, TypeVar, Union
+
 from pydantic import BaseModel, Field
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "Record",
     "Video",
     "Json",
+    "JsonData",
     "SegmentUnion"
 ]
 

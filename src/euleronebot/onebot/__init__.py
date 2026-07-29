@@ -1,12 +1,13 @@
 import asyncio
 import traceback
-from typing import NoReturn, Union, TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NoReturn, Union
+
 from pydantic import TypeAdapter, ValidationError
 
-from .connector import Connector
-from .api import *
-from .events import *
 from ..hyperogger import Logger
+from .api import *
+from .connector import Connector
+from .events import *
 
 if TYPE_CHECKING:
     from ..config import AdapterConfig, ForwardWebsocketConfig
@@ -73,6 +74,8 @@ class Adapter:
                 logger.error(data)
                 logger.error(traceback.format_exc())
                 continue
+        # noinspection PyUnreachableCode
+        raise RuntimeError()
 
     async def trigger(self, event: BaseEvent) -> None:
         await self.connector.trigger(event.model_dump_json())

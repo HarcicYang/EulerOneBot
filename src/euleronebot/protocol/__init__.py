@@ -1,19 +1,25 @@
 import asyncio
 import time
+import traceback
 from typing import (
-    NoReturn, Protocol, runtime_checkable, Callable, Coroutine, Any, Type
+    Any,
+    Callable,
+    Coroutine,
+    NoReturn,
+    Protocol,
+    Type,
+    runtime_checkable
 )
 
-from lagrange import Lagrange, Client
+from lagrange import Client, Lagrange
 from lagrange.client.events import BaseEvent
 
 from ..config import load_config
-from ..onebot import events as onebot_events
-from ..onebot import Adapter as OneBotAdapter
 from ..hyperogger import Logger
-from .impl import LagrangeImpl
+from ..onebot import Adapter as OneBotAdapter
+from ..onebot import events as onebot_events
 from .handle import LagrangeEventHandler
-
+from .impl import LagrangeImpl
 
 appconfig = load_config("./appconfig.json")
 logger = Logger.fetch("euler").name_custom("euler.protocol")
@@ -57,7 +63,6 @@ class LagrangeProtocol:
 
     async def run(self) -> None:
         self._subscribe()
-        # asyncio.create_task(self.grp_request_service())
 
         try:
             await self.adapter.setup()
@@ -66,6 +71,7 @@ class LagrangeProtocol:
             asyncio.create_task(self.heartbeat())
             await self.lag.run()
         except KeyboardInterrupt:
+            # noinspection PyProtectedMember
             self.lag.client._task_clear()
             logger.info("Program exited by user")
         else:
@@ -83,5 +89,6 @@ class LagrangeProtocol:
                         time=round(time.time())
                     )
                 )
-            except:
-                pass
+            except Exception as e:
+                logger.error(repr(e))
+                logger.error(traceback.format_exc())

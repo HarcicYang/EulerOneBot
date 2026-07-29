@@ -1,10 +1,14 @@
+import asyncio
+import hashlib
 import os.path
 import random
-import hashlib
-from Tools.scripts import ifdef
-from typing import Dict, Literal, Union, Self
-from pydantic import BaseModel
+from typing import Dict, Literal, Self, Union
+
+from lagrange import Client
 from lagrange.client.message import elems
+from pydantic import BaseModel
+
+from . import with_retry
 
 
 class MsgInfo(BaseModel):
@@ -57,6 +61,8 @@ class UIDPool(BaseModel):
     pool: Dict[str, int] = {}
 
     def add(self, uid: str, uin: int) -> int:
+        if isinstance(uid, bytes):
+            uid = uid.decode()
         self.pool[uid] = uin
         return uin
 
@@ -66,6 +72,23 @@ class UIDPool(BaseModel):
             x = random.randint(1 << 15, (1 << 16) - 1)
         self.add(uid, int(str(x) + "0145"))
         return int(str(x) + "0145")
+
+    async def load_all_grps(self, client: Client) -> None:
+        grps = (await with_retry(client.get_grp_list())).grp_list
+        for i in grps:
+            mbrs = (await with_retry(client.get_grp_members(i.grp_id))).body
+            for j in mbrs:
+                if j.account.uin and not (self.is_exist(j.account.uid) and self.is_exist(j.account.uin)):
+                    self.add(j.account.uid, j.account.uin)
+
+    async def load_all_users(self, client: Client) -> None:
+        users = (await with_retry(client.get_friend_list()))
+        for i in users:
+            if i.uid and not (self.is_exist(i.uid) and self.is_exist(i.uin)):
+                self.add(i.uid, i.uin)
+
+    async def load_all(self, client: Client) -> None:
+        await asyncio.gather(self.load_all_users(client), self.load_all_grps(client))
 
     def from_uid(self, uid: str) -> int:
         if uid in list(self.pool.keys()):
@@ -129,8 +152,8 @@ class InfoManager(BaseModel):
     req_mgr: RequestPool = RequestPool()
 
     async def save(self) -> None:
-        with open("cache.json", "w", encoding="utf-8") as f:
-            f.write(self.model_dump_json(indent=2))
+        with open("cache.json", "w", encoding="utf-8") as f_:
+            f_.write(self.model_dump_json(indent=2))
 
 
 if os.path.exists("cache.json"):

@@ -1,4 +1,5 @@
-from typing import Literal, TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Literal, Union
+
 from pydantic import BaseModel
 
 from .models import BotStatus

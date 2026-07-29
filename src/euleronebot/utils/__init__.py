@@ -1,3 +1,7 @@
+import traceback
+from typing import Any, Coroutine, TypeVar
+
+
 def rgb(r: int, g: int, b: int) -> tuple[int, int, int]:
     return r, g, b
 
@@ -26,3 +30,24 @@ class NerdICONs:
     nf_cod_debug_alt = " \ueb91"
     nf_cod_debug_breakpoint_log = " \ueaab"
     nf_weather_time_4 = " \ue385"
+
+
+T = TypeVar("T")
+
+
+async def with_retry(cor: Coroutine[Any, Any, T], maximum: int = 5) -> T:
+    retried = 0
+    exceptions = []
+    while retried < maximum:
+        try:
+            res = await cor
+        except Exception:
+            exceptions.append(traceback.format_exc())
+            retried += 1
+            continue
+
+        return res
+
+    next_line = "\n"
+    raise AssertionError(
+        f"Max retries ({maximum}) exceed when operating '{getattr(cor, '__name__', '')}' :\n{next_line.join(exceptions)}\n")

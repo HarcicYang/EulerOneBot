@@ -1,13 +1,13 @@
 import asyncio
 from typing import Literal, Self, cast
 from urllib.parse import urlparse
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from uvicorn import Config as UvicornConfig
 from uvicorn import Server as UvicornServer
 
-
-from ..hyperogger import Logger
 from ..config import AdapterConfig, ForwardWebsocketConfig
+from ..hyperogger import Logger
 
 logger = Logger.fetch("euler").name_custom("euler.onebot.connector")
 
@@ -98,8 +98,6 @@ class Connector:
             assert cfg
             server = UvicornServer(cfg)
             await server.serve()
-
-
 
     async def report(self, data: str) -> None:
         logger.trace(f"API report: {data}")
