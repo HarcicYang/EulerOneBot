@@ -31,7 +31,7 @@ else:
     LagrangeProtocol = Any
 
 appconfig = load_config("./appconfig.json")
-logger = Logger.fetch("euler").name_custom("euler.protocol")
+logger = Logger.fetch("euler").name_custom("euler.protocol.impl")
 APICallHandler = Callable[..., Coroutine[Any, Any, Any]]
 
 

@@ -49,7 +49,7 @@ __all__ = [
 ]
 
 appconfig = load_config("./appconfig.json")
-logger = Logger.fetch("euler").name_custom("euler.protocol")
+logger = Logger.fetch("euler").name_custom("euler.protocol.handle")
 LagrangeEvent = Type[BaseEvent]
 LagrangeHandler = Callable[["LagrangeEventHandler", Client, LagrangeEvent], Coroutine[Any, Any, None]]
 

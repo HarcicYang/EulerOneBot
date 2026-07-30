@@ -9,6 +9,9 @@ from lagrange.client.message import elems
 from pydantic import BaseModel
 
 from . import with_retry
+from ..hyperogger import Logger
+
+logger = Logger.fetch("euler").name_custom("euler.utils.infomgr")
 
 
 class MsgInfo(BaseModel):
@@ -73,7 +76,8 @@ class UIDPool(BaseModel):
         self.add(uid, int(str(x) + "0145"))
         return int(str(x) + "0145")
 
-    async def load_all_grps(self, client: Client) -> None:
+    async def load_all_grps(self, client: Client) -> int:
+        count = 0
         grps = (await with_retry(client.get_grp_list)).grp_list
         for i in grps:
             mbrs = (await with_retry(lambda: client.get_grp_members(i.grp_id)))
@@ -88,15 +92,29 @@ class UIDPool(BaseModel):
                     continue
                 if j.account.uin and not (self.is_exist(j.account.uid) and self.is_exist(j.account.uin)):
                     self.add(j.account.uid, j.account.uin)
+                    count += 1
 
-    async def load_all_users(self, client: Client) -> None:
+        return count
+
+    async def load_all_users(self, client: Client) -> int:
+        count = 0
         users = (await with_retry(client.get_friend_list))
         for i in users:
             if i.uid and not (self.is_exist(i.uid) and self.is_exist(i.uin)):
                 self.add(i.uid, i.uin)
+                count += 1
+
+        return count
 
     async def load_all(self, client: Client) -> None:
-        await asyncio.gather(self.load_all_users(client), self.load_all_grps(client))
+        t1 = asyncio.create_task(self.load_all_users(client))
+        t2 = asyncio.create_task(self.load_all_grps(client))
+        await asyncio.gather(t1, t2)
+        c1 = t1.result()
+        c2 = t2.result()
+        count = c1 + c2
+        if count != 0:
+            logger.info(f"Newly cached {count} user(s)")
 
     def from_uid(self, uid: str) -> int:
         if isinstance(uid, bytes):
