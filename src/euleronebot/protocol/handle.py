@@ -293,7 +293,7 @@ class LagrangeEventHandler:
             tp = "kick_me"
         else:
             tp = "leave"
-        if not info_mgr.uid_mgr.is_exist(event.uin):
+        if not info_mgr.uid_mgr.is_exist(event.uin) and not event.uin == event.grp_id:
             info_mgr.uid_mgr.add(event.uid, event.uin)
         ev = onebot_events.GroupDecreaseEvent(
             group_id=event.grp_id,

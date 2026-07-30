@@ -1,4 +1,5 @@
 import traceback
+from collections.abc import Callable
 from typing import Any, Coroutine, TypeVar
 
 
@@ -35,12 +36,12 @@ class NerdICONs:
 T = TypeVar("T")
 
 
-async def with_retry(cor: Coroutine[Any, Any, T], maximum: int = 5) -> T:
+async def with_retry(factory: Callable[..., Coroutine[Any, Any, T]], maximum: int = 5) -> T:
     retried = 0
     exceptions = []
     while retried < maximum:
         try:
-            res = await cor
+            res = await factory()
         except Exception:
             exceptions.append(traceback.format_exc())
             retried += 1

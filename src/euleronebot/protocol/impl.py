@@ -65,7 +65,7 @@ class LagrangeImpl:
             call = await self.adapter.api_calls.get()
             try:
                 if handler := self.subscriptions.get(call.action, None):
-                    rsp = await with_retry(handler(call.params))
+                    rsp = await with_retry(lambda: handler(call.params))
                     rsp.echo = call.echo
                 else:
                     rsp = ActionFailedResponse(
@@ -111,8 +111,10 @@ class LagrangeImpl:
             target=(TargetInfo(target="user", id=data.user_id))
         )
         if len(new_msg) == 1 and isinstance(new_msg[0], MulitMsg):
-            seq = await self.lag.client.send_friend_forward_msg(new_msg[0],
-                                                                info_mgr.uid_mgr.from_uin(data.user_id))  # type: ignore
+            seq = await self.lag.client.send_friend_forward_msg(
+                new_msg[0],  # type: ignore
+                info_mgr.uid_mgr.from_uin(data.user_id)
+            )
         else:
             seq = await self.lag.client.send_friend_msg(
                 uid=info_mgr.uid_mgr.from_uin(data.user_id),
