@@ -136,7 +136,7 @@ class SendLikeResponse(BaseAPIResponse[EmptyRsp]):
 
 
 class SendPoke(BaseAPICall[SendPokeData]):
-    action: Literal["send_like"] = "send_like"
+    action: Literal["send_poke"] = "send_poke"
 
 
 class SendPokeResponse(BaseAPIResponse[EmptyRsp]):
