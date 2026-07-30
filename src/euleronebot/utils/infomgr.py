@@ -76,8 +76,14 @@ class UIDPool(BaseModel):
     async def load_all_grps(self, client: Client) -> None:
         grps = (await with_retry(client.get_grp_list)).grp_list
         for i in grps:
-            mbrs = (await with_retry(lambda: client.get_grp_members(i.grp_id))).body
-            for j in mbrs:
+            mbrs = (await with_retry(lambda: client.get_grp_members(i.grp_id)))
+            mbr_list = mbrs.body
+            next_key = mbrs.next_key
+            while next_key:
+                mbrs = (await with_retry(lambda: client.get_grp_members(i.grp_id, next_key.decode())))
+                mbr_list += mbrs.body
+                next_key = mbrs.next_key
+            for j in mbr_list:
                 if j.account.uin == i.grp_id:
                     continue
                 if j.account.uin and not (self.is_exist(j.account.uid) and self.is_exist(j.account.uin)):
