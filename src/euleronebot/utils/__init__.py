@@ -51,4 +51,4 @@ async def with_retry(factory: Callable[..., Coroutine[Any, Any, T]], maximum: in
 
     next_line = "\n"
     raise AssertionError(
-        f"Max retries ({maximum}) exceed when operating '{getattr(cor, '__name__', '')}' :\n{next_line.join(exceptions)}\n")
+        f"Max retries ({maximum}) exceed when operating '{getattr(factory, '__name__', '')}' :\n{next_line.join(exceptions)}\n")
