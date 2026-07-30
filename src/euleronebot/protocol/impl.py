@@ -427,7 +427,7 @@ class LagrangeImpl:
                 user_id=data.user_id,
                 nickname=info.nickname,
                 card="" if not info.name else info.name.string,
-                sex=user_info.sex if user_info.sex != "notset" else "unknown",  # type: ignore
+                sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",  # type: ignore
                 age=user_info.age,
                 area=f"{user_info.country} {user_info.province} {user_info.city}",
                 join_time=info.joined_time,
