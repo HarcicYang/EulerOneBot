@@ -270,7 +270,7 @@ async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: Targ
             path = unquote(url.path)
             if scheme in ["http", "https"]:
                 async with httpx.AsyncClient() as cli:
-                    response = await cli.get(url)  # type: ignore
+                    response = await cli.get(url.geturl())
                     if target.target == "group":
                         voice = await lgrc.upload_grp_audio(grp_id=target.id, voice=io.BytesIO(response.content))
                     else:
