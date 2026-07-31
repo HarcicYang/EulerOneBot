@@ -1,5 +1,5 @@
 import os
-from typing import Annotated, Literal, cast
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
@@ -63,7 +63,7 @@ class BotConfig(BaseSettings):
     heartbeat: HeartbeatConfig = HeartbeatConfig()
 
 
-loaded_config: BotConfig = cast(BotConfig, cast(object, None))
+loaded_config: BotConfig | None = None
 
 
 def load_config(file: str) -> BotConfig:
@@ -73,7 +73,7 @@ def load_config(file: str) -> BotConfig:
     if os.path.exists(file):
         with open(file, encoding="utf-8") as f:
             loaded_config = BotConfig.model_validate_json(f.read())
-            return loaded_config
+            return loaded_config  # type: ignore
     else:
         try:
             with open(file, "w", encoding="utf-8") as f:

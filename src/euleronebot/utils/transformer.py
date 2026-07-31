@@ -32,7 +32,13 @@ _background_tasks: set[asyncio.Task[None]] = set()
 
 def _spawn_background(task: asyncio.Task[None]) -> None:
     _background_tasks.add(task)
-    task.add_done_callback(_background_tasks.discard)
+
+    def _done(t: asyncio.Task[None]) -> None:
+        _background_tasks.discard(t)
+        if not t.cancelled() and (exc := t.exception()):
+            logger.error(f"后台任务异常: {exc!r}")
+
+    task.add_done_callback(_done)
 
 
 async def to_onebot_msg(

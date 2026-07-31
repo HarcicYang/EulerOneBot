@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from euleronebot.utils.infomgr import (
@@ -36,6 +38,13 @@ class TestMsgIDPool:
     def test_search_miss_returns_zero(self):
         pool = MsgIDPool()
         assert pool.search(make_msg(seq=999)) == 0
+
+    def test_search_returns_most_recent_duplicate(self):
+        pool = MsgIDPool()
+        first = pool.add(make_msg(seq=7))
+        latest = pool.add(make_msg(seq=7))
+        assert first != latest
+        assert pool.search(make_msg(seq=7)) == latest
 
     def test_different_seq_different_id(self):
         pool = MsgIDPool()
@@ -126,3 +135,58 @@ class TestLoadCache:
         (tmp_path / "cache.json").write_text(mgr.model_dump_json(), encoding="utf-8")
         loaded = _load_cache()
         assert loaded.uid_mgr.from_uid("u_abc") == 10001
+
+
+class TestSave:
+    def test_save_writes_valid_file(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        mgr = InfoManager()
+        mgr.msgid_mgr.add(make_msg(seq=5))
+        asyncio.run(mgr.save())
+        loaded = _load_cache()
+        assert loaded.msgid_mgr.search(make_msg(seq=5)) != 0
+
+    def test_save_falls_back_to_empty_raw_msg(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        mgr = InfoManager()
+        mgr.msgid_mgr.add(MsgInfo(scene_type="group", scene_id=1, seq=1, raw_msg=[object()]))
+        asyncio.run(mgr.save())
+        raw = (tmp_path / "cache.json").read_text(encoding="utf-8")
+        assert len(raw) > 0
+        assert '"raw_msg": []' in raw
+        loaded = _load_cache()
+        assert loaded.msgid_mgr.search(make_msg(seq=1)) != 0
+
+    def test_save_only_clears_unserializable_message(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        mgr = InfoManager()
+        good = make_msg(seq=1)
+        good.raw_msg = [{"text": "keep me"}]
+        mgr.msgid_mgr.add(good)
+        bad = MsgInfo(scene_type="group", scene_id=1, seq=2, raw_msg=[object()])
+        mgr.msgid_mgr.add(bad)
+        asyncio.run(mgr.save())
+        loaded = _load_cache()
+        kept = loaded.msgid_mgr.fetch(loaded.msgid_mgr.search(good))
+        assert kept.raw_msg == [{"text": "keep me"}]
+        cleared = loaded.msgid_mgr.fetch(loaded.msgid_mgr.search(bad))
+        assert cleared.raw_msg == []
+
+    def test_atomic_save_keeps_old_file_if_replace_fails(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        mgr = InfoManager()
+        mgr.uid_mgr.add("u_keep", 10001)
+        mgr.save_sync()
+        before = (tmp_path / "cache.json").read_text(encoding="utf-8")
+        assert before
+
+        import euleronebot.utils.infomgr as im
+
+        def broken_replace(src, dst):
+            raise OSError("replace failed")
+
+        monkeypatch.setattr(im.os, "replace", broken_replace)
+        mgr.uid_mgr.add("u_new", 10002)
+        with pytest.raises(OSError):
+            mgr.save_sync()
+        assert (tmp_path / "cache.json").read_text(encoding="utf-8") == before

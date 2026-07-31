@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from lagrange import Client
 from pydantic import BaseModel
+from pydantic_core import PydanticSerializationError
 
 from ..hyperogger import Logger
 from . import with_retry
@@ -60,11 +61,10 @@ class MsgIDPool(BaseModel):
             raise KeyError(f"Unknown message_id = {nid} ")
 
     def search(self, info: MsgInfo) -> int:
-        if info in list(self.pool.values()):
-            index = list(self.pool.values()).index(info)
-        else:
-            return 0
-        return int(list(self.pool.keys())[index])
+        for nid, pool_info in reversed(self.pool.items()):
+            if pool_info == info:
+                return int(nid)
+        return 0
 
 
 class UIDPool(BaseModel):
@@ -189,9 +189,27 @@ class InfoManager(BaseModel):
     uid_mgr: UIDPool = UIDPool()
     req_mgr: RequestPool = RequestPool()
 
+    def _dump(self) -> str:
+        try:
+            return self.model_dump_json(indent=2)
+        except (PydanticSerializationError, TypeError, ValueError):
+            logger.warning(f"{_CACHE_FILE} 包含无法序列化的消息，已清空对应消息原文")
+            for msg in reversed(self.msgid_mgr.pool.values()):
+                try:
+                    msg.model_dump_json()
+                except (PydanticSerializationError, TypeError, ValueError):
+                    msg.raw_msg = []
+            return self.model_dump_json(indent=2)
+
     async def save(self) -> None:
-        with open(_CACHE_FILE, "w", encoding="utf-8") as f_:
-            f_.write(self.model_dump_json(indent=2))
+        self.save_sync()
+
+    def save_sync(self) -> None:
+        data = self._dump()
+        tmp = f"{_CACHE_FILE}.tmp"
+        with open(tmp, "w", encoding="utf-8") as f_:
+            f_.write(data)
+        os.replace(tmp, _CACHE_FILE)
 
 
 _CACHE_FILE = "cache.json"
@@ -213,4 +231,4 @@ def _load_cache() -> InfoManager:
 
 info_mgr = _load_cache()
 if not os.path.exists(_CACHE_FILE):
-    info_mgr.save()
+    info_mgr.save_sync()
