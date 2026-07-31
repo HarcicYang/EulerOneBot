@@ -482,9 +482,9 @@ class LagrangeImpl:
         return GetFriendListResponse(
             status="ok",
             retcode=0,
-            data=GetFriendListRsp(
+            data=GetFriendListRsp.model_validate(
                 [
-                    FriendElem(user_id=i.uin, nickname=str(i.nickname), remark=str(i.remark)) for i in friends
+                    FriendElem(user_id=i.uin, nickname=i.nickname or "", remark=i.remark or "") for i in friends
                 ]
             )
         )
@@ -495,7 +495,7 @@ class LagrangeImpl:
         return GetGroupListResponse(
             status="ok",
             retcode=0,
-            data=GetGroupListRsp(
+            data=GetGroupListRsp.model_validate(
                 [
                     GetGroupInfoRsp(
                         group_id=i.grp_id, group_name=i.info.grp_name, member_count=i.info.now_members,
@@ -522,7 +522,7 @@ class LagrangeImpl:
         return GetGroupMemberListResponse(
             status="ok",
             retcode=0,
-            data=GetGroupMemberListRsp(result)
+            data=GetGroupMemberListRsp.model_validate(result)
         )
 
     @on(GroupReaction)

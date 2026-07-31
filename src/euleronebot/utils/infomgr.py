@@ -63,7 +63,7 @@ class MsgIDPool(BaseModel):
 class UIDPool(BaseModel):
     pool: Dict[str, int] = {}
 
-    def add(self, uid: str, uin: int) -> int:
+    def add(self, uid: Union[str, bytes], uin: int) -> int:
         if isinstance(uid, bytes):
             uid = uid.decode()
         self.pool[uid] = uin
@@ -116,7 +116,7 @@ class UIDPool(BaseModel):
         if count != 0:
             logger.info(f"Newly cached {count} user(s)")
 
-    def from_uid(self, uid: str) -> int:
+    def from_uid(self, uid: Union[str, bytes]) -> int:
         if isinstance(uid, bytes):
             uid = uid.decode()
         if uid in list(self.pool.keys()):
@@ -131,7 +131,7 @@ class UIDPool(BaseModel):
         else:
             raise ValueError(f"Unknown uin = {uin}")
 
-    def is_exist(self, uid_or_uin: Union[int, str]) -> bool:
+    def is_exist(self, uid_or_uin: Union[int, str, bytes]) -> bool:
         if isinstance(uid_or_uin, bytes):
             uid_or_uin = uid_or_uin.decode()
         if isinstance(uid_or_uin, str) and uid_or_uin in list(self.pool.keys()):
