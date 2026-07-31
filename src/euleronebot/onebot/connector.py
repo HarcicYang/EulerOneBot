@@ -1,5 +1,5 @@
 import asyncio
-from typing import Literal, Self
+from typing import Literal, Self, cast
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -15,7 +15,7 @@ logger = Logger.fetch("euler").name_custom("euler.onebot.connector")
 class Connector:
     def __init__(self, impls: list[AdapterConfig]):
         self.impls = impls
-        self.forward_app: FastAPI | None = None
+        self.forward_app: FastAPI = cast(FastAPI, cast(object, None))
         self.received: asyncio.Queue[str] = asyncio.Queue()
         self.active_websocket_servers: dict[Literal["root", "api", "event"], WebSocket] = dict()
 

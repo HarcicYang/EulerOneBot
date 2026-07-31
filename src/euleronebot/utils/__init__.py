@@ -42,7 +42,7 @@ async def with_retry(factory: Callable[..., Coroutine[Any, Any, T]], maximum: in
     while retried < maximum:
         try:
             res = await factory()
-        except Exception:
+        except Exception:  # noinspection PyBroadException
             exceptions.append(traceback.format_exc())
             retried += 1
             continue
@@ -51,6 +51,6 @@ async def with_retry(factory: Callable[..., Coroutine[Any, Any, T]], maximum: in
 
     next_line = "\n"
     name = getattr(factory, "__name__", "")
-    raise AssertionError(
+    raise RuntimeError(
         f"Max retries ({maximum}) exceed when operating '{name}':\n{next_line.join(exceptions)}\n"
     )

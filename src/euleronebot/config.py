@@ -76,6 +76,6 @@ def load_config(file: str) -> BotConfig:
         try:
             with open(file, "w", encoding="utf-8") as f:
                 f.write(BotConfig().model_dump_json(indent=2, ensure_ascii=False))
-        except Exception as e:
+        except Exception as e:  # noinspection PyBroadException
             raise RuntimeError(f"无法创建配置文件: {e} ，请检查路径是否有误") from e
         raise FileNotFoundError(f"配置文件 {file} 不存在， 已创建，请填写后重启")

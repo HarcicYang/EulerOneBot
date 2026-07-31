@@ -72,6 +72,6 @@ class LagrangeProtocol:
                         time=round(time.time()),
                     )
                 )
-            except Exception as e:
+            except Exception as e:  # noinspection PyBroadException
                 logger.error(repr(e))
                 logger.error(traceback.format_exc())

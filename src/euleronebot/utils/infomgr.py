@@ -2,7 +2,7 @@ import asyncio
 import hashlib
 import os.path
 import random
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal
 
 from lagrange import Client
 from pydantic import BaseModel
@@ -30,7 +30,9 @@ class MsgInfo(BaseModel):
     rand: int = 0
     text: str = ""
 
-    def __eq__(self, other: Self) -> bool:  # type: ignore
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, MsgInfo):
+            raise NotImplementedError()
         return (
             other.scene_type == self.scene_type
             and other.scene_id == self.scene_id

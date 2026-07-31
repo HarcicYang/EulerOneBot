@@ -72,7 +72,7 @@ class LagrangeImpl:
                         status="failed", retcode=1404, data=EmptyRsp(), echo=call.echo
                     )
                 await self.adapter.report(rsp)
-            except Exception as e:
+            except Exception as e:  # noinspection PyBroadException
                 logger.error(repr(e))
                 logger.error(traceback.format_exc())
                 rsp = ActionFailedResponse(

@@ -17,7 +17,7 @@ from ..onebot import FileInfo
 from ..onebot import events as onebot_events
 from ..onebot import segments as seg
 from ..onebot.models import TargetInfo
-from ..onebot.segments import JsonData
+from ..onebot.segments import JsonData, Node
 from .infomgr import MsgInfo, info_mgr
 
 if TYPE_CHECKING:
@@ -118,7 +118,7 @@ async def to_onebot_msg(
                     self_id=adp.lag.client.uin,
                     group_id=event.grp_id,
                     user_id=event.uin,
-                    file=FileInfo(id=str(i.file_id), name=i.file_name, size=i.file_size, busid=0),
+                    file=FileInfo(id=i.file_id or "", name=i.file_name, size=i.file_size, busid=0),
                 )
                 await adp.adapter.trigger(ev)
             elif isinstance(event, FriendMessage):
@@ -127,11 +127,11 @@ async def to_onebot_msg(
                     self_id=adp.lag.client.uin,
                     user_id=event.from_uin,
                     file=FileInfo(
-                        id=str(i.file_uuid),
+                        id=i.file_uuid or "",
                         name=i.file_name,
                         size=i.file_size,
                         busid=0,
-                        hash=str(i.file_hash),
+                        hash=i.file_hash or "",
                     ),
                 )
                 await adp.adapter.trigger(ev)
@@ -140,10 +140,18 @@ async def to_onebot_msg(
             new.append(
                 seg.Forward(
                     data=seg.ForwardData(
-                        id=str(i.resid),
-                        content=await to_onebot_msg(  # type: ignore
-                            adp,
-                            msg=MsgInfo(scene_type="user", scene_id=0, seq=0, raw_msg=i.messages),
+                        id=i.resid or "",
+                        content=cast(
+                            list[Node],
+                            await to_onebot_msg(
+                                adp,
+                                msg=MsgInfo(
+                                    scene_type="user",
+                                    scene_id=0,
+                                    seq=0,
+                                    raw_msg=i.messages,  # type: ignore
+                                ),
+                            ),
                         ),
                     )
                 )
@@ -155,7 +163,10 @@ async def to_onebot_msg(
                         content=await to_onebot_msg(
                             adp,
                             msg=MsgInfo(
-                                scene_type="user", scene_id=i.sender_uin, seq=0, raw_msg=i.content
+                                scene_type="user",
+                                scene_id=i.sender_uin,
+                                seq=0,
+                                raw_msg=i.content,  # type: ignore
                             ),
                         ),
                         user_id=str(i.sender_uin),
@@ -176,8 +187,8 @@ async def to_onebot_msg(
 
 async def to_lagrange_msg(
     msg: list[seg.BaseSegment], lgrc: Client, target: TargetInfo
-) -> list[LgrElement]:
-    new: list[LgrElement] = []
+) -> list[LgrElement | elems.ForwardNode]:
+    new: list[LgrElement | elems.ForwardNode] = []
     for i in msg:
         if isinstance(i, seg.Text):
             new.append(elems.Text(text=i.data.text))
@@ -234,8 +245,13 @@ async def to_lagrange_msg(
         elif isinstance(i, seg.Forward):
             if i.data.content:
                 new.append(
-                    elems.MulitMsg(messages=await to_lagrange_msg(i.data.content, lgrc, target))
-                )  # type: ignore
+                    elems.MulitMsg(
+                        messages=cast(
+                            list[elems.ForwardNode],
+                            cast(object, await to_lagrange_msg(i.data.content, lgrc, target)),
+                        )
+                    )
+                )
             elif i.data.id:
                 new.append(elems.MulitMsg(resid=i.data.id))
             else:
