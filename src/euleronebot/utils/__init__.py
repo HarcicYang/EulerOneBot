@@ -1,6 +1,6 @@
 import traceback
-from collections.abc import Callable
-from typing import Any, Coroutine, TypeVar
+from collections.abc import Callable, Coroutine
+from typing import Any, TypeVar
 
 
 def rgb(r: int, g: int, b: int) -> tuple[int, int, int]:
@@ -50,5 +50,7 @@ async def with_retry(factory: Callable[..., Coroutine[Any, Any, T]], maximum: in
         return res
 
     next_line = "\n"
+    name = getattr(factory, "__name__", "")
     raise AssertionError(
-        f"Max retries ({maximum}) exceed when operating '{getattr(factory, '__name__', '')}' :\n{next_line.join(exceptions)}\n")
+        f"Max retries ({maximum}) exceed when operating '{name}':\n{next_line.join(exceptions)}\n"
+    )

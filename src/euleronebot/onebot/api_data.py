@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field, RootModel
 
@@ -21,34 +21,16 @@ else:
     PRIVATE_SENDER = Any
 
 __all__ = [
-    "SendPrivateMsgData",
-    "SendGroupMsgData",
-    "SendMsgData",
-    "SendMsgRsp",
     "DeleteMsgData",
     "EmptyRsp",
-    "GetMsgData",
-    "GetMsgRsp",
+    "FriendElem",
+    "GetCSRFTokenData",
+    "GetCSRFTokenRsp",
+    "GetCookieData",
+    "GetCookieRsp",
     "GetForwardMsgData",
     "GetForwardMsgRsp",
-    "SendLikeData",
-    "SendPokeData",
-    "SetGroupKickData",
-    "SetGroupBanData",
-    "SetGroupWholeBanData",
-    "SetGroupAdminData",
-    "SetGroupCardData",
-    "SetGroupNameData",
-    "SetGroupLeaveData",
-    "SetGroupSpecialTitleData",
-    "SetFriendAddRequestData",
-    "SetGroupAddRequestData",
-    "GetLoginInfoData",
-    "GetLoginInfoRsp",
-    "GetStrangerInfoData",
-    "GetStrangerInfoRsp",
     "GetFriendListData",
-    "FriendElem",
     "GetFriendListRsp",
     "GetGroupInfoData",
     "GetGroupInfoRsp",
@@ -58,14 +40,32 @@ __all__ = [
     "GetGroupMemberInfoRsp",
     "GetGroupMemberListData",
     "GetGroupMemberListRsp",
+    "GetLoginInfoData",
+    "GetLoginInfoRsp",
+    "GetMsgData",
+    "GetMsgRsp",
     "GetStatusData",
+    "GetStrangerInfoData",
+    "GetStrangerInfoRsp",
     "GetVersionInfoData",
     "GetVersionInfoRsp",
-    "GetCookieData",
-    "GetCookieRsp",
-    "GetCSRFTokenData",
-    "GetCSRFTokenRsp",
-    "GroupReactionData"
+    "GroupReactionData",
+    "SendGroupMsgData",
+    "SendLikeData",
+    "SendMsgData",
+    "SendMsgRsp",
+    "SendPokeData",
+    "SendPrivateMsgData",
+    "SetFriendAddRequestData",
+    "SetGroupAddRequestData",
+    "SetGroupAdminData",
+    "SetGroupBanData",
+    "SetGroupCardData",
+    "SetGroupKickData",
+    "SetGroupLeaveData",
+    "SetGroupNameData",
+    "SetGroupSpecialTitleData",
+    "SetGroupWholeBanData",
 ]
 
 
@@ -94,8 +94,7 @@ class DeleteMsgData(BaseModel):
     message_id: int
 
 
-class EmptyRsp(BaseModel):
-    ...
+class EmptyRsp(BaseModel): ...
 
 
 class GetMsgData(BaseModel):
@@ -107,7 +106,7 @@ class GetMsgRsp(BaseModel):
     message_type: Literal["private", "group"]
     message_id: int
     real_id: int
-    sender: Union[PRIVATE_SENDER, GROUP_SENDER]
+    sender: PRIVATE_SENDER | GROUP_SENDER
     message: list[SEGMENT]
 
 
@@ -188,8 +187,7 @@ class SetGroupAddRequestData(BaseModel):
     reason: str
 
 
-class GetLoginInfoData(BaseModel):
-    ...
+class GetLoginInfoData(BaseModel): ...
 
 
 class GetLoginInfoRsp(BaseModel):
@@ -209,8 +207,7 @@ class GetStrangerInfoRsp(BaseModel):
     age: int
 
 
-class GetFriendListData(BaseModel):
-    ...
+class GetFriendListData(BaseModel): ...
 
 
 class FriendElem(BaseModel):
@@ -219,8 +216,7 @@ class FriendElem(BaseModel):
     remark: str
 
 
-class GetFriendListRsp(RootModel[list[FriendElem]]):
-    ...
+class GetFriendListRsp(RootModel[list[FriendElem]]): ...
 
 
 class GetGroupInfoData(BaseModel):
@@ -235,12 +231,10 @@ class GetGroupInfoRsp(BaseModel):
     max_member_count: int
 
 
-class GetGroupListData(BaseModel):
-    ...
+class GetGroupListData(BaseModel): ...
 
 
-class GetGroupListRsp(RootModel[list[GetGroupInfoRsp]]):
-    ...
+class GetGroupListRsp(RootModel[list[GetGroupInfoRsp]]): ...
 
 
 class GetGroupMemberInfoData(BaseModel):
@@ -271,16 +265,13 @@ class GetGroupMemberListData(BaseModel):
     group_id: int
 
 
-class GetGroupMemberListRsp(RootModel[list[GetGroupMemberInfoRsp]]):
-    ...
+class GetGroupMemberListRsp(RootModel[list[GetGroupMemberInfoRsp]]): ...
 
 
-class GetStatusData(BaseModel):
-    ...
+class GetStatusData(BaseModel): ...
 
 
-class GetVersionInfoData(BaseModel):
-    ...
+class GetVersionInfoData(BaseModel): ...
 
 
 class GetVersionInfoRsp(BaseModel):
@@ -297,8 +288,7 @@ class GetCookieRsp(BaseModel):
     cookies: str
 
 
-class GetCSRFTokenData(BaseModel):
-    ...
+class GetCSRFTokenData(BaseModel): ...
 
 
 class GetCSRFTokenRsp(BaseModel):
@@ -308,5 +298,5 @@ class GetCSRFTokenRsp(BaseModel):
 class GroupReactionData(BaseModel):
     group_id: int
     message_id: str
-    code: Optional[int] = Field(default=None)  # qface
-    emoji: Optional[str] = Field(default=None)  # emoji
+    code: int | None = Field(default=None)  # qface
+    emoji: str | None = Field(default=None)  # emoji

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Literal, Self, cast
+from typing import Literal, Self
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -15,7 +15,7 @@ logger = Logger.fetch("euler").name_custom("euler.onebot.connector")
 class Connector:
     def __init__(self, impls: list[AdapterConfig]):
         self.impls = impls
-        self.forward_app: FastAPI = cast(FastAPI, cast(object, None))
+        self.forward_app: FastAPI | None = None
         self.received: asyncio.Queue[str] = asyncio.Queue()
         self.active_websocket_servers: dict[Literal["root", "api", "event"], WebSocket] = dict()
 
@@ -37,8 +37,11 @@ class Connector:
     async def __aenter__(self) -> Self:
         return await self.setup()
 
-    async def __aexit__(self) -> None:
-        del self
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        if self.forward_app is not None and self.active_websocket_servers:
+            for socket in self.active_websocket_servers.values():
+                if socket.client_state != socket.client_state.DISCONNECTED:
+                    await socket.close()
 
     async def set_http(self) -> None:
         raise NotImplementedError
@@ -88,12 +91,7 @@ class Connector:
                     host = url.hostname
                     port = url.port
                     assert host is not None and port is not None
-                    cfg = UvicornConfig(
-                        self.forward_app,
-                        host=host,
-                        port=port,
-                        log_config=None
-                    )
+                    cfg = UvicornConfig(self.forward_app, host=host, port=port, log_config=None)
                     break
             assert cfg
             server = UvicornServer(cfg)

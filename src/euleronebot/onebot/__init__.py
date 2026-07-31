@@ -1,13 +1,17 @@
 import asyncio
 import traceback
-from typing import TYPE_CHECKING, Any, NoReturn, Union
+from typing import TYPE_CHECKING, Any, NoReturn
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter
 
 from ..hyperogger import Logger
 from .api import *
+from .api import __all__ as _api_all
 from .connector import Connector
 from .events import *
+from .events import __all__ as _events_all
+
+__all__ = [*_api_all, *_events_all, "Adapter", "Connector"]
 
 if TYPE_CHECKING:
     from ..config import AdapterConfig, ForwardWebsocketConfig
@@ -26,51 +30,49 @@ class Adapter:
         self.connector = Connector(impls)
         self.api_calls: asyncio.Queue[BaseAPICall] = asyncio.Queue()
         self.api_validation = TypeAdapter(
-            Union[
-                SendPrivateMessage,
-                SendGroupMessage,
-                SendMessage,
-                DeleteMessage,
-                GetMessage,
-                GetForwardMessage,
-                SendLike,
-                SendPoke,
-                SetGroupKick,
-                SetGroupBan,
-                SetGroupWholeBan,
-                SetGroupAdmin,
-                SetGroupCard,
-                SetGroupName,
-                SetGroupLeave,
-                SetGroupSpecialTitle,
-                SetFriendAddRequest,
-                SetGroupAddRequest,
-                GetLoginInfo,
-                GetStrangerInfo,
-                GetFriendList,
-                GetGroupInfo,
-                GetGroupList,
-                GetGroupMemberInfo,
-                GetGroupMemberList,
-                GetStatus,
-                GetVersionInfo,
-                GetCookie,
-                GetCSRFToken,
-                GroupReaction
-            ]
+            SendPrivateMessage
+            | SendGroupMessage
+            | SendMessage
+            | DeleteMessage
+            | GetMessage
+            | GetForwardMessage
+            | SendLike
+            | SendPoke
+            | SetGroupKick
+            | SetGroupBan
+            | SetGroupWholeBan
+            | SetGroupAdmin
+            | SetGroupCard
+            | SetGroupName
+            | SetGroupLeave
+            | SetGroupSpecialTitle
+            | SetFriendAddRequest
+            | SetGroupAddRequest
+            | GetLoginInfo
+            | GetStrangerInfo
+            | GetFriendList
+            | GetGroupInfo
+            | GetGroupList
+            | GetGroupMemberInfo
+            | GetGroupMemberList
+            | GetStatus
+            | GetVersionInfo
+            | GetCookie
+            | GetCSRFToken
+            | GroupReaction
         )
 
     async def setup(self) -> None:
         self.connector = await self.connector.setup()
 
     async def cycle(self) -> NoReturn:
-        asyncio.create_task(self.connector.run())
+        self._connector_task = asyncio.create_task(self.connector.run())
         while True:
             data = await self.connector.received.get()
             try:
                 api_call = self.api_validation.validate_json(data)
                 await self.api_calls.put(api_call)
-            except (ValueError, TypeError, ValidationError):
+            except (ValueError, TypeError):
                 logger.error(data)
                 logger.error(traceback.format_exc())
                 continue

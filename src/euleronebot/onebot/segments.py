@@ -1,34 +1,46 @@
-from typing import Annotated, Generic, Literal, TypeVar, Union
+from typing import Annotated, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, Field
 
 __all__ = [
-    "BaseSegment",
-    "Text",
     "At",
-    "Reply",
+    "BaseSegment",
     "Face",
-    "Poke",
-    "MarketFace",
-    "Node",
     "Forward",
     "Image",
-    "Record",
-    "Video",
     "Json",
     "JsonData",
-    "SegmentUnion"
+    "MarketFace",
+    "Node",
+    "Poke",
+    "Record",
+    "Reply",
+    "SegmentUnion",
+    "Text",
+    "Video",
 ]
 
 SegmentType = TypeVar("SegmentType")
 
 
-class BaseSegmentData(BaseModel):
-    ...
+class BaseSegmentData(BaseModel): ...
 
 
 class BaseSegment(BaseModel, Generic[SegmentType]):
-    type: Literal["text", "at", "reply", "face", "poke", "mface", "node", "forward", "image", "record", "video", "json"]
+    type: Literal[
+        "text",
+        "at",
+        "reply",
+        "face",
+        "poke",
+        "mface",
+        "node",
+        "forward",
+        "image",
+        "record",
+        "video",
+        "json",
+    ]
     data: SegmentType
 
 
@@ -125,8 +137,7 @@ class Image(BaseSegment[ImageData]):
     data: ImageData
 
 
-class RecordData(MediaBaseData):
-    ...
+class RecordData(MediaBaseData): ...
 
 
 class Record(BaseSegment[RecordData]):
@@ -134,8 +145,7 @@ class Record(BaseSegment[RecordData]):
     data: RecordData
 
 
-class VideoData(MediaBaseData):
-    ...
+class VideoData(MediaBaseData): ...
 
 
 class Video(BaseSegment[VideoData]):
@@ -153,19 +163,6 @@ class Json(BaseSegment[JsonData]):
 
 
 SegmentUnion = Annotated[
-    Union[
-        Text,
-        At,
-        Reply,
-        Face,
-        Poke,
-        MarketFace,
-        Node,
-        Forward,
-        Image,
-        Record,
-        Video,
-        Json
-    ],
-    Field(discriminator="type")
+    Text | At | Reply | Face | Poke | MarketFace | Node | Forward | Image | Record | Video | Json,
+    Field(discriminator="type"),
 ]

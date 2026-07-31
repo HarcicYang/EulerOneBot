@@ -1,13 +1,11 @@
 import time
+from collections.abc import Callable
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Coroutine,
-    Optional,
     Protocol,
-    Type,
-    runtime_checkable
+    TypeVar,
+    runtime_checkable,
 )
 
 from lagrange import Client, Lagrange
@@ -16,7 +14,7 @@ from lagrange.client.events.friend import (
     FriendAddNotify,
     FriendMessage,
     FriendRecall,
-    FriendRequest
+    FriendRequest,
 )
 from lagrange.client.events.group import (
     GroupAdminChange,
@@ -28,11 +26,10 @@ from lagrange.client.events.group import (
     GroupMuteMember,
     GroupNudge,
     GroupReaction,
-    GroupRecall
+    GroupRecall,
 )
 from lagrange.client.events.service import ClientOnline, ServerKick
 
-from ..config import load_config
 from ..hyperogger import Logger
 from ..onebot import Adapter as OneBotAdapter
 from ..onebot import events as onebot_events
@@ -44,24 +41,21 @@ if TYPE_CHECKING:
 else:
     LagrangeProtocol = Any
 
-__all__ = [
-    "LagrangeEventHandler"
-]
+__all__ = ["LagrangeEventHandler"]
 
-appconfig = load_config("./appconfig.json")
 logger = Logger.fetch("euler").name_custom("euler.protocol.handle")
-LagrangeEvent = Type[BaseEvent]
-LagrangeHandler = Callable[["LagrangeEventHandler", Client, LagrangeEvent], Coroutine[Any, Any, None]]
+LagrangeEvent = BaseEvent
+F = TypeVar("F", bound=Callable[..., object])
 
 
 @runtime_checkable
 class RegisteredHandler(Protocol):
-    ev_type: LagrangeEvent
+    ev_type: type[LagrangeEvent]
 
 
-def on(ev_type: LagrangeEvent) -> Callable[[LagrangeHandler], LagrangeHandler]:
-    def dec(func: LagrangeHandler) -> LagrangeHandler:
-        func.ev_type = ev_type
+def on(ev_type: type[LagrangeEvent]) -> Callable[[F], F]:
+    def dec(func: F) -> F:
+        func.ev_type = ev_type  # type: ignore
         return func
 
     return dec
@@ -80,7 +74,7 @@ class LagrangeEventHandler:
                 self.lag.subscribe(getattr(self, i).ev_type, getattr(self, i))
 
     @on(ClientOnline)
-    async def online_handler(self, client: Client, _event: Optional[ClientOnline] = None) -> None:
+    async def online_handler(self, client: Client, _event: ClientOnline) -> None:
         if self.info_updated:
             return
         await info_mgr.uid_mgr.load_all(client)
@@ -94,7 +88,9 @@ class LagrangeEventHandler:
     async def grp_msg_handler(self, client: Client, event: GroupMessage) -> None:
         if event.uin == self.lag.client.uin or len(event.msg_chain) == 0:
             return
-        logger.info(f"[Group] {event.grp_name}({event.grp_id}): @{event.nickname}({event.uin}): {event.msg}")
+        logger.info(
+            f"[Group] {event.grp_name}({event.grp_id}): @{event.nickname}({event.uin}): {event.msg}"
+        )
         if not info_mgr.uid_mgr.is_exist(event.uid):
             info_mgr.uid_mgr.add(event.uid, event.uin)
         guser_info = (await client.get_grp_member_info(event.grp_id, event.uid)).body[0]
@@ -118,7 +114,7 @@ class LagrangeEventHandler:
                     uin=event.uin,
                     uid=event.uid,
                     text=event.msg,
-                    rand=event.rand
+                    rand=event.rand,
                 )
             ),
             user_id=event.uin,
@@ -134,8 +130,8 @@ class LagrangeEventHandler:
                 role=role,  # type: ignore
                 sex="unknown",
                 title="",
-                user_id=event.uin
-            )
+                user_id=event.uin,
+            ),
         )
         await self.adapter.trigger(ev)
 
@@ -159,7 +155,7 @@ class LagrangeEventHandler:
                     timestamp=event.timestamp,
                     uin=event.from_uin,
                     uid=event.from_uid,
-                    text=event.msg
+                    text=event.msg,
                 )
             ),
             user_id=event.from_uin,
@@ -169,8 +165,8 @@ class LagrangeEventHandler:
                 age=user_info.age,
                 nickname=user_info.name,
                 sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",  # type: ignore
-                user_id=event.from_uin
-            )
+                user_id=event.from_uin,
+            ),
         )
         await self.adapter.trigger(ev)
 
@@ -178,11 +174,7 @@ class LagrangeEventHandler:
     async def grp_recall_handler(self, _client: Client, event: GroupRecall) -> None:
         logger.info(f"[Group] {event.grp_id}: message {event.seq} had been deleted")
         msgid = info_mgr.msgid_mgr.search(
-            MsgInfo(
-                scene_id=event.grp_id,
-                scene_type="group",
-                seq=event.seq
-            )
+            MsgInfo(scene_id=event.grp_id, scene_type="group", seq=event.seq)
         )
         if not msgid:
             return
@@ -197,7 +189,7 @@ class LagrangeEventHandler:
             operator_id=opt_uin,
             self_id=self.lag.client.uin,
             time=event.time,
-            user_id=real_info.uin
+            user_id=real_info.uin,
         )
         await self.adapter.trigger(ev)
 
@@ -205,13 +197,11 @@ class LagrangeEventHandler:
     async def pri_recall_handler(self, _client: Client, event: FriendRecall) -> None:
         if event.from_uin == self.lag.client.uin:
             return
-        logger.info(f"[Friend] {event.from_uin} -> {event.to_uin}: message {event.seq} had been deleted")
+        logger.info(
+            f"[Friend] {event.from_uin} -> {event.to_uin}: message {event.seq} had been deleted"
+        )
         msgid = info_mgr.msgid_mgr.search(
-            MsgInfo(
-                scene_id=event.from_uin,
-                scene_type="user",
-                seq=event.seq
-            )
+            MsgInfo(scene_id=event.from_uin, scene_type="user", seq=event.seq)
         )
         if not msgid:
             return
@@ -219,14 +209,16 @@ class LagrangeEventHandler:
             message_id=msgid,
             self_id=self.lag.client.uin,
             time=event.timestamp,
-            user_id=event.from_uin
+            user_id=event.from_uin,
         )
         await self.adapter.trigger(ev)
 
     @on(GroupMuteMember)
     async def grp_mute_handler(self, _client: Client, event: GroupMuteMember) -> None:
         logger.info(
-            f"[Group] {event.grp_id}: member {event.target_uid} had been muted by {event.operator_uid} for {event.duration}s")
+            f"[Group] {event.grp_id}: member {event.target_uid} had been muted "
+            f"by {event.operator_uid} for {event.duration}s"
+        )
         try:
             opt_uin = info_mgr.uid_mgr.from_uid(event.operator_uid)
             uin = 0 if not event.target_uid else info_mgr.uid_mgr.from_uid(event.target_uid)
@@ -239,7 +231,7 @@ class LagrangeEventHandler:
             self_id=self.lag.client.uin,
             sub_type="lift_ban" if event.duration == 0 else "ban",
             time=round(time.time()),
-            user_id=uin
+            user_id=uin,
         )
         await self.adapter.trigger(ev)
 
@@ -259,27 +251,33 @@ class LagrangeEventHandler:
             self_id=self.lag.client.uin,
             sub_type="approve",
             time=round(time.time()),
-            user_id=uin
+            user_id=uin,
         )
         await self.adapter.trigger(ev)
 
     @on(GroupMemberJoinedByInvite)
-    async def grp_invite_join_handler(self, _client: Client, event: GroupMemberJoinedByInvite) -> None:
-        logger.info(f"[Group] {event.grp_id}: member {event.uin} has joined, invited by {event.invitor_uin}")
+    async def grp_invite_join_handler(
+        self, _client: Client, event: GroupMemberJoinedByInvite
+    ) -> None:
+        logger.info(
+            f"[Group] {event.grp_id}: member {event.uin} has joined, invited by {event.invitor_uin}"
+        )
         ev = onebot_events.GroupIncreaseEvent(
             group_id=event.grp_id,
             operator_id=event.invitor_uin,
             self_id=self.lag.client.uin,
             sub_type="invite",
             time=round(time.time()),
-            user_id=event.uin
+            user_id=event.uin,
         )
         await self.adapter.trigger(ev)
 
     @on(GroupMemberQuit)
     async def grp_quit_handler(self, _client: Client, event: GroupMemberQuit) -> None:
         logger.info(
-            f"[Group] {event.grp_id}: member {event.uin} has left{', kicked by ' + event.operator_uid if event.is_kicked else ''}")
+            f"[Group] {event.grp_id}: member {event.uin} has left"
+            f"{', kicked by ' + event.operator_uid if event.is_kicked else ''}"
+        )
         opt_uin = 0
         if event.is_kicked or event.is_kicked_self:
             try:
@@ -293,7 +291,7 @@ class LagrangeEventHandler:
             tp = "kick_me"
         else:
             tp = "leave"
-        if not info_mgr.uid_mgr.is_exist(event.uin) and not event.uin == event.grp_id:
+        if not info_mgr.uid_mgr.is_exist(event.uin) and event.uin != event.grp_id:
             info_mgr.uid_mgr.add(event.uid, event.uin)
         ev = onebot_events.GroupDecreaseEvent(
             group_id=event.grp_id,
@@ -301,7 +299,7 @@ class LagrangeEventHandler:
             self_id=self.lag.client.uin,
             sub_type=tp,  # type: ignore
             time=round(time.time()),
-            user_id=info_mgr.uid_mgr.from_uid(event.uid)
+            user_id=info_mgr.uid_mgr.from_uid(event.uid),
         )
         await self.adapter.trigger(ev)
 
@@ -312,7 +310,7 @@ class LagrangeEventHandler:
             self_id=self.lag.client.uin,
             group_id=event.grp_id,
             user_id=event.sender_uin,
-            target_id=event.target_uin
+            target_id=event.target_uin,
         )
         await self.adapter.trigger(ev)
 
@@ -332,11 +330,19 @@ class LagrangeEventHandler:
             else:
                 uid = ""
                 uin = event.uin  # type: ignore
-        try:
-            msgid = info_mgr.msgid_mgr.search(MsgInfo(scene_type="group", scene_id=event.grp_id, seq=event.seq))
-        except IndexError:
+        msgid = info_mgr.msgid_mgr.search(
+            MsgInfo(scene_type="group", scene_id=event.grp_id, seq=event.seq)
+        )
+        if not msgid:
             msgid = info_mgr.msgid_mgr.add(
-                MsgInfo(scene_type="group", scene_id=event.grp_id, seq=event.seq, uid=uid, uin=uin))
+                MsgInfo(
+                    scene_type="group",
+                    scene_id=event.grp_id,
+                    seq=event.seq,
+                    uid=uid,
+                    uin=uin,
+                )
+            )
         ev = onebot_events.ReactionEvent(
             time=round(time.time()),
             self_id=self.lag.client.uin,
@@ -344,7 +350,7 @@ class LagrangeEventHandler:
             operator_id=uin,
             sub_type="add" if event.is_increase else "remove",
             code=event.emoji_id,
-            count=event.emoji_count
+            count=event.emoji_count,
         )
         await self.adapter.trigger(ev)
 
@@ -362,9 +368,7 @@ class LagrangeEventHandler:
         except ValueError:
             uin = 0
         flag = info_mgr.req_mgr.set_group(
-            grp_id=req.group.grp_id,
-            seq=req.seq,
-            ev_type=req.event_type
+            grp_id=req.group.grp_id, seq=req.seq, ev_type=req.event_type
         )
         ev = onebot_events.GroupRequestEvent(
             time=round(time.time()),
@@ -389,7 +393,7 @@ class LagrangeEventHandler:
             self_id=self.lag.client.uin,
             sub_type="set" if event.is_set else "unset",
             group_id=event.grp_id,
-            user_id=uin
+            user_id=uin,
         )
         await self.adapter.trigger(ev)
 
@@ -403,7 +407,7 @@ class LagrangeEventHandler:
             self_id=self.lag.client.uin,
             user_id=event.from_uin,
             comment=event.message,
-            flag=flag
+            flag=flag,
         )
         await self.adapter.trigger(ev)
 
@@ -413,6 +417,6 @@ class LagrangeEventHandler:
             ev = onebot_events.FriendAddEvent(
                 time=event.timestamp,
                 self_id=self.lag.client.uin,
-                user_id=event.from_uin if event.from_uin != self.lag.client.uin else event.to_uin
+                user_id=event.from_uin if event.from_uin != self.lag.client.uin else event.to_uin,
             )
             await self.adapter.trigger(ev)

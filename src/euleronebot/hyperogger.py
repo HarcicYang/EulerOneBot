@@ -2,17 +2,19 @@ import datetime
 import logging
 import sys
 import traceback
-from typing import Any
+from typing import Any, ClassVar
 
 from .utils import NerdICONs, color_txt, rgb
 
-__all__ = ["Logger", "Levels"]
+__all__ = ["Levels", "Logger"]
 
 
 class Levels:
     def __init__(self, nf_icons: NerdICONs):
         self.nf_icons = nf_icons
-        self.TRACE = color_txt(f"|{nf_icons.nf_cod_debug_breakpoint_log} Trace    |", rgb(184, 255, 254))
+        self.TRACE = color_txt(
+            f"|{nf_icons.nf_cod_debug_breakpoint_log} Trace    |", rgb(184, 255, 254)
+        )
         self.INFO = color_txt(f"|{nf_icons.nf_fa_circle_info} Info     |", rgb(90, 221, 225))
         self.WARNING = color_txt(f"|{nf_icons.nf_fa_warn} Warning  |", rgb(82, 171, 237))
         self.ERROR = color_txt(f"|{nf_icons.nf_cod_error} Error    |", rgb(255, 48, 70))
@@ -39,13 +41,13 @@ class Levels:
 
 
 class Logger:
-    running_loggers: dict[str, "Logger"] = {}
+    running_loggers: ClassVar[dict[str, "Logger"]] = {}
 
     def __init__(self, use_nf: bool = True):
         self.levels = Levels(NerdICONs(use_nf))
         self._use_nf = use_nf
         self.log_level = self.levels.INFO
-        self.log_level_text = ""
+        self.log_level_text = "INFO"
 
     @classmethod
     def create(cls, key: str, level: str, use_nf: bool = True):
@@ -56,7 +58,9 @@ class Logger:
 
     @classmethod
     def fetch(cls, key: str) -> "Logger":
-        return cls.running_loggers.get(key) or cls()
+        if key not in cls.running_loggers:
+            cls.running_loggers[key] = cls()
+        return cls.running_loggers[key]
 
     def set_level(self, level: str):
         if level in self.levels.level_names:
@@ -109,16 +113,20 @@ class Logger:
     def _log(self, message: str, level: str) -> None:
         if self.levels.level_nums[level] < self.levels.level_nums[self.log_level]:
             return
-        time = color_txt(self.levels.nf_icons.nf_weather_time_4 + " " + str(datetime.datetime.now())[:-4],
-                         rgb(65, 128, 176))
+        time = color_txt(
+            self.levels.nf_icons.nf_weather_time_4 + " " + str(datetime.datetime.now())[:-4],
+            rgb(65, 128, 176),
+        )
         if "\n" in message:
             listed = message.split("\n")
-            for i in listed:
-                if listed.index(i) == 0:
+            for idx, i in enumerate(listed):
+                if idx == 0:
                     listed[0] = "\n"
                     content = f" {time} {level} {color_txt(i, rgb(215, 255, 255))}"
                 else:
-                    content = " " * int((len(f"{time}{level}") - 2) / 2) + color_txt(i, rgb(215, 255, 255))
+                    content = " " * int((len(f"{time}{level}") - 2) / 2) + color_txt(
+                        i, rgb(215, 255, 255)
+                    )
                 print(content)
         else:
             content = f" {time} {level} {color_txt(message, rgb(215, 255, 255))}"
