@@ -1,7 +1,7 @@
 import asyncio
 import base64
 import io
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import unquote, urlparse
 
 import httpx
@@ -27,11 +27,18 @@ else:
 
 logger = Logger.fetch("euler").name_custom("euler.transformer")
 
+_background_tasks: set[asyncio.Task[None]] = set()
+
+
+def _spawn_background(task: asyncio.Task[None]) -> None:
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
 
 async def to_onebot_msg(
-        adp: LagrangeProtocol,
-        event: Optional[Union[GroupMessage, FriendMessage]] = None,
-        msg: Optional[MsgInfo] = None
+    adp: LagrangeProtocol,
+    event: GroupMessage | FriendMessage | None = None,
+    msg: MsgInfo | None = None,
 ) -> list[seg.SegmentUnion]:
     new: list[seg.SegmentUnion] = []
     info_renewed = False
@@ -52,7 +59,7 @@ async def to_onebot_msg(
                     uin=i.uin,
                     uid=i.uid,
                     timestamp=i.timestamp,
-                    seq=i.seq
+                    seq=i.seq,
                 )
                 if msgid := info_mgr.msgid_mgr.search(info):
                     pass
@@ -68,7 +75,7 @@ async def to_onebot_msg(
                         uin=i.uin,
                         uid=i.uid,
                         timestamp=i.timestamp,
-                        seq=i.seq
+                        seq=i.seq,
                     )
                 )
             new.append(seg.Reply(data=seg.ReplyData(id=str(msgid))))
@@ -81,7 +88,11 @@ async def to_onebot_msg(
                 info_renewed = True
             new.append(seg.At(data=seg.AtData(qq=str(i.uin))))
         elif isinstance(i, elems.Image):
-            new.append(seg.Image(data=seg.ImageData(file=i.url, url=i.url, summary=i.text, is_emoji=i.is_emoji)))
+            new.append(
+                seg.Image(
+                    data=seg.ImageData(file=i.url, url=i.url, summary=i.text, is_emoji=i.is_emoji)
+                )
+            )
         elif isinstance(i, elems.Video):
             new.append(seg.Video(data=seg.VideoData(file=i.url, url=i.url)))
         elif isinstance(i, elems.Audio):
@@ -94,7 +105,12 @@ async def to_onebot_msg(
             new.append(seg.Poke(data=seg.PokeData(id=str(i.id), type="")))
         elif isinstance(i, elems.MarketFace):
             new.append(
-                seg.MarketFace(data=seg.MarketFaceData(face_id=str(i.face_id), tab_id=str(i.tab_id), name=i.name)))
+                seg.MarketFace(
+                    data=seg.MarketFaceData(
+                        face_id=str(i.face_id), tab_id=str(i.tab_id), name=i.name
+                    )
+                )
+            )
         elif isinstance(i, elems.File) and event:
             if isinstance(event, GroupMessage):
                 ev = onebot_events.GroupFileUploadEvent(
@@ -102,12 +118,7 @@ async def to_onebot_msg(
                     self_id=adp.lag.client.uin,
                     group_id=event.grp_id,
                     user_id=event.uin,
-                    file=FileInfo(
-                        id=str(i.file_id),
-                        name=i.file_name,
-                        size=i.file_size,
-                        busid=0
-                    )
+                    file=FileInfo(id=str(i.file_id), name=i.file_name, size=i.file_size, busid=0),
                 )
                 await adp.adapter.trigger(ev)
             elif isinstance(event, FriendMessage):
@@ -120,8 +131,8 @@ async def to_onebot_msg(
                         name=i.file_name,
                         size=i.file_size,
                         busid=0,
-                        hash=str(i.file_hash)
-                    )
+                        hash=str(i.file_hash),
+                    ),
                 )
                 await adp.adapter.trigger(ev)
             new.append(seg.Text(data=seg.TextData(text="")))
@@ -131,13 +142,9 @@ async def to_onebot_msg(
                     data=seg.ForwardData(
                         id=str(i.resid),
                         content=await to_onebot_msg(  # type: ignore
-                            adp, msg=MsgInfo(
-                                scene_type="user",
-                                scene_id=0,
-                                seq=0,
-                                raw_msg=i.messages
-                            )
-                        )
+                            adp,
+                            msg=MsgInfo(scene_type="user", scene_id=0, seq=0, raw_msg=i.messages),
+                        ),
                     )
                 )
             )
@@ -146,34 +153,30 @@ async def to_onebot_msg(
                 seg.Node(
                     data=seg.NodeData(
                         content=await to_onebot_msg(
-                            adp, msg=MsgInfo(
-                                scene_type="user",
-                                scene_id=i.sender_uin,
-                                seq=0,
-                                raw_msg=i.content
-                            )
+                            adp,
+                            msg=MsgInfo(
+                                scene_type="user", scene_id=i.sender_uin, seq=0, raw_msg=i.content
+                            ),
                         ),
                         user_id=str(i.sender_uin),
-                        nick_name=i.sender_nick
+                        nick_name=i.sender_nick,
                     )
                 )
             )
         elif isinstance(i, elems.Json):
-            new.append(
-                seg.Json(
-                    data=JsonData(data=i.raw.decode())
-                )
-            )
+            new.append(seg.Json(data=JsonData(data=i.raw.decode())))
         else:
             continue
     if info_renewed:
-        asyncio.create_task(info_mgr.save())
+        _spawn_background(asyncio.create_task(info_mgr.save()))
     if len(new) == 0:
         logger.warning(f"Empty message: {msgc}")
     return new
 
 
-async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: TargetInfo) -> list[LgrElement]:
+async def to_lagrange_msg(
+    msg: list[seg.BaseSegment], lgrc: Client, target: TargetInfo
+) -> list[LgrElement]:
     new: list[LgrElement] = []
     for i in msg:
         if isinstance(i, seg.Text):
@@ -184,7 +187,7 @@ async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: Targ
             else:
                 try:
                     qq = int(i.data.qq)
-                except TypeError:
+                except ValueError:
                     continue
                 uid = info_mgr.uid_mgr.from_uin(qq)
                 try:
@@ -196,22 +199,43 @@ async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: Targ
         elif isinstance(i, seg.Reply):
             msgid = int(i.data.id)
             msg_info = info_mgr.msgid_mgr.fetch(msgid)
-            new.append(elems.Quote(seq=msg_info.seq, uin=msg_info.uin, timestamp=msg_info.timestamp, uid=msg_info.uid,
-                                   msg=msg_info.text))
+            new.append(
+                elems.Quote(
+                    seq=msg_info.seq,
+                    uin=msg_info.uin,
+                    timestamp=msg_info.timestamp,
+                    uid=msg_info.uid,
+                    msg=msg_info.text,
+                )
+            )
         elif isinstance(i, seg.Face):
             faceid = int(i.data.id)
             new.append(elems.Emoji(id=faceid))
         elif isinstance(i, seg.Poke):
             pass
         elif isinstance(i, seg.MarketFace):
-            new.append(elems.MarketFace(face_id=i.data.face_id.encode(), name=i.data.name, tab_id=int(i.data.tab_id),
-                                        width=512, height=512))
+            new.append(
+                elems.MarketFace(
+                    face_id=i.data.face_id.encode(),
+                    name=i.data.name,
+                    tab_id=int(i.data.tab_id),
+                    width=512,
+                    height=512,
+                )
+            )
         elif isinstance(i, seg.Node):
-            new.append(elems.ForwardNode(content=await to_lagrange_msg(i.data.content, lgrc, target),  # type: ignore
-                                         sender_uin=int(i.data.user_id), sender_nick=i.data.nick_name))
+            new.append(
+                elems.ForwardNode(
+                    content=await to_lagrange_msg(i.data.content, lgrc, target),  # type: ignore
+                    sender_uin=int(i.data.user_id),
+                    sender_nick=i.data.nick_name,
+                )
+            )
         elif isinstance(i, seg.Forward):
             if i.data.content:
-                new.append(elems.MulitMsg(messages=await to_lagrange_msg(i.data.content, lgrc, target)))  # type: ignore
+                new.append(
+                    elems.MulitMsg(messages=await to_lagrange_msg(i.data.content, lgrc, target))
+                )  # type: ignore
             elif i.data.id:
                 new.append(elems.MulitMsg(resid=i.data.id))
             else:
@@ -233,12 +257,14 @@ async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: Targ
                     if retried == 3:
                         continue
                     if target.target == "group":
-                        img = await lgrc.upload_grp_image(grp_id=target.id, image=io.BytesIO(response.content))
+                        img = await lgrc.upload_grp_image(
+                            grp_id=target.id, image=io.BytesIO(response.content)
+                        )
                     else:
                         img = await lgrc.upload_friend_image(
                             uid=info_mgr.uid_mgr.from_uin(target.id),
                             is_emoji=i.data.is_emoji,
-                            image=io.BytesIO(response.content)
+                            image=io.BytesIO(response.content),
                         )
             elif scheme == "file":
                 with open(path, "rb") as f:
@@ -248,7 +274,7 @@ async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: Targ
                         img = await lgrc.upload_friend_image(
                             uid=info_mgr.uid_mgr.from_uin(target.id),
                             is_emoji=i.data.is_emoji,
-                            image=f
+                            image=f,
                         )
             elif scheme == "base64":
                 data = i.data.file.removeprefix("base64://")
@@ -259,7 +285,7 @@ async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: Targ
                     img = await lgrc.upload_friend_image(
                         uid=info_mgr.uid_mgr.from_uin(target.id),
                         is_emoji=i.data.is_emoji,
-                        image=io.BytesIO(img)
+                        image=io.BytesIO(img),
                     )
             else:
                 continue
@@ -272,11 +298,13 @@ async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: Targ
                 async with httpx.AsyncClient() as cli:
                     response = await cli.get(url.geturl())
                     if target.target == "group":
-                        voice = await lgrc.upload_grp_audio(grp_id=target.id, voice=io.BytesIO(response.content))
+                        voice = await lgrc.upload_grp_audio(
+                            grp_id=target.id, voice=io.BytesIO(response.content)
+                        )
                     else:
                         voice = await lgrc.upload_friend_audio(
                             uid=info_mgr.uid_mgr.from_uin(target.id),
-                            voice=io.BytesIO(response.content)
+                            voice=io.BytesIO(response.content),
                         )
             elif scheme == "file":
                 with open(path, "rb") as f:
@@ -284,8 +312,7 @@ async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: Targ
                         voice = await lgrc.upload_grp_audio(grp_id=target.id, voice=f)
                     else:
                         voice = await lgrc.upload_friend_audio(
-                            uid=info_mgr.uid_mgr.from_uin(target.id),
-                            voice=f
+                            uid=info_mgr.uid_mgr.from_uin(target.id), voice=f
                         )
             elif scheme == "base64":
                 data = i.data.file.removeprefix("base64://")
@@ -294,8 +321,7 @@ async def to_lagrange_msg(msg: list[seg.BaseSegment], lgrc: Client, target: Targ
                     voice = await lgrc.upload_grp_audio(grp_id=target.id, voice=io.BytesIO(voice))
                 else:
                     voice = await lgrc.upload_friend_audio(
-                        uid=info_mgr.uid_mgr.from_uin(target.id),
-                        voice=io.BytesIO(voice)
+                        uid=info_mgr.uid_mgr.from_uin(target.id), voice=io.BytesIO(voice)
                     )
             else:
                 continue

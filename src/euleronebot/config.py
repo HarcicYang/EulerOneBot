@@ -1,5 +1,5 @@
 import os
-from typing import Annotated, Literal, Union, cast
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
@@ -39,7 +39,8 @@ class HTTPPostConfig(BaseAdapterConfig):
 
 
 AdapterConfig = Annotated[
-    Union[HTTPConfig, HTTPPostConfig, ForwardWebsocketConfig, ReverseWebsocketConfig], Field(discriminator="type")
+    HTTPConfig | HTTPPostConfig | ForwardWebsocketConfig | ReverseWebsocketConfig,
+    Field(discriminator="type"),
 ]
 
 
@@ -62,19 +63,19 @@ class BotConfig(BaseSettings):
     heartbeat: HeartbeatConfig = HeartbeatConfig()
 
 
-loaded_config: BotConfig = cast(BotConfig, cast(object, None))
+loaded_config: BotConfig | None = None
 
 
 def load_config(file: str) -> BotConfig:
-    if loaded_config:
+    if loaded_config is not None:
         return loaded_config
     if os.path.exists(file):
-        with open(file, "r", encoding="utf-8") as f:
+        with open(file, encoding="utf-8") as f:
             return BotConfig.model_validate_json(f.read())
     else:
         try:
             with open(file, "w", encoding="utf-8") as f:
                 f.write(BotConfig().model_dump_json(indent=2, ensure_ascii=False))
         except Exception as e:
-            raise RuntimeError(f"无法创建配置文件: {e} ，请检查路径是否有误")
+            raise RuntimeError(f"无法创建配置文件: {e} ，请检查路径是否有误") from e
         raise FileNotFoundError(f"配置文件 {file} 不存在， 已创建，请填写后重启")

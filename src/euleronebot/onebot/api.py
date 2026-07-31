@@ -1,55 +1,24 @@
-from typing import Generic, Literal, Optional, TypeVar
+from typing import Generic, Literal, TypeVar
 
 from pydantic import BaseModel
 
 from .api_data import *
 
-DataType = TypeVar('DataType')
-ResponseType = TypeVar('ResponseType')
+DataType = TypeVar("DataType")
+ResponseType = TypeVar("ResponseType")
 
 __all__ = [
+    "ActionFailedResponse",
     "BaseAPICall",
     "BaseAPIResponse",
-    "SendPrivateMessage",
-    "SendPrivateMsgData",
-    "SendGroupMessage",
-    "SendGroupMsgData",
-    "SendMessage",
-    "SendMessageResponse",
     "DeleteMessage",
     "DeleteMessageResponse",
-    "GetMessage",
-    "GetMessageResponse",
+    "GetCSRFToken",
+    "GetCSRFTokenResponse",
+    "GetCookie",
+    "GetCookieResponse",
     "GetForwardMessage",
     "GetForwardMessageResponse",
-    "SendLike",
-    "SendLikeResponse",
-    "SendPoke",
-    "SendPokeResponse",
-    "SetGroupKick",
-    "SetGroupKickResponse",
-    "SetGroupBan",
-    "SetGroupBanResponse",
-    "SetGroupWholeBan",
-    "SetGroupWholeBanResponse",
-    "SetGroupAdmin",
-    "SetGroupAdminResponse",
-    "SetGroupCard",
-    "SetGroupCardResponse",
-    "SetGroupName",
-    "SetGroupNameResponse",
-    "SetGroupLeave",
-    "SetGroupLeaveResponse",
-    "SetGroupSpecialTitle",
-    "SetGroupSpecialTitleResponse",
-    "SetFriendAddRequest",
-    "SetFriendAddRequestResponse",
-    "SetGroupAddRequest",
-    "SetGroupAddRequestResponse",
-    "GetLoginInfo",
-    "GetLoginInfoResponse",
-    "GetStrangerInfo",
-    "GetStrangerInfoResponse",
     "GetFriendList",
     "GetFriendListResponse",
     "GetGroupInfo",
@@ -60,17 +29,48 @@ __all__ = [
     "GetGroupMemberInfoResponse",
     "GetGroupMemberList",
     "GetGroupMemberListResponse",
+    "GetLoginInfo",
+    "GetLoginInfoResponse",
+    "GetMessage",
+    "GetMessageResponse",
     "GetStatus",
     "GetStatusResponse",
+    "GetStrangerInfo",
+    "GetStrangerInfoResponse",
     "GetVersionInfo",
     "GetVersionInfoResponse",
-    "GetCookie",
-    "GetCookieResponse",
-    "GetCSRFToken",
-    "GetCSRFTokenResponse",
     "GroupReaction",
     "GroupReactionResponse",
-    "ActionFailedResponse"
+    "SendGroupMessage",
+    "SendGroupMsgData",
+    "SendLike",
+    "SendLikeResponse",
+    "SendMessage",
+    "SendMessageResponse",
+    "SendPoke",
+    "SendPokeResponse",
+    "SendPrivateMessage",
+    "SendPrivateMsgData",
+    "SetFriendAddRequest",
+    "SetFriendAddRequestResponse",
+    "SetGroupAddRequest",
+    "SetGroupAddRequestResponse",
+    "SetGroupAdmin",
+    "SetGroupAdminResponse",
+    "SetGroupBan",
+    "SetGroupBanResponse",
+    "SetGroupCard",
+    "SetGroupCardResponse",
+    "SetGroupKick",
+    "SetGroupKickResponse",
+    "SetGroupLeave",
+    "SetGroupLeaveResponse",
+    "SetGroupName",
+    "SetGroupNameResponse",
+    "SetGroupSpecialTitle",
+    "SetGroupSpecialTitleResponse",
+    "SetGroupWholeBan",
+    "SetGroupWholeBanResponse",
 ]
 
 
@@ -83,7 +83,7 @@ class BaseAPICall(BaseModel, Generic[DataType]):
 class BaseAPIResponse(BaseModel, Generic[ResponseType]):
     status: Literal["ok", "failed"]
     retcode: int
-    data: Optional[ResponseType]
+    data: ResponseType | None
     echo: str = ""
 
 
@@ -99,225 +99,196 @@ class SendMessage(BaseAPICall[SendMsgData]):
     action: Literal["send_msg"] = "send_msg"
 
 
-class SendMessageResponse(BaseAPIResponse[SendMsgRsp]):
-    ...
+class SendMessageResponse(BaseAPIResponse[SendMsgRsp]): ...
 
 
 class DeleteMessage(BaseAPICall[DeleteMsgData]):
     action: Literal["delete_msg"] = "delete_msg"
 
 
-class DeleteMessageResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class DeleteMessageResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class GetMessage(BaseAPICall[GetMsgData]):
     action: Literal["get_msg"] = "get_msg"
 
 
-class GetMessageResponse(BaseAPIResponse[GetMsgRsp]):
-    ...
+class GetMessageResponse(BaseAPIResponse[GetMsgRsp]): ...
 
 
 class GetForwardMessage(BaseAPICall[GetForwardMsgData]):
     action: Literal["get_forward_msg"] = "get_forward_msg"
 
 
-class GetForwardMessageResponse(BaseAPIResponse[GetForwardMsgRsp]):
-    ...
+class GetForwardMessageResponse(BaseAPIResponse[GetForwardMsgRsp]): ...
 
 
 class SendLike(BaseAPICall[SendLikeData]):
     action: Literal["send_like"] = "send_like"
 
 
-class SendLikeResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class SendLikeResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class SendPoke(BaseAPICall[SendPokeData]):
     action: Literal["send_poke"] = "send_poke"
 
 
-class SendPokeResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class SendPokeResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class SetGroupKick(BaseAPICall[SetGroupKickData]):
     action: Literal["set_group_kick"] = "set_group_kick"
 
 
-class SetGroupKickResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class SetGroupKickResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class SetGroupBan(BaseAPICall[SetGroupBanData]):
     action: Literal["set_group_ban"] = "set_group_ban"
 
 
-class SetGroupBanResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class SetGroupBanResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class SetGroupWholeBan(BaseAPICall[SetGroupWholeBanData]):
     action: Literal["set_group_whole_ban"] = "set_group_whole_ban"
 
 
-class SetGroupWholeBanResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class SetGroupWholeBanResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class SetGroupAdmin(BaseAPICall[SetGroupAdminData]):
     action: Literal["set_group_admin"] = "set_group_admin"
 
 
-class SetGroupAdminResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class SetGroupAdminResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class SetGroupCard(BaseAPICall[SetGroupCardData]):
     action: Literal["set_group_card"] = "set_group_card"
 
 
-class SetGroupCardResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class SetGroupCardResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class SetGroupName(BaseAPICall[SetGroupNameData]):
     action: Literal["set_group_name"] = "set_group_name"
 
 
-class SetGroupNameResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class SetGroupNameResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class SetGroupLeave(BaseAPICall[SetGroupLeaveData]):
     action: Literal["set_group_leave"] = "set_group_leave"
 
 
-class SetGroupLeaveResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class SetGroupLeaveResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class SetGroupSpecialTitle(BaseAPICall[SetGroupSpecialTitleData]):
     action: Literal["set_group_special_title"] = "set_group_special_title"
 
 
-class SetGroupSpecialTitleResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class SetGroupSpecialTitleResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class SetFriendAddRequest(BaseAPICall[SetFriendAddRequestData]):
     action: Literal["set_friend_add_request"] = "set_friend_add_request"
 
 
-class SetFriendAddRequestResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class SetFriendAddRequestResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class SetGroupAddRequest(BaseAPICall[SetGroupAddRequestData]):
     action: Literal["set_group_add_request"] = "set_group_add_request"
 
 
-class SetGroupAddRequestResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class SetGroupAddRequestResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class GetLoginInfo(BaseAPICall[GetLoginInfoData]):
     action: Literal["get_login_info"] = "get_login_info"
 
 
-class GetLoginInfoResponse(BaseAPIResponse[GetLoginInfoRsp]):
-    ...
+class GetLoginInfoResponse(BaseAPIResponse[GetLoginInfoRsp]): ...
 
 
 class GetStrangerInfo(BaseAPICall[GetStrangerInfoData]):
     action: Literal["get_stranger_info"] = "get_stranger_info"
 
 
-class GetStrangerInfoResponse(BaseAPIResponse[GetStrangerInfoRsp]):
-    ...
+class GetStrangerInfoResponse(BaseAPIResponse[GetStrangerInfoRsp]): ...
 
 
 class GetFriendList(BaseAPICall[GetFriendListData]):
     action: Literal["get_friend_list"] = "get_friend_list"
 
 
-class GetFriendListResponse(BaseAPIResponse[GetFriendListRsp]):
-    ...
+class GetFriendListResponse(BaseAPIResponse[GetFriendListRsp]): ...
 
 
 class GetGroupInfo(BaseAPICall[GetGroupInfoData]):
     action: Literal["get_group_info"] = "get_group_info"
 
 
-class GetGroupInfoResponse(BaseAPIResponse[GetGroupInfoRsp]):
-    ...
+class GetGroupInfoResponse(BaseAPIResponse[GetGroupInfoRsp]): ...
 
 
 class GetGroupList(BaseAPICall[GetGroupListData]):
     action: Literal["get_group_list"] = "get_group_list"
 
 
-class GetGroupListResponse(BaseAPIResponse[GetGroupListRsp]):
-    ...
+class GetGroupListResponse(BaseAPIResponse[GetGroupListRsp]): ...
 
 
 class GetGroupMemberInfo(BaseAPICall[GetGroupMemberInfoData]):
     action: Literal["get_group_member_info"] = "get_group_member_info"
 
 
-class GetGroupMemberInfoResponse(BaseAPIResponse[GetGroupMemberInfoRsp]):
-    ...
+class GetGroupMemberInfoResponse(BaseAPIResponse[GetGroupMemberInfoRsp]): ...
 
 
 class GetGroupMemberList(BaseAPICall[GetGroupMemberListData]):
     action: Literal["get_group_member_list"] = "get_group_member_list"
 
 
-class GetGroupMemberListResponse(BaseAPIResponse[GetGroupMemberListRsp]):
-    ...
+class GetGroupMemberListResponse(BaseAPIResponse[GetGroupMemberListRsp]): ...
 
 
 class GetStatus(BaseAPICall[GetStatusData]):
     action: Literal["get_status"] = "get_status"
 
 
-class GetStatusResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class GetStatusResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class GetVersionInfo(BaseAPICall[GetVersionInfoData]):
     action: Literal["get_version_info"] = "get_version_info"
 
 
-class GetVersionInfoResponse(BaseAPIResponse[GetVersionInfoRsp]):
-    ...
+class GetVersionInfoResponse(BaseAPIResponse[GetVersionInfoRsp]): ...
 
 
 class GetCookie(BaseAPICall[GetCookieData]):
     action: Literal["get_cookies"] = "get_cookies"
 
 
-class GetCookieResponse(BaseAPIResponse[GetCookieRsp]):
-    ...
+class GetCookieResponse(BaseAPIResponse[GetCookieRsp]): ...
 
 
 class GetCSRFToken(BaseAPICall[GetCSRFTokenData]):
     action: Literal["get_csrf_token"] = "get_csrf_token"
 
 
-class GetCSRFTokenResponse(BaseAPIResponse[GetCSRFTokenRsp]):
-    ...
+class GetCSRFTokenResponse(BaseAPIResponse[GetCSRFTokenRsp]): ...
 
 
 class GroupReaction(BaseAPICall[GroupReactionData]):
     action: Literal["group_reaction"] = "group_reaction"
 
 
-class GroupReactionResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class GroupReactionResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
-class ActionFailedResponse(BaseAPIResponse[EmptyRsp]):
-    ...
+class ActionFailedResponse(BaseAPIResponse[EmptyRsp]): ...

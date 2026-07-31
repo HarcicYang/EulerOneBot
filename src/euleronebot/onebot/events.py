@@ -1,42 +1,42 @@
-from typing import TYPE_CHECKING, Any, Literal, Union
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel
 
 from .models import BotStatus
 
 if TYPE_CHECKING:
-    from .segments import BaseSegment
+    from .segments import SegmentUnion
 
-    SEGMENT = BaseSegment
+    SEGMENT = SegmentUnion
 else:
     SEGMENT = Any
 
 __all__ = [
     "BaseEvent",
-    "PrivateSender",
-    "GroupSender",
-    "MessageEvent",
-    "GroupMessageEvent",
-    "PrivateMessageEvent",
-    "NoticeEvent",
     "FileInfo",
-    "GroupFileUploadEvent",
+    "FriendAddEvent",
     "FriendFileUploadEvent",
+    "FriendRecallEvent",
+    "FriendRequestEvent",
     "GroupAdminEvent",
     "GroupDecreaseEvent",
+    "GroupFileUploadEvent",
     "GroupIncreaseEvent",
+    "GroupMessageEvent",
     "GroupMuteEvent",
-    "FriendAddEvent",
-    "GroupRecallEvent",
-    "FriendRecallEvent",
     "GroupPokeEvent",
-    "RequestEvent",
-    "FriendRequestEvent",
+    "GroupRecallEvent",
     "GroupRequestEvent",
-    "MetaEvent",
-    "LifecycleEvent",
+    "GroupSender",
     "HeartbeatEvent",
-    "ReactionEvent"
+    "LifecycleEvent",
+    "MessageEvent",
+    "MetaEvent",
+    "NoticeEvent",
+    "PrivateMessageEvent",
+    "PrivateSender",
+    "ReactionEvent",
+    "RequestEvent",
 ]
 
 
@@ -74,27 +74,38 @@ class MessageEvent(BaseEvent):
     message: list[SEGMENT]
     raw_message: str
     font: int = 0
-    sender: Union[PrivateSender, GroupSender]
+    sender: PrivateSender | GroupSender
 
 
 class GroupMessageEvent(MessageEvent):
     message_type: Literal["group"] = "group"
     sub_type: Literal["group"] = "group"
     anonymous: None = None
-    sender: Union[GroupSender]
+    sender: GroupSender
     group_id: int
 
 
 class PrivateMessageEvent(MessageEvent):
     message_type: Literal["private"] = "private"
     sub_type: Literal["friend"] = "friend"
-    sender: Union[PrivateSender]
+    sender: PrivateSender
 
 
 class NoticeEvent(BaseEvent):
     post_type: Literal["notice"] = "notice"
     notice_type: Literal[
-        "group_upload", "group_admin", "group_decrease", "group_increase", "group_ban", "friend_add", "group_recall", "friend_recall", "notify", "reaction"]
+        "group_upload",
+        "friend_upload",
+        "group_admin",
+        "group_decrease",
+        "group_increase",
+        "group_ban",
+        "friend_add",
+        "group_recall",
+        "friend_recall",
+        "notify",
+        "reaction",
+    ]
 
 
 class FileInfo(BaseModel):
@@ -113,7 +124,7 @@ class GroupFileUploadEvent(NoticeEvent):
 
 
 class FriendFileUploadEvent(NoticeEvent):
-    notice_type: Literal["group_upload"] = "group_upload"
+    notice_type: Literal["friend_upload"] = "friend_upload"
     user_id: int
     file: FileInfo
 
