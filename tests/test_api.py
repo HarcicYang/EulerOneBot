@@ -14,9 +14,7 @@ from euleronebot.onebot.segments import Text
 
 
 def test_send_private_message_default_action():
-    call = SendPrivateMessage(
-        params=SendPrivateMsgData(user_id=1, message=[Text(data={"text": "hi"})])
-    )
+    call = SendPrivateMessage(params=SendPrivateMsgData(user_id=1, message=[Text(data={"text": "hi"})]))
     assert call.action == "send_private_msg"
     assert call.model_dump()["action"] == "send_private_msg"
 
@@ -32,16 +30,12 @@ def test_adapter_discriminates_by_action():
 
 
 def test_send_group_message_action():
-    call = SendGroupMessage.model_validate(
-        {"action": "send_group_msg", "params": {"group_id": 2, "message": []}}
-    )
+    call = SendGroupMessage.model_validate({"action": "send_group_msg", "params": {"group_id": 2, "message": []}})
     assert call.action == "send_group_msg"
 
 
 def test_set_group_ban_default_duration():
-    call = SetGroupBan.model_validate(
-        {"action": "set_group_ban", "params": {"user_id": 1, "group_id": 2}}
-    )
+    call = SetGroupBan.model_validate({"action": "set_group_ban", "params": {"user_id": 1, "group_id": 2}})
     assert call.params.duration == 30 * 60
 
 

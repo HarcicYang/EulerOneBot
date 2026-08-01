@@ -12,9 +12,7 @@ __all__ = ["Levels", "Logger"]
 class Levels:
     def __init__(self, nf_icons: NerdICONs):
         self.nf_icons = nf_icons
-        self.TRACE = color_txt(
-            f"|{nf_icons.nf_cod_debug_breakpoint_log} Trace    |", rgb(184, 255, 254)
-        )
+        self.TRACE = color_txt(f"|{nf_icons.nf_cod_debug_breakpoint_log} Trace    |", rgb(184, 255, 254))
         self.INFO = color_txt(f"|{nf_icons.nf_fa_circle_info} Info     |", rgb(90, 221, 225))
         self.WARNING = color_txt(f"|{nf_icons.nf_fa_warn} Warning  |", rgb(82, 171, 237))
         self.ERROR = color_txt(f"|{nf_icons.nf_cod_error} Error    |", rgb(255, 48, 70))
@@ -124,9 +122,7 @@ class Logger:
                     listed[0] = "\n"
                     content = f" {time} {level} {color_txt(i, rgb(215, 255, 255))}"
                 else:
-                    content = " " * int((len(f"{time}{level}") - 2) / 2) + color_txt(
-                        i, rgb(215, 255, 255)
-                    )
+                    content = " " * int((len(f"{time}{level}") - 2) / 2) + color_txt(i, rgb(215, 255, 255))
                 print(content)
         else:
             content = f" {time} {level} {color_txt(message, rgb(215, 255, 255))}"

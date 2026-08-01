@@ -51,6 +51,4 @@ async def with_retry(factory: Callable[..., Coroutine[Any, Any, T]], maximum: in
 
     next_line = "\n"
     name = getattr(factory, "__name__", "")
-    raise RuntimeError(
-        f"Max retries ({maximum}) exceed when operating '{name}':\n{next_line.join(exceptions)}\n"
-    )
+    raise RuntimeError(f"Max retries ({maximum}) exceed when operating '{name}':\n{next_line.join(exceptions)}\n")

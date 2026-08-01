@@ -56,9 +56,7 @@ class LagrangeImpl:
     def subscribe(self) -> None:
         for i in dir(self):
             if isinstance(getattr(self, i), RegisteredHandler):
-                self.subscriptions[getattr(self, i).call_type.model_fields["action"].default] = (
-                    getattr(self, i)
-                )
+                self.subscriptions[getattr(self, i).call_type.model_fields["action"].default] = getattr(self, i)
 
     async def api_service(self) -> NoReturn:
         while True:
@@ -68,28 +66,20 @@ class LagrangeImpl:
                     rsp = await with_retry(lambda c=call: handler(c.params))
                     rsp.echo = call.echo
                 else:
-                    rsp = ActionFailedResponse(
-                        status="failed", retcode=1404, data=EmptyRsp(), echo=call.echo
-                    )
+                    rsp = ActionFailedResponse(status="failed", retcode=1404, data=EmptyRsp(), echo=call.echo)
                 await self.adapter.report(rsp)
             except Exception as e:  # noinspection PyBroadException
                 logger.error(repr(e))
                 logger.error(traceback.format_exc())
-                rsp = ActionFailedResponse(
-                    status="failed", retcode=1400, data=EmptyRsp(), echo=call.echo
-                )
+                rsp = ActionFailedResponse(status="failed", retcode=1400, data=EmptyRsp(), echo=call.echo)
                 await self.adapter.report(rsp)
 
     @on(SendMessage)
     async def send_message(self, data: SendMsgData) -> SendMessageResponse:
         if data.group_id:
-            return await self.send_group_message(
-                SendGroupMsgData(group_id=data.group_id, message=data.message)
-            )
+            return await self.send_group_message(SendGroupMsgData(group_id=data.group_id, message=data.message))
         else:
-            return await self.send_private_message(
-                SendPrivateMsgData(user_id=data.user_id, message=data.message)
-            )
+            return await self.send_private_message(SendPrivateMsgData(user_id=data.user_id, message=data.message))
 
     @on(SendPrivateMessage)
     async def send_private_message(self, data: SendPrivateMsgData) -> SendMessageResponse:
@@ -104,9 +94,7 @@ class LagrangeImpl:
                 info_mgr.uid_mgr.from_uin(data.user_id),
             )
         else:
-            seq = await self.lag.client.send_friend_msg(
-                uid=info_mgr.uid_mgr.from_uin(data.user_id), msg_chain=new_msg
-            )
+            seq = await self.lag.client.send_friend_msg(uid=info_mgr.uid_mgr.from_uin(data.user_id), msg_chain=new_msg)
         text = ""
         for i in new_msg:
             text += i.display
@@ -137,9 +125,7 @@ class LagrangeImpl:
             seq = await self.lag.client.send_grp_msg(grp_id=data.group_id, msg_chain=new_msg)
         try:
             rand = (
-                await self.lag.client.get_grp_msg(
-                    grp_id=data.group_id, start=seq, end=seq, filter_deleted_msg=False
-                )
+                await self.lag.client.get_grp_msg(grp_id=data.group_id, start=seq, end=seq, filter_deleted_msg=False)
             )[0].rand
         except AttributeError:
             rand = 0
@@ -209,9 +195,7 @@ class LagrangeImpl:
                     sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",  # type: ignore
                     role="member",
                     age=0 if not user_info else user_info.age,
-                    area=""
-                    if not user_info
-                    else f"{user_info.country} {user_info.province} {user_info.city}",
+                    area="" if not user_info else f"{user_info.country} {user_info.province} {user_info.city}",
                     card="",
                     level="",
                     nickname="" if not user_info else user_info.name,
@@ -275,16 +259,12 @@ class LagrangeImpl:
 
     @on(SetGroupKick)
     async def set_group_kick(self, data: SetGroupKickData) -> SetGroupKickResponse:
-        await self.lag.client.kick_grp_member(
-            grp_id=data.group_id, uin=data.user_id, permanent=data.reject_add_request
-        )
+        await self.lag.client.kick_grp_member(grp_id=data.group_id, uin=data.user_id, permanent=data.reject_add_request)
         return SetGroupKickResponse(status="ok", retcode=0, data=EmptyRsp())
 
     @on(SetGroupBan)
     async def set_group_ban(self, data: SetGroupBanData) -> SetGroupBanResponse:
-        await self.lag.client.set_mute_member(
-            grp_id=data.group_id, uin=data.user_id, duration=data.duration
-        )
+        await self.lag.client.set_mute_member(grp_id=data.group_id, uin=data.user_id, duration=data.duration)
         return SetGroupBanResponse(status="ok", retcode=0, data=EmptyRsp())
 
     @on(SetGroupWholeBan)
@@ -315,9 +295,7 @@ class LagrangeImpl:
         return SetGroupLeaveResponse(status="ok", retcode=0, data=EmptyRsp())
 
     @on(SetGroupAddRequest)
-    async def set_group_add_request(
-        self, data: SetGroupAddRequestData
-    ) -> SetGroupAddRequestResponse:
+    async def set_group_add_request(self, data: SetGroupAddRequestData) -> SetGroupAddRequestResponse:
         info = info_mgr.req_mgr.fetch(data.flag)
         if info.type == "group":
             await self.lag.client.set_grp_request(
@@ -339,14 +317,10 @@ class LagrangeImpl:
         )
 
     @on(GetGroupMemberInfo)
-    async def get_group_member_info(
-        self, data: GetGroupMemberInfoData
-    ) -> GetGroupMemberInfoResponse:
-        info = (
-            await self.lag.client.get_grp_member_info(
-                data.group_id, info_mgr.uid_mgr.from_uin(data.user_id)
-            )
-        ).body[0]
+    async def get_group_member_info(self, data: GetGroupMemberInfoData) -> GetGroupMemberInfoResponse:
+        info = (await self.lag.client.get_grp_member_info(data.group_id, info_mgr.uid_mgr.from_uin(data.user_id))).body[
+            0
+        ]
         user_info = await self.lag.client.get_user_info(data.user_id)
         role = "member"
         if info.is_owner:
@@ -401,10 +375,7 @@ class LagrangeImpl:
             status="ok",
             retcode=0,
             data=GetFriendListRsp.model_validate(
-                [
-                    FriendElem(user_id=i.uin, nickname=i.nickname or "", remark=i.remark or "")
-                    for i in friends
-                ]
+                [FriendElem(user_id=i.uin, nickname=i.nickname or "", remark=i.remark or "") for i in friends]
             ),
         )
 
@@ -428,9 +399,7 @@ class LagrangeImpl:
         )
 
     @on(GetGroupMemberList)
-    async def get_group_member_list(
-        self, data: GetGroupMemberListData
-    ) -> GetGroupMemberListResponse:
+    async def get_group_member_list(self, data: GetGroupMemberListData) -> GetGroupMemberListResponse:
         members = await self.lag.client.get_grp_members(grp_id=data.group_id)
         result = []
         for i in members.body:
@@ -442,15 +411,9 @@ class LagrangeImpl:
             else:
                 uin = i.account.uin
             result.append(
-                (
-                    await self.get_group_member_info(
-                        GetGroupMemberInfoData(group_id=data.group_id, user_id=uin)
-                    )
-                ).data
+                (await self.get_group_member_info(GetGroupMemberInfoData(group_id=data.group_id, user_id=uin))).data
             )
-        return GetGroupMemberListResponse(
-            status="ok", retcode=0, data=GetGroupMemberListRsp.model_validate(result)
-        )
+        return GetGroupMemberListResponse(status="ok", retcode=0, data=GetGroupMemberListRsp.model_validate(result))
 
     @on(GroupReaction)
     async def group_reaction(self, data: GroupReactionData) -> GroupReactionResponse:
@@ -461,9 +424,7 @@ class LagrangeImpl:
         return GroupReactionResponse(status="ok", retcode=0, data=EmptyRsp())
 
     @on(SetGroupSpecialTitle)
-    async def set_group_special_title(
-        self, data: SetGroupSpecialTitleData
-    ) -> SetGroupSpecialTitleResponse:
+    async def set_group_special_title(self, data: SetGroupSpecialTitleData) -> SetGroupSpecialTitleResponse:
         uid = info_mgr.uid_mgr.from_uin(data.user_id)
         await self.lag.client.set_grp_special_title(data.group_id, uid, data.special_title)
         return SetGroupSpecialTitleResponse(status="ok", retcode=0, data=EmptyRsp())

@@ -94,11 +94,7 @@ async def to_onebot_msg(
                 info_renewed = True
             new.append(seg.At(data=seg.AtData(qq=str(i.uin))))
         elif isinstance(i, elems.Image):
-            new.append(
-                seg.Image(
-                    data=seg.ImageData(file=i.url, url=i.url, summary=i.text, is_emoji=i.is_emoji)
-                )
-            )
+            new.append(seg.Image(data=seg.ImageData(file=i.url, url=i.url, summary=i.text, is_emoji=i.is_emoji)))
         elif isinstance(i, elems.Video):
             new.append(seg.Video(data=seg.VideoData(file=i.url, url=i.url)))
         elif isinstance(i, elems.Audio):
@@ -111,11 +107,7 @@ async def to_onebot_msg(
             new.append(seg.Poke(data=seg.PokeData(id=str(i.id), type="")))
         elif isinstance(i, elems.MarketFace):
             new.append(
-                seg.MarketFace(
-                    data=seg.MarketFaceData(
-                        face_id=str(i.face_id), tab_id=str(i.tab_id), name=i.name
-                    )
-                )
+                seg.MarketFace(data=seg.MarketFaceData(face_id=str(i.face_id), tab_id=str(i.tab_id), name=i.name))
             )
         elif isinstance(i, elems.File) and event:
             if isinstance(event, GroupMessage):
@@ -279,9 +271,7 @@ async def to_lagrange_msg(
                     if retried == 3:
                         continue
                     if target.target == "group":
-                        img = await lgrc.upload_grp_image(
-                            grp_id=target.id, image=io.BytesIO(response.content)
-                        )
+                        img = await lgrc.upload_grp_image(grp_id=target.id, image=io.BytesIO(response.content))
                     else:
                         img = await lgrc.upload_friend_image(
                             uid=info_mgr.uid_mgr.from_uin(target.id),
@@ -320,9 +310,7 @@ async def to_lagrange_msg(
                 async with httpx.AsyncClient() as cli:
                     response = await cli.get(url.geturl())
                     if target.target == "group":
-                        voice = await lgrc.upload_grp_audio(
-                            grp_id=target.id, voice=io.BytesIO(response.content)
-                        )
+                        voice = await lgrc.upload_grp_audio(grp_id=target.id, voice=io.BytesIO(response.content))
                     else:
                         voice = await lgrc.upload_friend_audio(
                             uid=info_mgr.uid_mgr.from_uin(target.id),
@@ -333,9 +321,7 @@ async def to_lagrange_msg(
                     if target.target == "group":
                         voice = await lgrc.upload_grp_audio(grp_id=target.id, voice=f)
                     else:
-                        voice = await lgrc.upload_friend_audio(
-                            uid=info_mgr.uid_mgr.from_uin(target.id), voice=f
-                        )
+                        voice = await lgrc.upload_friend_audio(uid=info_mgr.uid_mgr.from_uin(target.id), voice=f)
             elif scheme == "base64":
                 data = i.data.file.removeprefix("base64://")
                 voice = base64.b64decode(data)

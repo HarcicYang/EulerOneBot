@@ -35,11 +35,7 @@ class MsgInfo(BaseModel):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, MsgInfo):
             raise NotImplementedError()
-        return (
-            other.scene_type == self.scene_type
-            and other.scene_id == self.scene_id
-            and other.seq == self.seq
-        )
+        return other.scene_type == self.scene_type and other.scene_id == self.scene_id and other.seq == self.seq
 
 
 class MsgIDPool(BaseModel):
@@ -98,9 +94,7 @@ class UIDPool(BaseModel):
             for j in mbr_list:
                 if j.account.uin == i.grp_id:
                     continue
-                if j.account.uin and not (
-                    self.is_exist(j.account.uid) and self.is_exist(j.account.uin)
-                ):
+                if j.account.uin and not (self.is_exist(j.account.uid) and self.is_exist(j.account.uin)):
                     self.add(j.account.uid, j.account.uin)
                     count += 1
 
@@ -143,11 +137,7 @@ class UIDPool(BaseModel):
     def is_exist(self, uid_or_uin: int | str | bytes) -> bool:
         if isinstance(uid_or_uin, bytes):
             uid_or_uin = uid_or_uin.decode()
-        if (
-            isinstance(uid_or_uin, str)
-            and uid_or_uin in self.pool
-            and str(self.from_uid(uid_or_uin)).endswith("0145")
-        ):
+        if isinstance(uid_or_uin, str) and uid_or_uin in self.pool and str(self.from_uid(uid_or_uin)).endswith("0145"):
             return False
         return uid_or_uin in self.pool or uid_or_uin in self.pool.values()
 
