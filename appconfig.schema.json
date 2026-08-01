@@ -70,6 +70,8 @@
         },
         "interval": {
           "default": 15000,
+          "description": "心跳间隔(毫秒),必须大于 0",
+          "exclusiveMinimum": 0,
           "title": "Interval",
           "type": "integer"
         }

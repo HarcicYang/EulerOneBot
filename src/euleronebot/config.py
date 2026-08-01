@@ -47,7 +47,7 @@ AdapterConfig = Annotated[
 
 class HeartbeatConfig(BaseModel):
     enabled: bool = True
-    interval: int = 15000
+    interval: int = Field(15000, gt=0, description="心跳间隔(毫秒),必须大于 0")
 
 
 class LoginConfig(BaseModel):
@@ -85,6 +85,8 @@ def load_config(file: str) -> BotConfig:
     if os.path.exists(file):
         with open(file, encoding="utf-8") as f:
             data = json.load(f)
+            if not isinstance(data, dict):
+                raise ValueError(f"配置文件 {file} 必须是一个 JSON 对象")
             data.pop("$schema", None)  # 编辑器引用字段,模型解析时忽略
             loaded_config = BotConfig.model_validate(data)
             return loaded_config  # type: ignore

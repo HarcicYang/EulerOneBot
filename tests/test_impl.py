@@ -177,3 +177,30 @@ class TestOnDecorator:
             pass
 
         assert cast(Any, handler).call_type is SendGroupMessage
+
+
+class TestGetMessageFallback:
+    def test_user_info_failure_returns_ok_with_safe_sender(self, tmp_path):
+        from euleronebot.onebot.api_data import GetMsgData
+        from euleronebot.utils.infomgr import MsgInfo
+
+        class FailClient(StubClient):
+            async def get_user_info(self, uid_or_uin):
+                raise AttributeError("boom")
+
+        async def main():
+            mgr = await init_mgr(tmp_path)
+            try:
+                impl = LagrangeImpl(cast(Any, None), cast(Any, StubLag()), cast(Any, None))
+                impl.lag = cast(Any, StubLag())
+                impl.lag.client = FailClient()
+                nid = await mgr.msgid_mgr.add(MsgInfo(scene_type="user", scene_id=1, seq=1, uin=123, uid="", text="hi"))
+                rsp = await impl.get_message(GetMsgData(message_id=nid))
+                assert rsp.status == "ok"
+                assert rsp.data.sender.nickname == ""
+                assert rsp.data.sender.sex == "unknown"
+                assert rsp.data.sender.age == 0
+            finally:
+                await mgr.close()
+
+        run(main())

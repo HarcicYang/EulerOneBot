@@ -110,3 +110,15 @@ class TestSchema:
         with open(schema_path, encoding="utf-8") as f:
             committed = json.loads(f.read())
         assert committed == config_module.build_schema()
+
+
+def test_non_object_config_rejected(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "appconfig.json").write_text("[1, 2, 3]", encoding="utf-8")
+    with pytest.raises(ValueError, match="JSON 对象"):
+        load_config("appconfig.json")
+
+
+def test_heartbeat_interval_must_be_positive():
+    with pytest.raises(ValidationError):
+        BotConfig(heartbeat={"enabled": True, "interval": 0})

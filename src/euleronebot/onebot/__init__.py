@@ -66,8 +66,16 @@ class Adapter:
     async def setup(self) -> None:
         self.connector = await self.connector.setup()
 
+    def _connector_done(self, task: asyncio.Task) -> None:
+        if task.cancelled():
+            return
+        if exc := task.exception():
+            logger.error(f"Connector 异常退出: {exc!r}")
+            logger.error(traceback.format_exc())
+
     async def cycle(self) -> NoReturn:
         self._connector_task = asyncio.create_task(self.connector.run())
+        self._connector_task.add_done_callback(self._connector_done)
         while True:
             data = await self.connector.received.get()
             try:
@@ -83,6 +91,13 @@ class Adapter:
                 continue
         # noinspection PyUnreachableCode
         raise RuntimeError()
+
+    async def close(self) -> None:
+        if self._connector_task is not None:
+            self._connector_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._connector_task
+        await self.connector.close()
 
     async def trigger(self, event: BaseEvent) -> None:
         await self.connector.trigger(event.model_dump_json())

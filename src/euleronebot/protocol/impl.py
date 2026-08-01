@@ -4,6 +4,7 @@ from collections.abc import Callable, Coroutine
 from typing import (
     TYPE_CHECKING,
     Any,
+    Literal,
     NoReturn,
     Protocol,
     cast,
@@ -169,14 +170,23 @@ class LagrangeImpl:
     @on(GetMessage)
     async def get_message(self, data: GetMsgData) -> GetMessageResponse:
         msg = await info_mgr.msgid_mgr.fetch(data.message_id)
-        if msg.uid:
-            user_info = await self.lag.client.get_user_info(msg.uid)
-        elif msg.uin:
-            user_info = await self.lag.client.get_user_info(msg.uin)
-        else:
-            raise ValueError(f"Invalid message: {msg}")
+        user_info = None
+        try:
+            if msg.uid:
+                user_info = await self.lag.client.get_user_info(msg.uid)
+            elif msg.uin:
+                user_info = await self.lag.client.get_user_info(msg.uin)
+        except (AttributeError, ValueError):
+            logger.warning(f"get_user_info 失败,user_info 置空: uid={msg.uid!r} uin={msg.uin}")
         if isinstance(user_info, list):
-            user_info = user_info[0]
+            user_info = user_info[0] if user_info else None
+
+        sex: Literal["male", "female", "unknown"] = "unknown"
+        if user_info is not None:
+            sex = user_info.sex.name if user_info.sex.name != "notset" else "unknown"  # type: ignore
+        nickname = "" if not user_info else user_info.name
+        age = 0 if not user_info else user_info.age
+        area = "" if not user_info else f"{user_info.country} {user_info.province} {user_info.city}"
 
         return GetMessageResponse(
             status="ok",
@@ -189,21 +199,21 @@ class LagrangeImpl:
                 real_id=msg.seq,
                 sender=onebot_events.PrivateSender(
                     user_id=msg.uin,
-                    nickname="" if not user_info else user_info.name,
-                    sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",  # type: ignore
-                    age=0 if not user_info else user_info.age,
+                    nickname=nickname,
+                    sex=sex,
+                    age=age,
                 )
                 if msg.scene_type == "user"
                 else onebot_events.GroupSender(
                     user_id=msg.uin,
                     title="",
-                    sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",  # type: ignore
+                    sex=sex,
                     role="member",
-                    age=0 if not user_info else user_info.age,
-                    area="" if not user_info else f"{user_info.country} {user_info.province} {user_info.city}",
+                    age=age,
+                    area=area,
                     card="",
                     level="",
-                    nickname="" if not user_info else user_info.name,
+                    nickname=nickname,
                 ),
             ),
         )

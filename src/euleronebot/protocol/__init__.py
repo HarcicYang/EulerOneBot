@@ -34,7 +34,6 @@ class LagrangeProtocol:
         )
 
         self.lag.log.set_level("DEBUG")
-        self.info_updated = False
 
         self.impl = LagrangeImpl(self.adapter, self.lag, self)
         self.handler = LagrangeEventHandler(self.adapter, self.lag, self)
@@ -42,6 +41,12 @@ class LagrangeProtocol:
     def _subscribe(self) -> None:
         self.impl.subscribe()
         self.handler.subscribe()
+
+    async def _cancel_tasks(self) -> None:
+        for t in self._tasks:
+            t.cancel()
+        await asyncio.gather(*self._tasks, return_exceptions=True)
+        self._tasks.clear()
 
     async def run(self) -> None:
         self._subscribe()
@@ -62,6 +67,10 @@ class LagrangeProtocol:
             logger.info("Program exited by user")
         else:
             logger.info("Program exited normally")
+        finally:
+            await self._cancel_tasks()
+            await self.adapter.close()
+            await info_mgr.close()
 
     async def heartbeat(self) -> NoReturn:
         while True:

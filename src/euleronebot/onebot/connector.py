@@ -18,6 +18,7 @@ class Connector:
         self.forward_app: FastAPI = cast(FastAPI, cast(object, None))
         self.received: asyncio.Queue[str] = asyncio.Queue()
         self.active_websocket_servers: dict[Literal["root", "api", "event"], WebSocket] = dict()
+        self._server: UvicornServer | None = None
 
     async def setup(self) -> Self:
         for i in self.impls:
@@ -34,14 +35,12 @@ class Connector:
                     raise RuntimeError(f"Unknown implementation: {i}")
         return self
 
-    async def __aenter__(self) -> Self:
-        return await self.setup()
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        if self.forward_app is not None and self.active_websocket_servers:
-            for socket in self.active_websocket_servers.values():
-                if socket.client_state != socket.client_state.DISCONNECTED:
-                    await socket.close()
+    async def close(self) -> None:
+        if self._server is not None:
+            self._server.should_exit = True
+        for socket in self.active_websocket_servers.values():
+            if socket.client_state != socket.client_state.DISCONNECTED:
+                await socket.close()
 
     async def set_http(self) -> None:
         raise NotImplementedError
@@ -100,8 +99,8 @@ class Connector:
                     cfg = UvicornConfig(self.forward_app, host=host, port=port, log_config=None)
                     break
             assert cfg
-            server = UvicornServer(cfg)
-            await server.serve()
+            self._server = UvicornServer(cfg)
+            await self._server.serve()
 
     async def report(self, data: str) -> None:
         logger.trace(f"API report: {data}")
