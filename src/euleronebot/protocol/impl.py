@@ -56,8 +56,12 @@ class LagrangeImpl:
 
     def subscribe(self) -> None:
         for i in dir(self):
-            if isinstance(getattr(self, i), RegisteredHandler):
-                self.subscriptions[getattr(self, i).call_type.model_fields["action"].default] = getattr(self, i)
+            attr = getattr(self, i)
+            # Python 3.14 起 runtime_checkable Protocol 不再接受绑定方法,
+            # 统一取底层函数做注册判断与属性访问
+            func = getattr(attr, "__func__", attr)
+            if isinstance(func, RegisteredHandler):
+                self.subscriptions[func.call_type.model_fields["action"].default] = attr
 
     async def api_service(self) -> NoReturn:
         while True:

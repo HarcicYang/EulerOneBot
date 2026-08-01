@@ -71,8 +71,12 @@ class LagrangeEventHandler:
 
     def subscribe(self) -> None:
         for i in dir(self):
-            if isinstance(getattr(self, i), RegisteredHandler):
-                self.lag.subscribe(getattr(self, i).ev_type, getattr(self, i))  # type: ignore
+            attr = getattr(self, i)
+            # Python 3.14 起 runtime_checkable Protocol 不再接受绑定方法,
+            # 统一取底层函数做注册判断与属性访问
+            func = getattr(attr, "__func__", attr)
+            if isinstance(func, RegisteredHandler):
+                self.lag.subscribe(func.ev_type, attr)  # type: ignore
 
     @on(ClientOnline)
     async def online_handler(self, client: Client, _event: ClientOnline) -> None:
