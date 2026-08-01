@@ -1,0 +1,218 @@
+{
+  "$defs": {
+    "ForwardWebsocketConfig": {
+      "properties": {
+        "type": {
+          "const": "ForwardWebSocket",
+          "default": "ForwardWebSocket",
+          "title": "Type",
+          "type": "string"
+        },
+        "url": {
+          "default": "",
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "title": "ForwardWebsocketConfig",
+      "type": "object"
+    },
+    "HTTPConfig": {
+      "properties": {
+        "type": {
+          "const": "HTTP",
+          "default": "HTTP",
+          "title": "Type",
+          "type": "string"
+        },
+        "url": {
+          "default": "",
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "title": "HTTPConfig",
+      "type": "object"
+    },
+    "HTTPPostConfig": {
+      "properties": {
+        "type": {
+          "const": "HTTPPost",
+          "default": "HTTPPost",
+          "title": "Type",
+          "type": "string"
+        },
+        "url": {
+          "default": "",
+          "title": "Url",
+          "type": "string"
+        },
+        "timeout": {
+          "default": 0,
+          "title": "Timeout",
+          "type": "integer"
+        },
+        "secret": {
+          "default": "",
+          "title": "Secret",
+          "type": "string"
+        }
+      },
+      "title": "HTTPPostConfig",
+      "type": "object"
+    },
+    "HeartbeatConfig": {
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "interval": {
+          "default": 15000,
+          "title": "Interval",
+          "type": "integer"
+        }
+      },
+      "title": "HeartbeatConfig",
+      "type": "object"
+    },
+    "LoginConfig": {
+      "properties": {
+        "uin": {
+          "default": 0,
+          "title": "Uin",
+          "type": "integer"
+        },
+        "signer_url": {
+          "default": "https://",
+          "title": "Signer Url",
+          "type": "string"
+        },
+        "signer_token": {
+          "default": "",
+          "title": "Signer Token",
+          "type": "string"
+        }
+      },
+      "title": "LoginConfig",
+      "type": "object"
+    },
+    "ReverseWebsocketConfig": {
+      "properties": {
+        "type": {
+          "const": "ReverseWebSocket",
+          "default": "ReverseWebSocket",
+          "title": "Type",
+          "type": "string"
+        },
+        "url": {
+          "default": "",
+          "title": "Url",
+          "type": "string"
+        },
+        "api_url": {
+          "default": "",
+          "title": "Api Url",
+          "type": "string"
+        },
+        "event_url": {
+          "default": "",
+          "title": "Event Url",
+          "type": "string"
+        },
+        "use_universal_client": {
+          "default": false,
+          "title": "Use Universal Client",
+          "type": "boolean"
+        },
+        "reconnect_interval": {
+          "default": 3000,
+          "title": "Reconnect Interval",
+          "type": "integer"
+        }
+      },
+      "title": "ReverseWebsocketConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "log_level": {
+      "default": "INFO",
+      "enum": [
+        "INFO",
+        "DEBUG",
+        "TRACE",
+        "WARNING",
+        "ERROR",
+        "CRITICAL"
+      ],
+      "title": "Log Level",
+      "type": "string"
+    },
+    "log_nf": {
+      "default": true,
+      "title": "Log Nf",
+      "type": "boolean"
+    },
+    "connections": {
+      "default": [
+        {
+          "type": "ForwardWebSocket",
+          "url": ""
+        }
+      ],
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "ForwardWebSocket": "#/$defs/ForwardWebsocketConfig",
+            "HTTP": "#/$defs/HTTPConfig",
+            "HTTPPost": "#/$defs/HTTPPostConfig",
+            "ReverseWebSocket": "#/$defs/ReverseWebsocketConfig"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/HTTPConfig"
+          },
+          {
+            "$ref": "#/$defs/HTTPPostConfig"
+          },
+          {
+            "$ref": "#/$defs/ForwardWebsocketConfig"
+          },
+          {
+            "$ref": "#/$defs/ReverseWebsocketConfig"
+          }
+        ]
+      },
+      "title": "Connections",
+      "type": "array"
+    },
+    "login": {
+      "$ref": "#/$defs/LoginConfig",
+      "default": {
+        "uin": 0,
+        "signer_url": "https://",
+        "signer_token": ""
+      }
+    },
+    "heartbeat": {
+      "$ref": "#/$defs/HeartbeatConfig",
+      "default": {
+        "enabled": true,
+        "interval": 15000
+      }
+    },
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema 引用,解析时忽略"
+    }
+  },
+  "title": "BotConfig",
+  "type": "object",
+  "description": "Euler OneBot 的 appconfig.json 配置结构,由 BotConfig 模型自动生成",
+  "$id": "./appconfig.schema.json"
+}

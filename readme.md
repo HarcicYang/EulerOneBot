@@ -50,6 +50,7 @@
 
 ```json
 {
+  "$schema": "./appconfig.schema.json",
   "log_level": "INFO",
   "log_nf": true,
   "connections": [
@@ -69,6 +70,10 @@
   }
 }
 ```
+
+仓库附有 `appconfig.schema.json`（由 `BotConfig` 模型自动生成，可通过 `python scripts/gen_schema.py` 重新生成）。
+保留配置开头的 `$schema` 字段后，VS Code / IDEA 等编辑器即可获得自动补全与校验。
+若模型有改动，CI 会校验 schema 文件与模型保持同步。
 
 | 字段                 | 说明                                                                    |
 |----------------------|-------------------------------------------------------------------------|
