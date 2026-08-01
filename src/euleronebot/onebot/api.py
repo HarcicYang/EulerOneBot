@@ -71,7 +71,7 @@ __all__ = [
     "SetGroupSpecialTitle",
     "SetGroupSpecialTitleResponse",
     "SetGroupWholeBan",
-    "SetGroupWholeBanResponse"
+    "SetGroupWholeBanResponse",
 ]
 
 
