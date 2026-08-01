@@ -50,7 +50,7 @@ def test_config_cached(tmp_path, monkeypatch):
 
 def test_log_level_validation():
     with pytest.raises(ValidationError):
-        BotConfig(log_level="NOT_A_LEVEL")
+        BotConfig(log_level="NOT_A_LEVEL")  # type: ignore[bad-argument-type]
 
 
 def test_adapter_config_discriminates_by_type():

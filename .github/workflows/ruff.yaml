@@ -1,4 +1,4 @@
-name: Ruff Lint & Format
+name: Lint, Type Check & Test
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
       - 'pyproject.toml'
 
 jobs:
-  ruff:
+  ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +27,9 @@ jobs:
 
       - name: Install dependencies
         run: uv sync
+
+      - name: Pyrefly type check
+        run: uv run pyrefly check
 
       - name: Run tests
         run: uv run pytest

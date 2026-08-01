@@ -1,4 +1,5 @@
 import asyncio
+from typing import Literal
 
 import pytest
 
@@ -12,7 +13,7 @@ from euleronebot.utils.infomgr import (
 )
 
 
-def make_msg(scene_type="group", scene_id=1, seq=1) -> MsgInfo:
+def make_msg(scene_type: Literal["group", "user"] = "group", scene_id: int = 1, seq: int = 1) -> MsgInfo:
     return MsgInfo(scene_type=scene_type, scene_id=scene_id, seq=seq)
 
 
@@ -161,7 +162,7 @@ class TestSave:
         monkeypatch.chdir(tmp_path)
         mgr = InfoManager()
         good = make_msg(seq=1)
-        good.raw_msg = [{"text": "keep me"}]
+        good.raw_msg = [{"text": "keep me"}]  # type: ignore[bad-assignment]
         mgr.msgid_mgr.add(good)
         bad = MsgInfo(scene_type="group", scene_id=1, seq=2, raw_msg=[object()])
         mgr.msgid_mgr.add(bad)

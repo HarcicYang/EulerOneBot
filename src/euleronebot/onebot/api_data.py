@@ -3,19 +3,16 @@ from typing import TYPE_CHECKING, Any, Literal
 from pydantic import BaseModel, Field, RootModel
 
 from ..versions import NAME, VERSION
+from .segments import SegmentUnion
 
 if TYPE_CHECKING:
     from .events import GroupSender, PrivateSender
-    from .segments import BaseSegment, Node, SegmentUnion
+    from .segments import Node
 
-    SEGMENT = BaseSegment
     NODE = Node
     GROUP_SENDER = GroupSender
     PRIVATE_SENDER = PrivateSender
 else:
-    from .segments import SegmentUnion
-
-    SEGMENT = SegmentUnion
     NODE = Any
     GROUP_SENDER = Any
     PRIVATE_SENDER = Any
@@ -71,19 +68,19 @@ __all__ = [
 
 class SendPrivateMsgData(BaseModel):
     user_id: int
-    message: list[SEGMENT]
+    message: list[SegmentUnion]
 
 
 class SendGroupMsgData(BaseModel):
     group_id: int
-    message: list[SEGMENT]
+    message: list[SegmentUnion]
 
 
 class SendMsgData(BaseModel):
     message_type: Literal["private", "group", ""] = ""
     user_id: int = 0
     group_id: int = 0
-    message: list[SEGMENT]
+    message: list[SegmentUnion]
 
 
 class SendMsgRsp(BaseModel):
@@ -107,7 +104,7 @@ class GetMsgRsp(BaseModel):
     message_id: int
     real_id: int
     sender: PRIVATE_SENDER | GROUP_SENDER
-    message: list[SEGMENT]
+    message: list[SegmentUnion]
 
 
 class GetForwardMsgData(BaseModel):

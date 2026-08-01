@@ -55,7 +55,8 @@ class RegisteredHandler(Protocol):
 
 def on(ev_type: type[LagrangeEvent]) -> Callable[[F], F]:
     def dec(func: F) -> F:
-        func.ev_type = ev_type  # type: ignore
+        if isinstance(func, RegisteredHandler):
+            func.ev_type = ev_type
         return func
 
     return dec
@@ -162,7 +163,7 @@ class LagrangeEventHandler:
             sender=onebot_events.PrivateSender(
                 age=user_info.age,
                 nickname=user_info.name,
-                sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",
+                sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",  # type: ignore
                 user_id=event.from_uin,
             ),
         )

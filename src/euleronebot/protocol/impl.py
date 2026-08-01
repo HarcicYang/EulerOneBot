@@ -12,6 +12,7 @@ from typing import (
 
 from lagrange import Lagrange
 from lagrange.client.message.elems import MulitMsg
+from lagrange.client.message.types import Element
 
 from ..hyperogger import Logger
 from ..onebot import Adapter as OneBotAdapter
@@ -40,7 +41,8 @@ class RegisteredHandler(Protocol):
 
 def on(call_type: type[BaseAPICall]) -> Callable[[APICallHandler], APICallHandler]:
     def dec(func: APICallHandler) -> APICallHandler:
-        func.call_type = call_type
+        if isinstance(func, RegisteredHandler):
+            func.call_type = call_type
         return func
 
     return dec
@@ -89,11 +91,9 @@ class LagrangeImpl:
             target=(TargetInfo(target="user", id=data.user_id)),
         )
         if len(new_msg) == 1 and isinstance(new_msg[0], MulitMsg):
-            seq = await self.lag.client.send_friend_forward_msg(
-                new_msg[0],  # type: ignore
-                info_mgr.uid_mgr.from_uin(data.user_id),
-            )
+            seq = await self.lag.client.send_friend_forward_msg(new_msg[0], info_mgr.uid_mgr.from_uin(data.user_id))
         else:
+            new_msg = cast(list[Element], new_msg)
             seq = await self.lag.client.send_friend_msg(uid=info_mgr.uid_mgr.from_uin(data.user_id), msg_chain=new_msg)
         text = ""
         for i in new_msg:
@@ -122,6 +122,7 @@ class LagrangeImpl:
         if len(new_msg) == 1 and isinstance(new_msg[0], MulitMsg):
             seq = await self.lag.client.send_grp_forward_msg(new_msg[0], data.group_id)  # type: ignore
         else:
+            new_msg = cast(list[Element], new_msg)
             seq = await self.lag.client.send_grp_msg(grp_id=data.group_id, msg_chain=new_msg)
         try:
             rand = (
@@ -417,7 +418,7 @@ class LagrangeImpl:
 
     @on(GroupReaction)
     async def group_reaction(self, data: GroupReactionData) -> GroupReactionResponse:
-        msg_info = info_mgr.msgid_mgr.fetch(data.message_id)
+        msg_info = info_mgr.msgid_mgr.fetch(int(data.message_id or 0))
         await self.lag.client.send_grp_reaction(
             grp_id=data.group_id, msg_seq=msg_info.seq, content=data.emoji or data.code or 0
         )

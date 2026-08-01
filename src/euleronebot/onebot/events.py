@@ -37,6 +37,7 @@ __all__ = [
     "PrivateSender",
     "ReactionEvent",
     "RequestEvent",
+    "__all__",
 ]
 
 

@@ -10,12 +10,11 @@ from lagrange.client.events.friend import FriendMessage
 from lagrange.client.events.group import GroupMessage
 from lagrange.client.message import elems
 from lagrange.client.message.types import Element as LgrElement
-from lagrange.client.models import UserInfo
 
 from ..hyperogger import Logger
-from ..onebot import FileInfo
 from ..onebot import events as onebot_events
 from ..onebot import segments as seg
+from ..onebot.events import FileInfo
 from ..onebot.models import TargetInfo
 from ..onebot.segments import JsonData, Node
 from .infomgr import MsgInfo, info_mgr
@@ -184,7 +183,7 @@ async def to_onebot_msg(
 
 
 async def to_lagrange_msg(
-    msg: list[seg.BaseSegment], lgrc: Client, target: TargetInfo
+    msg: list[seg.SegmentUnion], lgrc: Client, target: TargetInfo
 ) -> list[LgrElement | elems.ForwardNode]:
     new: list[LgrElement | elems.ForwardNode] = []
     for i in msg:
@@ -203,7 +202,7 @@ async def to_lagrange_msg(
                     info = await lgrc.get_user_info(uid)
                 except AttributeError:
                     info = await lgrc.get_user_info(qq)
-                info = cast(UserInfo, info)
+                info = info
                 new.append(elems.At(text=f"@{info.name}", uin=qq, uid=uid))
         elif isinstance(i, seg.Reply):
             msgid = int(i.data.id)
@@ -242,11 +241,12 @@ async def to_lagrange_msg(
             )
         elif isinstance(i, seg.Forward):
             if i.data.content:
+                content = cast("list[seg.SegmentUnion]", i.data.content)
                 new.append(
                     elems.MulitMsg(
                         messages=cast(
                             list[elems.ForwardNode],
-                            cast(object, await to_lagrange_msg(i.data.content, lgrc, target)),
+                            cast(object, await to_lagrange_msg(content, lgrc, target)),
                         )
                     )
                 )

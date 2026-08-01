@@ -6,12 +6,10 @@ from pydantic import TypeAdapter
 
 from ..hyperogger import Logger
 from .api import *
-from .api import __all__ as _api_all
 from .connector import Connector
 from .events import *
-from .events import __all__ as _events_all
 
-__all__ = [*_api_all, *_events_all, "Adapter", "Connector"]
+__all__ = ["Adapter", "Connector"]
 
 if TYPE_CHECKING:
     from ..config import AdapterConfig, ForwardWebsocketConfig
@@ -61,6 +59,7 @@ class Adapter:
             | GetCSRFToken
             | GroupReaction
         )
+        self._connector_task: asyncio.Task | None = None
 
     async def setup(self) -> None:
         self.connector = await self.connector.setup()
