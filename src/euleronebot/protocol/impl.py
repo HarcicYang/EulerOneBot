@@ -41,8 +41,7 @@ class RegisteredHandler(Protocol):
 
 def on(call_type: type[BaseAPICall]) -> Callable[[APICallHandler], APICallHandler]:
     def dec(func: APICallHandler) -> APICallHandler:
-        if isinstance(func, RegisteredHandler):
-            func.call_type = call_type
+        cast(RegisteredHandler, cast(object, func)).call_type = call_type
         return func
 
     return dec
@@ -90,15 +89,16 @@ class LagrangeImpl:
             lgrc=self.lag.client,
             target=(TargetInfo(target="user", id=data.user_id)),
         )
+        uid = await info_mgr.uid_mgr.from_uin(data.user_id)
         if len(new_msg) == 1 and isinstance(new_msg[0], MulitMsg):
-            seq = await self.lag.client.send_friend_forward_msg(new_msg[0], info_mgr.uid_mgr.from_uin(data.user_id))
+            seq = await self.lag.client.send_friend_forward_msg(new_msg[0], uid)
         else:
             new_msg = cast(list[Element], new_msg)
-            seq = await self.lag.client.send_friend_msg(uid=info_mgr.uid_mgr.from_uin(data.user_id), msg_chain=new_msg)
+            seq = await self.lag.client.send_friend_msg(uid=uid, msg_chain=new_msg)
         text = ""
         for i in new_msg:
             text += i.display
-        msgid = info_mgr.msgid_mgr.add(
+        msgid = await info_mgr.msgid_mgr.add(
             MsgInfo(
                 raw_msg=new_msg,
                 scene_type="user",
@@ -128,12 +128,12 @@ class LagrangeImpl:
             rand = (
                 await self.lag.client.get_grp_msg(grp_id=data.group_id, start=seq, end=seq, filter_deleted_msg=False)
             )[0].rand
-        except AttributeError:
+        except (AttributeError, IndexError, KeyError):
             rand = 0
         text = ""
         for i in new_msg:
             text += i.display
-        msgid = info_mgr.msgid_mgr.add(
+        msgid = await info_mgr.msgid_mgr.add(
             MsgInfo(
                 raw_msg=new_msg,
                 scene_type="group",
@@ -151,7 +151,7 @@ class LagrangeImpl:
     @on(DeleteMessage)
     async def delete_message(self, data: DeleteMsgData) -> DeleteMessageResponse:
         msgid = data.message_id
-        msg_info = info_mgr.msgid_mgr.fetch(msgid)
+        msg_info = await info_mgr.msgid_mgr.fetch(msgid)
         if msg_info.scene_type == "user":
             pass
         else:
@@ -164,7 +164,7 @@ class LagrangeImpl:
 
     @on(GetMessage)
     async def get_message(self, data: GetMsgData) -> GetMessageResponse:
-        msg = info_mgr.msgid_mgr.fetch(data.message_id)
+        msg = await info_mgr.msgid_mgr.fetch(data.message_id)
         if msg.uid:
             user_info = await self.lag.client.get_user_info(msg.uid)
         elif msg.uin:
@@ -222,7 +222,7 @@ class LagrangeImpl:
     @on(GetStrangerInfo)
     async def get_stranger_info(self, data: GetStrangerInfoData) -> GetStrangerInfoResponse:
         try:
-            uid = info_mgr.uid_mgr.from_uin(data.user_id)
+            uid = await info_mgr.uid_mgr.from_uin(data.user_id)
         except ValueError:
             uid = None
         try:
@@ -276,7 +276,7 @@ class LagrangeImpl:
     @on(SetGroupCard)
     async def set_group_card(self, data: SetGroupCardData) -> SetGroupCardResponse:
         await self.lag.client.rename_grp_member(
-            grp_id=data.group_id, target_uid=info_mgr.uid_mgr.from_uin(data.user_id), name=data.card
+            grp_id=data.group_id, target_uid=await info_mgr.uid_mgr.from_uin(data.user_id), name=data.card
         )
         return SetGroupCardResponse(status="ok", retcode=0, data=EmptyRsp())
 
@@ -297,7 +297,7 @@ class LagrangeImpl:
 
     @on(SetGroupAddRequest)
     async def set_group_add_request(self, data: SetGroupAddRequestData) -> SetGroupAddRequestResponse:
-        info = info_mgr.req_mgr.fetch(data.flag)
+        info = await info_mgr.req_mgr.fetch(data.flag)
         if info.type == "group":
             await self.lag.client.set_grp_request(
                 grp_id=info.id,
@@ -307,6 +307,11 @@ class LagrangeImpl:
             )
             return SetGroupAddRequestResponse(status="ok", retcode=0, data=EmptyRsp())
         raise NotImplementedError()
+
+    @on(SetFriendAddRequest)
+    async def set_friend_add_request(self, data: SetFriendAddRequestData) -> SetFriendAddRequestResponse:
+        await self.lag.client.set_friend_request(target_uid=data.flag, accept=data.approve)
+        return SetFriendAddRequestResponse(status="ok", retcode=0, data=EmptyRsp())
 
     @on(GetLoginInfo)
     async def get_login_info(self, _data: GetLoginInfoData) -> GetLoginInfoResponse:
@@ -319,9 +324,8 @@ class LagrangeImpl:
 
     @on(GetGroupMemberInfo)
     async def get_group_member_info(self, data: GetGroupMemberInfoData) -> GetGroupMemberInfoResponse:
-        info = (await self.lag.client.get_grp_member_info(data.group_id, info_mgr.uid_mgr.from_uin(data.user_id))).body[
-            0
-        ]
+        uid = await info_mgr.uid_mgr.from_uin(data.user_id)
+        info = (await self.lag.client.get_grp_member_info(data.group_id, uid)).body[0]
         user_info = await self.lag.client.get_user_info(data.user_id)
         role = "member"
         if info.is_owner:
@@ -359,13 +363,13 @@ class LagrangeImpl:
 
     @on(SendLike)
     async def send_like(self, data: SendLikeData) -> SendLikeResponse:
-        uid = info_mgr.uid_mgr.from_uin(data.user_id)
+        uid = await info_mgr.uid_mgr.from_uin(data.user_id)
         await self.lag.client.friend_like(uid, data.times)
         return SendLikeResponse(status="ok", retcode=0, data=EmptyRsp())
 
     @on(SetGroupAdmin)
     async def set_group_admin(self, data: SetGroupAdminData) -> SetGroupAdminResponse:
-        uid = info_mgr.uid_mgr.from_uin(data.user_id)
+        uid = await info_mgr.uid_mgr.from_uin(data.user_id)
         await self.lag.client.set_grp_admin(grp_id=data.group_id, uid=uid, is_set=data.enable)
         return SetGroupAdminResponse(status="ok", retcode=0, data=EmptyRsp())
 
@@ -406,7 +410,7 @@ class LagrangeImpl:
         for i in members.body:
             if not i.account.uin:
                 try:
-                    uin = info_mgr.uid_mgr.from_uid(i.account.uid)
+                    uin = await info_mgr.uid_mgr.from_uid(i.account.uid)
                 except ValueError:
                     continue
             else:
@@ -418,7 +422,7 @@ class LagrangeImpl:
 
     @on(GroupReaction)
     async def group_reaction(self, data: GroupReactionData) -> GroupReactionResponse:
-        msg_info = info_mgr.msgid_mgr.fetch(int(data.message_id or 0))
+        msg_info = await info_mgr.msgid_mgr.fetch(int(data.message_id or 0))
         await self.lag.client.send_grp_reaction(
             grp_id=data.group_id, msg_seq=msg_info.seq, content=data.emoji or data.code or 0
         )
@@ -426,6 +430,6 @@ class LagrangeImpl:
 
     @on(SetGroupSpecialTitle)
     async def set_group_special_title(self, data: SetGroupSpecialTitleData) -> SetGroupSpecialTitleResponse:
-        uid = info_mgr.uid_mgr.from_uin(data.user_id)
+        uid = await info_mgr.uid_mgr.from_uin(data.user_id)
         await self.lag.client.set_grp_special_title(data.group_id, uid, data.special_title)
         return SetGroupSpecialTitleResponse(status="ok", retcode=0, data=EmptyRsp())

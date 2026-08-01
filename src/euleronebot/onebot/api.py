@@ -13,6 +13,7 @@ __all__ = [
     "BaseAPIResponse",
     "DeleteMessage",
     "DeleteMessageResponse",
+    "EmptyRsp",
     "GetCSRFToken",
     "GetCSRFTokenResponse",
     "GetCookie",
@@ -70,8 +71,7 @@ __all__ = [
     "SetGroupSpecialTitle",
     "SetGroupSpecialTitleResponse",
     "SetGroupWholeBan",
-    "SetGroupWholeBanResponse",
-    "__all__",
+    "SetGroupWholeBanResponse"
 ]
 
 

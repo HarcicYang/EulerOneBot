@@ -1,5 +1,7 @@
 import asyncio
+import json
 import traceback
+from contextlib import suppress
 from typing import TYPE_CHECKING, Any, NoReturn
 
 from pydantic import TypeAdapter
@@ -74,6 +76,10 @@ class Adapter:
             except (ValueError, TypeError):
                 logger.error(data)
                 logger.error(traceback.format_exc())
+                echo = ""
+                with suppress(ValueError, TypeError):
+                    echo = json.loads(data).get("echo", "")
+                await self.report(ActionFailedResponse(status="failed", retcode=1400, data=EmptyRsp(), echo=echo))
                 continue
         # noinspection PyUnreachableCode
         raise RuntimeError()

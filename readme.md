@@ -9,11 +9,11 @@
 
 ## 项目状态
 
-本项目处于较早期开发阶段。虽然比较简陋，但核心功能已基本稳定。
+本项目处于较早期开发阶段，但核心功能已基本稳定。
 
 ## 环境要求
 
-- Python >= 3.10
+- Python >= 3.11
 - [lagrange-python](https://github.com/LagrangeDev/lagrange-python) [^1]
 - Lagrange V2 签名服务（见[签名指南](https://github.com/LagrangeDev/SignApiGuide)）
 
@@ -70,22 +70,22 @@
 }
 ```
 
-| 字段                   | 说明                                                                 |
-|----------------------|--------------------------------------------------------------------|
+| 字段                 | 说明                                                                    |
+|----------------------|-------------------------------------------------------------------------|
 | `log_level`          | 日志级别：`TRACE` / `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL` |
-| `log_nf`             | 是否为日志输出启用 NerdFont                                                 |
-| `connections`        | 通信连接列表（见下方连接类型）                                                    |
-| `login.uin`          | QQ 账号（不要真的写0哦）                                                     |
-| `login.signer_url`   | 签名服务地址                                                             |
-| `login.signer_token` | 签名服务 Token                                                         |
-| `heartbeat.enabled`  | 是否启用心跳                                                             |
-| `heartbeat.interval` | 心跳间隔（毫秒）                                                           |
+| `log_nf`             | 是否为日志输出启用 NerdFont                                             |
+| `connections`        | 通信连接列表（见下方连接类型）                                          |
+| `login.uin`          | QQ 账号（不要真的写0哦）                                                |
+| `login.signer_url`   | 签名服务地址                                                            |
+| `login.signer_token` | 签名服务 Token                                                          |
+| `heartbeat.enabled`  | 是否启用心跳                                                            |
+| `heartbeat.interval` | 心跳间隔（毫秒）                                                        |
 
 ### 已经支持的连接类型
 
-| 连接类型         | `type` 值           | 说明              |
-|--------------|--------------------|-----------------|
-| 正向 WebSocket | `ForwardWebSocket` | 主动连接 OneBot 客户端 |
+| 连接类型       | `type` 值          | 说明                                                            |
+|----------------|--------------------|-----------------------------------------------------------------|
+| 正向 WebSocket | `ForwardWebSocket` | 在 `url` 指定的地址监听,提供 WebSocket 服务供 OneBot 客户端连接 |
 
 每类连接可能有额外的配置字段（如 `ReverseWebSocket` 的 `api_url`、`event_url` 等），详见 `ForwardWebsocketConfig`、
 `ReverseWebsocketConfig` 等 Pydantic 模型定义。
@@ -103,108 +103,108 @@ uv sync
 <details>
 <summary>API 类型</summary>
 
-| API 名称                  | 支持状态 |
-|-------------------------|------|
-| send_private_msg        | ✅    |
-| send_group_msg          | ✅    |
-| send_msg                | ✅    |
-| delete_msg              | ✅    |
-| get_msg                 | ✅    |
-| get_forward_msg         | ✅    |
-| send_like               | ✅    |
-| send_poke               | ✅    |
-| send_forward_msg        | ✅    |
-| set_group_kick          | ✅    |
-| set_group_ban           | ✅    |
-| set_group_whole_ban     | ✅    |
-| set_group_admin         | ✅    |
-| set_group_card          | ✅    |
-| set_group_name          | ✅    |
-| set_group_leave         | ✅    |
-| set_group_special_title | ✅    |
-| set_friend_add_request  | ✅    |
-| set_group_add_request   | ✅    |
-| group_reaction          | ✅    |
-| get_login_info          | ✅    |
-| get_stranger_info       | ✅    |
-| get_friend_list         | ✅    |
-| get_group_info          | ✅    |
-| get_group_list          | ✅    |
-| get_group_member_info   | ✅    |
-| get_group_member_list   | ✅    |
-| get_cookies             | ✅    |
-| get_csrf_token          | ✅    |
-| get_status              | ❌    |
-| get_version_info        | ✅    |
+| API 名称                | 支持状态 |
+|-------------------------|----------|
+| send_private_msg        | ✅       |
+| send_group_msg          | ✅       |
+| send_msg                | ✅       |
+| delete_msg              | ✅       |
+| get_msg                 | ✅       |
+| get_forward_msg         | ✅       |
+| send_like               | ✅       |
+| send_poke               | ✅       |
+| send_forward_msg        | ❌       |
+| set_group_kick          | ✅       |
+| set_group_ban           | ✅       |
+| set_group_whole_ban     | ✅       |
+| set_group_admin         | ✅       |
+| set_group_card          | ✅       |
+| set_group_name          | ✅       |
+| set_group_leave         | ✅       |
+| set_group_special_title | ✅       |
+| set_friend_add_request  | ✅       |
+| set_group_add_request   | ✅       |
+| group_reaction          | ✅       |
+| get_login_info          | ✅       |
+| get_stranger_info       | ✅       |
+| get_friend_list         | ✅       |
+| get_group_info          | ✅       |
+| get_group_list          | ✅       |
+| get_group_member_info   | ✅       |
+| get_group_member_list   | ✅       |
+| get_cookies             | ✅       |
+| get_csrf_token          | ✅       |
+| get_status              | ❌       |
+| get_version_info        | ✅       |
 
 </details>
 
 <details>
 <summary>事件类型</summary>
 
-| 事件名称                     | 支持状态 |
-|--------------------------|------|
-| message.private          | ✅    |
-| message.group            | ✅    |
-| notice.group_upload      | ✅    |
-| notice.friend_upload     | ✅    |
-| notice.group_admin       | ✅    |
-| notice.group_decrease    | ✅    |
-| notice.group_increase    | ✅    |
-| notice.group_ban         | ✅    |
-| notice.friend_add        | ✅    |
-| notice.group_recall      | ✅    |
-| notice.friend_recall     | ✅    |
-| notice.notify.poke       | ✅    |
-| notice.notify.lucky_king | ❌    |
-| notice.notify.honor      | ❌    |
-| notice.reaction          | ✅    |
-| request.friend           | ✅    |
-| request.group            | ✅    |
-| meta_event.lifecycle     | ❌    |
-| meta_event.heartbeat     | ✅    |
+| 事件名称                 | 支持状态 |
+|--------------------------|----------|
+| message.private          | ✅       |
+| message.group            | ✅       |
+| notice.group_upload      | ✅       |
+| notice.friend_upload     | ✅       |
+| notice.group_admin       | ✅       |
+| notice.group_decrease    | ✅       |
+| notice.group_increase    | ✅       |
+| notice.group_ban         | ✅       |
+| notice.friend_add        | ✅       |
+| notice.group_recall      | ✅       |
+| notice.friend_recall     | ✅       |
+| notice.notify.poke       | ✅       |
+| notice.notify.lucky_king | ❌       |
+| notice.notify.honor      | ❌       |
+| notice.reaction          | ✅       |
+| request.friend           | ✅       |
+| request.group            | ✅       |
+| meta_event.lifecycle     | ❌       |
+| meta_event.heartbeat     | ✅       |
 
 </details>
 
 <details>
 <summary>消息段类型</summary>
 
-| 消息段类型    | 支持状态 |
-|----------|------|
-| text     | ✅    |
-| at       | ✅    |
-| reply    | ✅    |
-| face     | ✅    |
-| poke     | API  |
-| mface    | ✅    |
-| node     | ✅    |
-| forward  | ✅    |
-| image    | ✅    |
-| record   | ✅    |
-| video    | 🚧   |
-| contact  | ❌    |
-| location | ❌    |
-| music    | ❌    |
-| custom   | ❌    |
-| redbag   | ❌    |
-| rps      | ❌    |
-| dice     | ❌    |
-| shake    | ❌    |
-| json     | ✅    |
-| xml      | ❌    |
-| markdown | ❌    |
+| 消息段类型 | 支持状态 |
+|------------|----------|
+| text       | ✅       |
+| at         | ✅       |
+| reply      | ✅       |
+| face       | ✅       |
+| poke       | API      |
+| mface      | ✅       |
+| node       | ✅       |
+| forward    | ✅       |
+| image      | ✅       |
+| record     | ✅       |
+| video      | 🚧       |
+| contact    | ❌       |
+| location   | ❌       |
+| music      | ❌       |
+| custom     | ❌       |
+| redbag     | ❌       |
+| rps        | ❌       |
+| dice       | ❌       |
+| shake      | ❌       |
+| json       | ✅       |
+| xml        | ❌       |
+| markdown   | ❌       |
 
 </details>
 
 <details>
 <summary>通信方式</summary>
 
-| 通信方式         | 支持状态 |
-|--------------|------|
-| HTTP         | ❌    |
-| HTTP Webhook | ❌    |
-| 正向 WebSocket | ✅    |
-| 反向 WebSocket | ❌    |
+| 通信方式       | 支持状态 |
+|----------------|----------|
+| HTTP           | ❌       |
+| HTTP Webhook   | ❌       |
+| 正向 WebSocket | ✅       |
+| 反向 WebSocket | ❌       |
 
 </details>
 
@@ -212,5 +212,6 @@ uv sync
 
 [^1]: ~~尽管这里的连接指向 [LagrangeDev](https://github.com/LagrangeDev)
 ，本仓库的依赖项中该包裹指向 [我自己的fork](https://github.com/HarcicYang/lagrange-python)
-，这是因为我为了该项目，在fork中照葫芦画瓢做了一些自己的实现。因此，如果您安装了 LagrangeDev 提供的包裹，该项目可能无法正常运行。~~
+，这是因为我为了该项目，在fork中照葫芦画瓢做了一些自己的实现。因此，如果您安装了 LagrangeDev
+提供的包裹，该项目可能无法正常运行。~~
 目前我的pr都跑完了，所以依赖又换回去了（www

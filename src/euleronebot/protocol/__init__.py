@@ -11,6 +11,7 @@ from ..config import BotConfig
 from ..hyperogger import Logger
 from ..onebot import Adapter as OneBotAdapter
 from ..onebot import events as onebot_events
+from ..utils.infomgr import info_mgr
 from .handle import LagrangeEventHandler
 from .impl import LagrangeImpl
 
@@ -46,12 +47,14 @@ class LagrangeProtocol:
         self._subscribe()
 
         try:
+            await info_mgr.init()
             await self.adapter.setup()
             self._tasks = [
                 asyncio.create_task(self.adapter.cycle()),
                 asyncio.create_task(self.impl.api_service()),
-                asyncio.create_task(self.heartbeat()),
             ]
+            if self.cfg.heartbeat.enabled:
+                self._tasks.append(asyncio.create_task(self.heartbeat()))
             await self.lag.run()
         except KeyboardInterrupt:
             # noinspection PyProtectedMember

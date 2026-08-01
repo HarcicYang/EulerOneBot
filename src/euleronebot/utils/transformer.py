@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import io
 from typing import TYPE_CHECKING, Any, cast
@@ -26,19 +25,6 @@ else:
 
 logger = Logger.fetch("euler").name_custom("euler.transformer")
 
-_background_tasks: set[asyncio.Task[None]] = set()
-
-
-def _spawn_background(task: asyncio.Task[None]) -> None:
-    _background_tasks.add(task)
-
-    def _done(t: asyncio.Task[None]) -> None:
-        _background_tasks.discard(t)
-        if not t.cancelled() and (exc := t.exception()):
-            logger.error(f"后台任务异常: {exc!r}")
-
-    task.add_done_callback(_done)
-
 
 async def to_onebot_msg(
     adp: LagrangeProtocol,
@@ -46,7 +32,6 @@ async def to_onebot_msg(
     msg: MsgInfo | None = None,
 ) -> list[seg.SegmentUnion]:
     new: list[seg.SegmentUnion] = []
-    info_renewed = False
     if event:
         msgc = event.msg_chain
     elif msg:
@@ -66,14 +51,12 @@ async def to_onebot_msg(
                     timestamp=i.timestamp,
                     seq=i.seq,
                 )
-                if msgid := info_mgr.msgid_mgr.search(info):
-                    pass
-                else:
-                    msgid = info_mgr.msgid_mgr.add(info)
-                    info_renewed = True
+                msgid = await info_mgr.msgid_mgr.search(info)
+                if not msgid:
+                    msgid = await info_mgr.msgid_mgr.add(info)
             else:
                 assert msg
-                msgid = info_mgr.msgid_mgr.search(
+                msgid = await info_mgr.msgid_mgr.search(
                     MsgInfo(
                         scene_type=msg.scene_type,
                         scene_id=msg.scene_id,
@@ -88,9 +71,8 @@ async def to_onebot_msg(
         elif isinstance(i, elems.AtAll):
             new.append(seg.At(data=seg.AtData(qq="all")))
         elif isinstance(i, elems.At):
-            if not info_mgr.uid_mgr.is_exist(i.uid):
-                info_mgr.uid_mgr.add(i.uid, i.uin)
-                info_renewed = True
+            if not await info_mgr.uid_mgr.is_exist(i.uid):
+                await info_mgr.uid_mgr.add(i.uid, i.uin)
             new.append(seg.At(data=seg.AtData(qq=str(i.uin))))
         elif isinstance(i, elems.Image):
             new.append(seg.Image(data=seg.ImageData(file=i.url, url=i.url, summary=i.text, is_emoji=i.is_emoji)))
@@ -175,8 +157,6 @@ async def to_onebot_msg(
             new.append(seg.Json(data=JsonData(data=i.raw.decode())))
         else:
             continue
-    if info_renewed:
-        _spawn_background(asyncio.create_task(info_mgr.save()))
     if len(new) == 0:
         logger.warning(f"Empty message: {msgc}")
     return new
@@ -197,16 +177,19 @@ async def to_lagrange_msg(
                     qq = int(i.data.qq)
                 except ValueError:
                     continue
-                uid = info_mgr.uid_mgr.from_uin(qq)
+                try:
+                    uid = await info_mgr.uid_mgr.from_uin(qq)
+                except ValueError:
+                    logger.warning(f"未知 uin {qq},已跳过 at 段")
+                    continue
                 try:
                     info = await lgrc.get_user_info(uid)
                 except AttributeError:
                     info = await lgrc.get_user_info(qq)
-                info = info
                 new.append(elems.At(text=f"@{info.name}", uin=qq, uid=uid))
         elif isinstance(i, seg.Reply):
             msgid = int(i.data.id)
-            msg_info = info_mgr.msgid_mgr.fetch(msgid)
+            msg_info = await info_mgr.msgid_mgr.fetch(msgid)
             new.append(
                 elems.Quote(
                     seq=msg_info.seq,
@@ -274,7 +257,7 @@ async def to_lagrange_msg(
                         img = await lgrc.upload_grp_image(grp_id=target.id, image=io.BytesIO(response.content))
                     else:
                         img = await lgrc.upload_friend_image(
-                            uid=info_mgr.uid_mgr.from_uin(target.id),
+                            uid=await info_mgr.uid_mgr.from_uin(target.id),
                             is_emoji=i.data.is_emoji,
                             image=io.BytesIO(response.content),
                         )
@@ -284,7 +267,7 @@ async def to_lagrange_msg(
                         img = await lgrc.upload_grp_image(grp_id=target.id, image=f)
                     else:
                         img = await lgrc.upload_friend_image(
-                            uid=info_mgr.uid_mgr.from_uin(target.id),
+                            uid=await info_mgr.uid_mgr.from_uin(target.id),
                             is_emoji=i.data.is_emoji,
                             image=f,
                         )
@@ -295,7 +278,7 @@ async def to_lagrange_msg(
                     img = await lgrc.upload_grp_image(grp_id=target.id, image=io.BytesIO(img))
                 else:
                     img = await lgrc.upload_friend_image(
-                        uid=info_mgr.uid_mgr.from_uin(target.id),
+                        uid=await info_mgr.uid_mgr.from_uin(target.id),
                         is_emoji=i.data.is_emoji,
                         image=io.BytesIO(img),
                     )
@@ -313,7 +296,7 @@ async def to_lagrange_msg(
                         voice = await lgrc.upload_grp_audio(grp_id=target.id, voice=io.BytesIO(response.content))
                     else:
                         voice = await lgrc.upload_friend_audio(
-                            uid=info_mgr.uid_mgr.from_uin(target.id),
+                            uid=await info_mgr.uid_mgr.from_uin(target.id),
                             voice=io.BytesIO(response.content),
                         )
             elif scheme == "file":
@@ -321,7 +304,7 @@ async def to_lagrange_msg(
                     if target.target == "group":
                         voice = await lgrc.upload_grp_audio(grp_id=target.id, voice=f)
                     else:
-                        voice = await lgrc.upload_friend_audio(uid=info_mgr.uid_mgr.from_uin(target.id), voice=f)
+                        voice = await lgrc.upload_friend_audio(uid=await info_mgr.uid_mgr.from_uin(target.id), voice=f)
             elif scheme == "base64":
                 data = i.data.file.removeprefix("base64://")
                 voice = base64.b64decode(data)
@@ -329,7 +312,7 @@ async def to_lagrange_msg(
                     voice = await lgrc.upload_grp_audio(grp_id=target.id, voice=io.BytesIO(voice))
                 else:
                     voice = await lgrc.upload_friend_audio(
-                        uid=info_mgr.uid_mgr.from_uin(target.id), voice=io.BytesIO(voice)
+                        uid=await info_mgr.uid_mgr.from_uin(target.id), voice=io.BytesIO(voice)
                     )
             else:
                 continue

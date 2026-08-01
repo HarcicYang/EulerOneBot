@@ -22,7 +22,7 @@ dependencies = [
     "qrcode>=8.2",
     "cryptography>=49.0.0",
     "lagrange-python @ git+https://github.com/LagrangeDev/lagrange-python.git",
-    "pyrefly>=0.60.0",
+    "aiosqlite",
 ]
 
 [tool.setuptools.packages.find]
@@ -56,4 +56,5 @@ testpaths = ["tests"]
 dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.1",
+    "pyrefly>=0.60.0",
 ]

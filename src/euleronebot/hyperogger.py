@@ -41,15 +41,16 @@ class Levels:
 class Logger:
     running_loggers: ClassVar[dict[str, "Logger"]] = {}
 
-    def __init__(self, use_nf: bool = True):
+    def __init__(self, use_nf: bool = True, key: str | None = None):
         self.levels = Levels(NerdICONs(use_nf))
         self._use_nf = use_nf
+        self._key = key
         self.log_level = self.levels.INFO
         self.log_level_text = "INFO"
 
     @classmethod
     def create(cls, key: str, level: str, use_nf: bool = True):
-        c = cls(use_nf)
+        c = cls(use_nf, key=key)
         c.set_level(level)
         cls.running_loggers[key] = c
         return c
@@ -57,7 +58,7 @@ class Logger:
     @classmethod
     def fetch(cls, key: str) -> "Logger":
         if key not in cls.running_loggers:
-            cls.running_loggers[key] = cls()
+            cls.running_loggers[key] = cls(key=key)
         return cls.running_loggers[key]
 
     def set_level(self, level: str):
@@ -96,8 +97,7 @@ class Logger:
         sys.excepthook = hook
 
     def name_custom(self, name: str) -> "Logger":
-        new_logger = type(self)(self._use_nf)
-        new_logger.set_level(self.log_level_text)
+        new_logger = type(self)(self._use_nf, key=self._key)
         new_logger._set_name_bind(name)
         return new_logger
 
@@ -108,8 +108,13 @@ class Logger:
 
         self.log = nlog
 
+    def _effective_level(self) -> str:
+        if self._key and self._key in Logger.running_loggers:
+            return Logger.running_loggers[self._key].log_level
+        return self.log_level
+
     def _log(self, message: str, level: str) -> None:
-        if self.levels.level_nums[level] < self.levels.level_nums[self.log_level]:
+        if self.levels.level_nums[level] < self.levels.level_nums[self._effective_level()]:
             return
         time = color_txt(
             self.levels.nf_icons.nf_weather_time_4 + " " + str(datetime.datetime.now())[:-4],

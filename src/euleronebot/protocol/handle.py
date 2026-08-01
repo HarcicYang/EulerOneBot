@@ -5,6 +5,7 @@ from typing import (
     Any,
     Protocol,
     TypeVar,
+    cast,
     runtime_checkable,
 )
 
@@ -55,8 +56,7 @@ class RegisteredHandler(Protocol):
 
 def on(ev_type: type[LagrangeEvent]) -> Callable[[F], F]:
     def dec(func: F) -> F:
-        if isinstance(func, RegisteredHandler):
-            func.ev_type = ev_type
+        cast(RegisteredHandler, func).ev_type = ev_type
         return func
 
     return dec
@@ -90,8 +90,8 @@ class LagrangeEventHandler:
         if event.uin == self.lag.client.uin or len(event.msg_chain) == 0:
             return
         logger.info(f"[Group] {event.grp_name}({event.grp_id}): @{event.nickname}({event.uin}): {event.msg}")
-        if not info_mgr.uid_mgr.is_exist(event.uid):
-            info_mgr.uid_mgr.add(event.uid, event.uin)
+        if not await info_mgr.uid_mgr.is_exist(event.uid):
+            await info_mgr.uid_mgr.add(event.uid, event.uin)
         guser_info = (await client.get_grp_member_info(event.grp_id, event.uid)).body[0]
         user_info = await client.get_user_info(event.uid)
         if guser_info.is_owner:
@@ -103,7 +103,7 @@ class LagrangeEventHandler:
         ev = onebot_events.GroupMessageEvent(
             time=event.time,
             self_id=self.lag.client.uin,
-            message_id=info_mgr.msgid_mgr.add(
+            message_id=await info_mgr.msgid_mgr.add(
                 MsgInfo(
                     raw_msg=event.msg_chain,
                     scene_type="group",
@@ -139,13 +139,13 @@ class LagrangeEventHandler:
         if event.from_uin == self.lag.client.uin or len(event.msg_chain) == 0:
             return
         logger.info(f"[Friend] {event.from_uin} -> {event.to_uin}: {event.msg}")
-        if not info_mgr.uid_mgr.is_exist(event.from_uid):
-            info_mgr.uid_mgr.add(event.from_uid, event.from_uin)
+        if not await info_mgr.uid_mgr.is_exist(event.from_uid):
+            await info_mgr.uid_mgr.add(event.from_uid, event.from_uin)
         user_info = await self.lag.client.get_user_info(event.from_uid)
         ev = onebot_events.PrivateMessageEvent(
             time=event.timestamp,
             self_id=self.lag.client.uin,
-            message_id=info_mgr.msgid_mgr.add(
+            message_id=await info_mgr.msgid_mgr.add(
                 MsgInfo(
                     raw_msg=event.msg_chain,
                     scene_type="user",
@@ -172,14 +172,14 @@ class LagrangeEventHandler:
     @on(GroupRecall)
     async def grp_recall_handler(self, _client: Client, event: GroupRecall) -> None:
         logger.info(f"[Group] {event.grp_id}: message {event.seq} had been deleted")
-        msgid = info_mgr.msgid_mgr.search(MsgInfo(scene_id=event.grp_id, scene_type="group", seq=event.seq))
+        msgid = await info_mgr.msgid_mgr.search(MsgInfo(scene_id=event.grp_id, scene_type="group", seq=event.seq))
         if not msgid:
             return
         try:
-            opt_uin = info_mgr.uid_mgr.from_uid(event.uid)
+            opt_uin = await info_mgr.uid_mgr.from_uid(event.uid)
         except ValueError:
             opt_uin = 0
-        real_info = info_mgr.msgid_mgr.fetch(msgid)
+        real_info = await info_mgr.msgid_mgr.fetch(msgid)
         ev = onebot_events.GroupRecallEvent(
             group_id=event.grp_id,
             message_id=msgid,
@@ -195,7 +195,7 @@ class LagrangeEventHandler:
         if event.from_uin == self.lag.client.uin:
             return
         logger.info(f"[Friend] {event.from_uin} -> {event.to_uin}: message {event.seq} had been deleted")
-        msgid = info_mgr.msgid_mgr.search(MsgInfo(scene_id=event.from_uin, scene_type="user", seq=event.seq))
+        msgid = await info_mgr.msgid_mgr.search(MsgInfo(scene_id=event.from_uin, scene_type="user", seq=event.seq))
         if not msgid:
             return
         ev = onebot_events.FriendRecallEvent(
@@ -213,8 +213,8 @@ class LagrangeEventHandler:
             f"by {event.operator_uid} for {event.duration}s"
         )
         try:
-            opt_uin = info_mgr.uid_mgr.from_uid(event.operator_uid)
-            uin = 0 if not event.target_uid else info_mgr.uid_mgr.from_uid(event.target_uid)
+            opt_uin = await info_mgr.uid_mgr.from_uid(event.operator_uid)
+            uin = 0 if not event.target_uid else await info_mgr.uid_mgr.from_uid(event.target_uid)
         except ValueError:
             return
         ev = onebot_events.GroupMuteEvent(
@@ -232,12 +232,12 @@ class LagrangeEventHandler:
     async def grp_join_handler(self, _client: Client, event: GroupMemberJoined) -> None:
         logger.info(f"[Group] {event.grp_id}: member {event.uid} has joined")
         try:
-            uin = info_mgr.uid_mgr.from_uid(event.uid)
+            uin = await info_mgr.uid_mgr.from_uid(event.uid)
         except ValueError:
             rs = await self.lag.client.get_grp_member_info(grp_id=event.grp_id, uid=event.uid)
             uin = rs.body[0].account.uin or 0
             if uin:
-                info_mgr.uid_mgr.add(event.uid, uin)
+                await info_mgr.uid_mgr.add(event.uid, uin)
         ev = onebot_events.GroupIncreaseEvent(
             group_id=event.grp_id,
             operator_id=0,
@@ -270,7 +270,7 @@ class LagrangeEventHandler:
         opt_uin = 0
         if event.is_kicked or event.is_kicked_self:
             try:
-                opt_uin = info_mgr.uid_mgr.from_uid(event.operator_uid)
+                opt_uin = await info_mgr.uid_mgr.from_uid(event.operator_uid)
             except ValueError:
                 opt_uin = 0
 
@@ -280,15 +280,15 @@ class LagrangeEventHandler:
             tp = "kick_me"
         else:
             tp = "leave"
-        if not info_mgr.uid_mgr.is_exist(event.uin) and event.uin != event.grp_id:
-            info_mgr.uid_mgr.add(event.uid, event.uin)
+        if not await info_mgr.uid_mgr.is_exist(event.uin) and event.uin != event.grp_id:
+            await info_mgr.uid_mgr.add(event.uid, event.uin)
         ev = onebot_events.GroupDecreaseEvent(
             group_id=event.grp_id,
             operator_id=opt_uin,
             self_id=self.lag.client.uin,
             sub_type=tp,
             time=round(time.time()),
-            user_id=info_mgr.uid_mgr.from_uid(event.uid),
+            user_id=await info_mgr.uid_mgr.from_uid(event.uid),
         )
         await self.adapter.trigger(ev)
 
@@ -308,7 +308,7 @@ class LagrangeEventHandler:
         try:
             if event.uid:
                 uid = event.uid
-                uin = info_mgr.uid_mgr.from_uid(event.uid)
+                uin = await info_mgr.uid_mgr.from_uid(event.uid)
             else:
                 uid = ""
                 uin = 0
@@ -319,9 +319,9 @@ class LagrangeEventHandler:
             else:
                 uid = ""
                 uin = 0
-        msgid = info_mgr.msgid_mgr.search(MsgInfo(scene_type="group", scene_id=event.grp_id, seq=event.seq))
+        msgid = await info_mgr.msgid_mgr.search(MsgInfo(scene_type="group", scene_id=event.grp_id, seq=event.seq))
         if not msgid:
-            msgid = info_mgr.msgid_mgr.add(
+            msgid = await info_mgr.msgid_mgr.add(
                 MsgInfo(
                     scene_type="group",
                     scene_id=event.grp_id,
@@ -351,10 +351,10 @@ class LagrangeEventHandler:
                 break
         assert req
         try:
-            uin = info_mgr.uid_mgr.from_uid(event.uid)
+            uin = await info_mgr.uid_mgr.from_uid(event.uid)
         except ValueError:
             uin = 0
-        flag = info_mgr.req_mgr.set_group(grp_id=req.group.grp_id, seq=req.seq, ev_type=req.event_type)
+        flag = await info_mgr.req_mgr.set_group(grp_id=req.group.grp_id, seq=req.seq, ev_type=req.event_type)
         ev = onebot_events.GroupRequestEvent(
             time=round(time.time()),
             self_id=self.lag.client.uin,
@@ -369,7 +369,7 @@ class LagrangeEventHandler:
     @on(GroupAdminChange)
     async def grp_admin_handler(self, _client: Client, event: GroupAdminChange) -> None:
         try:
-            uin = info_mgr.uid_mgr.from_uid(event.uid)
+            uin = await info_mgr.uid_mgr.from_uid(event.uid)
         except ValueError:
             uin = 0
 

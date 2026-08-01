@@ -1,6 +1,8 @@
 /lagrange.bak/
 /appconfig.json
 /cache.json
+/cache.json.bak
+/euleronebot.db
 /device.json
 /sig.bin
 /src/euler_onebot.egg-info/

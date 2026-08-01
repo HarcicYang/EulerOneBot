@@ -59,8 +59,9 @@ class Connector:
             try:
                 while True:
                     await self.received.put(await websocket.receive_text())
-            except WebSocketDisconnect:
+            except (WebSocketDisconnect, RuntimeError):
                 logger.error("Connection lost")
+                self.active_websocket_servers.pop("root", None)
 
         @self.forward_app.websocket("/api")
         async def api_endpoint(websocket: WebSocket):
@@ -69,15 +70,20 @@ class Connector:
             try:
                 while True:
                     await self.received.put(await websocket.receive_text())
-            except WebSocketDisconnect:
+            except (WebSocketDisconnect, RuntimeError):
                 logger.error("Connection lost")
+                self.active_websocket_servers.pop("api", None)
 
         @self.forward_app.websocket("/event")
         async def event_endpoint(websocket: WebSocket):
             await websocket.accept()
             self.active_websocket_servers["event"] = websocket
-            while True:
-                await asyncio.sleep(1)
+            try:
+                while True:
+                    await asyncio.sleep(1)
+            except (WebSocketDisconnect, RuntimeError):
+                logger.error("Connection lost")
+                self.active_websocket_servers.pop("event", None)
 
     async def set_reverse_websocket(self) -> None:
         raise NotImplementedError
@@ -99,11 +105,13 @@ class Connector:
 
     async def report(self, data: str) -> None:
         logger.trace(f"API report: {data}")
-        if self.active_websocket_servers:
-            if self.active_websocket_servers.get("root"):
-                await self.active_websocket_servers["root"].send_text(data)
-            if self.active_websocket_servers.get("api"):
-                await self.active_websocket_servers["api"].send_text(data)
+        if not self.active_websocket_servers:
+            return
+        for key in ("root", "api"):
+            socket = self.active_websocket_servers.get(key)
+            if socket is None or socket.client_state == socket.client_state.DISCONNECTED:
+                continue
+            await socket.send_text(data)
 
     async def trigger(self, data: str) -> None:
         logger.trace(f"Event trigger: {data}")
