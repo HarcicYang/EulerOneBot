@@ -18,7 +18,7 @@ class NerdICONs:
     def __init__(self, enable: bool):
         self.enable = enable
 
-    def __getattribute__(self, item) -> str:
+    def __getattribute__(self, item: str) -> str:
         if super().__getattribute__("enable"):
             return str(super().__getattribute__(item))
         else:
@@ -38,7 +38,7 @@ T = TypeVar("T")
 
 async def with_retry(factory: Callable[..., Coroutine[Any, Any, T]], maximum: int = 5) -> T:
     retried = 0
-    exceptions = []
+    exceptions: list[str] = []
     while retried < maximum:
         try:
             res = await factory()

@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import os.path
 import random
+from functools import partial
 from typing import TYPE_CHECKING, Any, Literal
 
 from lagrange import Client
@@ -87,13 +88,11 @@ class UIDPool(BaseModel):
         count = 0
         grps = (await with_retry(client.get_grp_list)).grp_list
         for i in grps:
-            mbrs = await with_retry(lambda g=i: client.get_grp_members(g.grp_id))
+            mbrs = await with_retry(partial(client.get_grp_members, i.grp_id))
             mbr_list = mbrs.body
             next_key = mbrs.next_key
             while next_key:
-                mbrs = await with_retry(
-                    lambda g=i, k=next_key: client.get_grp_members(g.grp_id, k.decode())
-                )
+                mbrs = await with_retry(partial(client.get_grp_members, i.grp_id, next_key.decode()))
                 mbr_list += mbrs.body
                 next_key = mbrs.next_key
             for j in mbr_list:

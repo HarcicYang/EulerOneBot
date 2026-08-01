@@ -71,7 +71,7 @@ class LagrangeEventHandler:
     def subscribe(self) -> None:
         for i in dir(self):
             if isinstance(getattr(self, i), RegisteredHandler):
-                self.lag.subscribe(getattr(self, i).ev_type, getattr(self, i))
+                self.lag.subscribe(getattr(self, i).ev_type, getattr(self, i))  # type: ignore
 
     @on(ClientOnline)
     async def online_handler(self, client: Client, _event: ClientOnline) -> None:
@@ -127,7 +127,7 @@ class LagrangeEventHandler:
                 card="" if not guser_info.name else guser_info.name.string,
                 level="" if not guser_info.level else str(guser_info.level.num),
                 nickname=user_info.name,
-                role=role,  # type: ignore
+                role=role,
                 sex="unknown",
                 title="",
                 user_id=event.uin,
@@ -164,7 +164,7 @@ class LagrangeEventHandler:
             sender=onebot_events.PrivateSender(
                 age=user_info.age,
                 nickname=user_info.name,
-                sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",  # type: ignore
+                sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",
                 user_id=event.from_uin,
             ),
         )
@@ -297,7 +297,7 @@ class LagrangeEventHandler:
             group_id=event.grp_id,
             operator_id=opt_uin,
             self_id=self.lag.client.uin,
-            sub_type=tp,  # type: ignore
+            sub_type=tp,
             time=round(time.time()),
             user_id=info_mgr.uid_mgr.from_uid(event.uid),
         )
@@ -321,15 +321,15 @@ class LagrangeEventHandler:
                 uid = event.uid
                 uin = info_mgr.uid_mgr.from_uid(event.uid)
             else:
-                uid = info_mgr.uid_mgr.from_uin(event.uin)  # type: ignore
-                uin = event.uin  # type: ignore
+                uid = ""
+                uin = 0
         except ValueError:
             if event.uid:
                 uid = event.uid
                 uin = 0
             else:
                 uid = ""
-                uin = event.uin  # type: ignore
+                uin = 0
         msgid = info_mgr.msgid_mgr.search(
             MsgInfo(scene_type="group", scene_id=event.grp_id, seq=event.seq)
         )

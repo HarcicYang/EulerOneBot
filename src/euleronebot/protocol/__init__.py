@@ -23,7 +23,7 @@ class LagrangeProtocol:
     def __init__(self, cfg: BotConfig, onebot_adapter: OneBotAdapter):
         self.cfg = cfg
         self.adapter = onebot_adapter
-        self._tasks: list[asyncio.Task] = []
+        self._tasks: list[asyncio.Task[None]] = []
         self.lag = Lagrange(
             cfg.login.uin,
             "linux",

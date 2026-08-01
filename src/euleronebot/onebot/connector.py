@@ -60,7 +60,7 @@ class Connector:
                 while True:
                     await self.received.put(await websocket.receive_text())
             except WebSocketDisconnect:
-                logger.error("连接断开")
+                logger.error("Connection lost")
 
         @self.forward_app.websocket("/api")
         async def api_endpoint(websocket: WebSocket):
@@ -70,7 +70,7 @@ class Connector:
                 while True:
                     await self.received.put(await websocket.receive_text())
             except WebSocketDisconnect:
-                logger.error("连接断开")
+                logger.error("Connection lost")
 
         @self.forward_app.websocket("/event")
         async def event_endpoint(websocket: WebSocket):
