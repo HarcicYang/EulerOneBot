@@ -1,4 +1,5 @@
 import time
+import traceback
 from collections.abc import Callable
 from typing import (
     TYPE_CHECKING,
@@ -69,12 +70,25 @@ class LagrangeEventHandler:
         self.info_updated = False
         self.protocol = protocol
 
+    @staticmethod
+    def _make_safe(handler):
+        """Wrap handler to prevent exceptions from silently disappearing into lagrange's _task_exec."""
+
+        async def wrapper(client, event):
+            try:
+                await handler(client, event)
+            except Exception:
+                logger.error(f"事件处理异常: {type(event).__name__}")
+                logger.trace(traceback.format_exc())
+
+        return wrapper
+
     def subscribe(self) -> None:
         for i in dir(self):
             attr = getattr(self, i)  # it seems like py3.14 has a **** change
             func = getattr(attr, "__func__", attr)
             if isinstance(func, RegisteredHandler):
-                self.lag.subscribe(func.ev_type, attr)  # type: ignore
+                self.lag.subscribe(func.ev_type, self._make_safe(attr))  # type: ignore
 
     @on(ClientOnline)
     async def online_handler(self, client: Client, _event: ClientOnline) -> None:

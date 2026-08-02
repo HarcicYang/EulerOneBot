@@ -5,6 +5,7 @@ import os
 import pickle
 import random
 import sqlite3
+import traceback
 from functools import partial
 from typing import TYPE_CHECKING, Any, Literal, Self
 
@@ -163,19 +164,25 @@ class UIDPool:
         count = 0
         grps = (await with_retry(client.get_grp_list)).grp_list
         for i in grps:
-            mbrs = await with_retry(partial(client.get_grp_members, i.grp_id))
-            mbr_list = mbrs.body
-            next_key = mbrs.next_key
-            while next_key:
-                mbrs = await with_retry(partial(client.get_grp_members, i.grp_id, next_key.decode()))
-                mbr_list += mbrs.body
+            try:
+                mbrs = await with_retry(partial(client.get_grp_members, i.grp_id))
+                mbr_list = mbrs.body
                 next_key = mbrs.next_key
-            for j in mbr_list:
-                if j.account.uin == i.grp_id:
-                    continue
-                if j.account.uin and not (await self.is_exist(j.account.uid) and await self.is_exist(j.account.uin)):
-                    await self.add(j.account.uid, j.account.uin)
-                    count += 1
+                while next_key:
+                    mbrs = await with_retry(partial(client.get_grp_members, i.grp_id, next_key.decode()))
+                    mbr_list += mbrs.body
+                    next_key = mbrs.next_key
+                for j in mbr_list:
+                    if j.account.uin == i.grp_id:
+                        continue
+                    if j.account.uin and not (
+                        await self.is_exist(j.account.uid) and await self.is_exist(j.account.uin)
+                    ):
+                        await self.add(j.account.uid, j.account.uin)
+                        count += 1
+            except Exception:
+                logger.warning(f"群 {i.grp_id} 成员列表加载失败,已跳过")
+                logger.trace(traceback.format_exc())
 
         return count
 
@@ -192,9 +199,12 @@ class UIDPool:
     async def load_all(self, client: Client) -> None:
         t1 = asyncio.create_task(self.load_all_users(client))
         t2 = asyncio.create_task(self.load_all_grps(client))
-        await asyncio.gather(t1, t2)
-        c1 = t1.result()
-        c2 = t2.result()
+        results = await asyncio.gather(t1, t2, return_exceptions=True)
+        c1 = results[0] if not isinstance(results[0], BaseException) else 0
+        c2 = results[1] if not isinstance(results[1], BaseException) else 0
+        for r in results:
+            if isinstance(r, BaseException) and not isinstance(r, asyncio.CancelledError):
+                logger.error(f"load_all 子任务异常: {r!r}")
         count = c1 + c2
         if count != 0:
             logger.info(f"Newly cached {count} user(s)")

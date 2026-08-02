@@ -78,7 +78,10 @@ class LagrangeImpl:
                 logger.error(repr(e))
                 logger.trace(traceback.format_exc())
                 rsp = ActionFailedResponse(status="failed", retcode=1400, data=EmptyRsp(), echo=call.echo)
-                await self.adapter.report(rsp)
+                try:
+                    await self.adapter.report(rsp)
+                except Exception:
+                    logger.error("error handler 中的 report 调用失败,API 响应丢失")
 
     @on(SendMessage)
     async def send_message(self, data: SendMsgData) -> SendMessageResponse:

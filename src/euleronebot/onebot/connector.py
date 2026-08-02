@@ -232,7 +232,10 @@ class Connector:
             self._servers.append(server)
             tasks.append(asyncio.create_task(server.serve()))
         if tasks:
-            await asyncio.gather(*tasks)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for r in results:
+                if isinstance(r, BaseException) and not isinstance(r, asyncio.CancelledError):
+                    logger.error(f"Connector 子任务异常: {r!r}")
         else:
             await asyncio.Event().wait()
 
@@ -251,7 +254,8 @@ class Connector:
             socket = self.active_websocket_servers.get(key)
             if socket is None or socket.client_state == socket.client_state.DISCONNECTED:
                 continue
-            await socket.send_text(data)
+            with suppress(Exception):
+                await socket.send_text(data)
 
     async def trigger(self, data: str) -> None:
         logger.trace(f"Event trigger: {data}")
@@ -262,7 +266,8 @@ class Connector:
             socket = self.active_websocket_servers.get(key)
             if socket is None or socket.client_state == socket.client_state.DISCONNECTED:
                 continue
-            await socket.send_text(data)
+            with suppress(Exception):
+                await socket.send_text(data)
 
     async def _http_post_push(self, data: str) -> None:
         cfg = self._http_post
