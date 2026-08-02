@@ -125,7 +125,7 @@ class TestAdapterCycle:
                 await task
             assert results
             assert results[0]["status"] == "failed"
-            assert results[0]["retcode"] == 1400
+            assert results[0]["retcode"] == 1404
             assert results[0]["echo"] == "abc123"
 
         run(main())

@@ -2,6 +2,8 @@ import asyncio
 import json
 import traceback
 from contextlib import suppress
+from functools import reduce
+from operator import or_
 from typing import TYPE_CHECKING, Any, NoReturn
 
 from pydantic import TypeAdapter
@@ -24,44 +26,48 @@ else:
 
 logger = Logger.fetch("euler").name_custom("euler.onebot")
 
+API_CALL_TYPES = (
+    SendPrivateMessage,
+    SendGroupMessage,
+    SendMessage,
+    DeleteMessage,
+    GetMessage,
+    GetForwardMessage,
+    SendLike,
+    SendPoke,
+    SetGroupKick,
+    SetGroupBan,
+    SetGroupWholeBan,
+    SetGroupAdmin,
+    SetGroupCard,
+    SetGroupName,
+    SetGroupLeave,
+    SetGroupSpecialTitle,
+    SetFriendAddRequest,
+    SetGroupAddRequest,
+    GetLoginInfo,
+    GetStrangerInfo,
+    GetFriendList,
+    GetGroupInfo,
+    GetGroupList,
+    GetGroupMemberInfo,
+    GetGroupMemberList,
+    GetStatus,
+    GetVersionInfo,
+    GetCookie,
+    GetCSRFToken,
+    GroupReaction,
+)
+
 
 class Adapter:
-    def __init__(self, impls: list[ADAPTER_CONFIG]):
-        self.connector = Connector(impls)
+    def __init__(self, impls: list[ADAPTER_CONFIG], access_token: str = ""):
+        self.connector = Connector(self, impls, access_token=access_token)
         self.api_calls: asyncio.Queue[BaseAPICall] = asyncio.Queue()
-        self.api_validation = TypeAdapter(
-            SendPrivateMessage
-            | SendGroupMessage
-            | SendMessage
-            | DeleteMessage
-            | GetMessage
-            | GetForwardMessage
-            | SendLike
-            | SendPoke
-            | SetGroupKick
-            | SetGroupBan
-            | SetGroupWholeBan
-            | SetGroupAdmin
-            | SetGroupCard
-            | SetGroupName
-            | SetGroupLeave
-            | SetGroupSpecialTitle
-            | SetFriendAddRequest
-            | SetGroupAddRequest
-            | GetLoginInfo
-            | GetStrangerInfo
-            | GetFriendList
-            | GetGroupInfo
-            | GetGroupList
-            | GetGroupMemberInfo
-            | GetGroupMemberList
-            | GetStatus
-            | GetVersionInfo
-            | GetCookie
-            | GetCSRFToken
-            | GroupReaction
-        )
+        self.api_validation = TypeAdapter(reduce(or_, API_CALL_TYPES))
+        self.api_actions = {t.model_fields["action"].default for t in API_CALL_TYPES}
         self._connector_task: asyncio.Task | None = None
+        self._pending_responses: dict[str, asyncio.Future[BaseAPIResponse]] = {}
 
     async def setup(self) -> None:
         self.connector = await self.connector.setup()
@@ -84,10 +90,13 @@ class Adapter:
             except (ValueError, TypeError):
                 logger.error(data)
                 logger.error(traceback.format_exc())
-                echo = ""
+                raw: dict = {}
                 with suppress(ValueError, TypeError):
-                    echo = json.loads(data).get("echo", "")
-                await self.report(ActionFailedResponse(status="failed", retcode=1400, data=EmptyRsp(), echo=echo))
+                    raw = json.loads(data)
+                retcode = 1404 if raw.get("action") not in self.api_actions else 1400
+                await self.report(
+                    ActionFailedResponse(status="failed", retcode=retcode, data=EmptyRsp(), echo=raw.get("echo", ""))
+                )
                 continue
         # noinspection PyUnreachableCode
         raise RuntimeError()
@@ -99,9 +108,16 @@ class Adapter:
                 await self._connector_task
         await self.connector.close()
 
+    def register_awaiter(self, echo: str) -> asyncio.Future[BaseAPIResponse]:
+        future: asyncio.Future[BaseAPIResponse] = asyncio.get_event_loop().create_future()
+        self._pending_responses[echo] = future
+        return future
+
     async def trigger(self, event: BaseEvent) -> None:
         await self.connector.trigger(event.model_dump_json())
 
     async def report(self, rsp: BaseAPIResponse) -> None:
         logger.info(f"API Result: {rsp}")
+        if rsp.echo and rsp.echo in self._pending_responses:
+            self._pending_responses.pop(rsp.echo).set_result(rsp)
         await self.connector.report(rsp.model_dump_json())

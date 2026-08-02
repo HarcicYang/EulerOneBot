@@ -80,6 +80,7 @@ class LagrangeEventHandler:
     async def online_handler(self, client: Client, _event: ClientOnline) -> None:
         if self.info_updated:
             return
+        self.adapter.connector.self_id = client.uin
         await info_mgr.uid_mgr.load_all(client)
         self.info_updated = True
 

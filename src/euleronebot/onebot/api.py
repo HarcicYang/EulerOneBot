@@ -1,6 +1,6 @@
 from typing import Generic, Literal, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .api_data import *
 
@@ -9,6 +9,7 @@ ResponseType = TypeVar("ResponseType")
 
 __all__ = [
     "ActionFailedResponse",
+    "AsyncResponse",
     "BaseAPICall",
     "BaseAPIResponse",
     "DeleteMessage",
@@ -82,10 +83,16 @@ class BaseAPICall(BaseModel, Generic[DataType]):
 
 
 class BaseAPIResponse(BaseModel, Generic[ResponseType]):
-    status: Literal["ok", "failed"]
+    status: Literal["ok", "async", "failed"]
     retcode: int
     data: ResponseType | None
     echo: str = ""
+
+
+class AsyncResponse(BaseAPIResponse[EmptyRsp]):
+    status: Literal["async"] = "async"
+    retcode: int = 1
+    data: EmptyRsp = Field(default_factory=EmptyRsp)
 
 
 class SendPrivateMessage(BaseAPICall[SendPrivateMsgData]):

@@ -22,6 +22,7 @@
 ### 方式一：作为独立应用运行
 
 1. 克隆本项目：
+
    ```shell
    git clone https://github.com/HarcicYang/EulerOneBot.git
    cd EulerOneBot
@@ -53,6 +54,7 @@
   "$schema": "./appconfig.schema.json",
   "log_level": "INFO",
   "log_nf": true,
+  "access_token": "",
   "connections": [
     {
       "type": "ForwardWebSocket",
@@ -76,9 +78,10 @@
 若模型有改动，CI 会校验 schema 文件与模型保持同步。
 
 | 字段                 | 说明                                                                    |
-|----------------------|-------------------------------------------------------------------------|
+| -------------------- | ----------------------------------------------------------------------- |
 | `log_level`          | 日志级别：`TRACE` / `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL` |
 | `log_nf`             | 是否为日志输出启用 NerdFont                                             |
+| `access_token`       | 鉴权 Token，配置后 HTTP / 正向 WebSocket / 反向 WebSocket 需携带（空为不鉴权） |
 | `connections`        | 通信连接列表（见下方连接类型）                                          |
 | `login.uin`          | QQ 账号（不要真的写0哦）                                                |
 | `login.signer_url`   | 签名服务地址                                                            |
@@ -88,9 +91,12 @@
 
 ### 已经支持的连接类型
 
-| 连接类型       | `type` 值          | 说明                                                            |
-|----------------|--------------------|-----------------------------------------------------------------|
-| 正向 WebSocket | `ForwardWebSocket` | 在 `url` 指定的地址监听,提供 WebSocket 服务供 OneBot 客户端连接 |
+| 连接类型       | `type` 值           | 说明                                                            |
+| -------------- | ------------------- | --------------------------------------------------------------- |
+| HTTP           | `HTTP`              | 在 `url` 指定的地址提供 HTTP API 服务（`GET`/`POST /:action`）  |
+| HTTP POST      | `HTTPPost`          | 将事件上报到 `url` 指定的 Webhook，可配置 `secret` 签名与 `timeout` |
+| 正向 WebSocket | `ForwardWebSocket`  | 在 `url` 指定的地址监听,提供 WebSocket 服务供 OneBot 客户端连接 |
+| 反向 WebSocket | `ReverseWebSocket`  | 主动连接 `url` 指定的服务端，可配置 `api_url`、`event_url`、`use_universal_client`、`reconnect_interval` |
 
 每类连接可能有额外的配置字段（如 `ReverseWebSocket` 的 `api_url`、`event_url` 等），详见 `ForwardWebsocketConfig`、
 `ReverseWebsocketConfig` 等 Pydantic 模型定义。
@@ -108,114 +114,114 @@ uv sync
 <details>
 <summary>API 类型</summary>
 
-| API 名称                | 支持状态 |
-|-------------------------|----------|
-| send_private_msg        | ✅       |
-| send_group_msg          | ✅       |
-| send_msg                | ✅       |
-| delete_msg              | ✅       |
-| get_msg                 | ✅       |
-| get_forward_msg         | ✅       |
-| send_like               | ✅       |
-| send_poke               | ✅       |
-| send_forward_msg        | ❌       |
-| set_group_kick          | ✅       |
-| set_group_ban           | ✅       |
-| set_group_whole_ban     | ✅       |
-| set_group_admin         | ✅       |
-| set_group_card          | ✅       |
-| set_group_name          | ✅       |
-| set_group_leave         | ✅       |
-| set_group_special_title | ✅       |
-| set_friend_add_request  | ✅       |
-| set_group_add_request   | ✅       |
-| group_reaction          | ✅       |
-| get_login_info          | ✅       |
-| get_stranger_info       | ✅       |
-| get_friend_list         | ✅       |
-| get_group_info          | ✅       |
-| get_group_list          | ✅       |
-| get_group_member_info   | ✅       |
-| get_group_member_list   | ✅       |
-| get_cookies             | ✅       |
-| get_csrf_token          | ✅       |
-| get_status              | ❌       |
-| get_version_info        | ✅       |
+| API 名称                | 支持状态 | 类型   |
+| ----------------------- | -------- | ------ |
+| send_private_msg        | ✅       | 标准   |
+| send_group_msg          | ✅       | 标准   |
+| send_msg                | ✅       | 标准   |
+| delete_msg              | ✅       | 标准   |
+| get_msg                 | ✅       | 标准   |
+| get_forward_msg         | ✅       | 标准   |
+| send_like               | ✅       | 标准   |
+| send_poke               | ✅       | 扩展   |
+| send_forward_msg        | NoDesign | 扩展   |
+| set_group_kick          | ✅       | 标准   |
+| set_group_ban           | ✅       | 标准   |
+| set_group_whole_ban     | ✅       | 标准   |
+| set_group_admin         | ✅       | 标准   |
+| set_group_card          | ✅       | 标准   |
+| set_group_name          | ✅       | 标准   |
+| set_group_leave         | ✅       | 标准   |
+| set_group_special_title | ✅       | 标准   |
+| set_friend_add_request  | ✅       | 标准   |
+| set_group_add_request   | ✅       | 标准   |
+| group_reaction          | ✅       | 扩展   |
+| get_login_info          | ✅       | 标准   |
+| get_stranger_info       | ✅       | 标准   |
+| get_friend_list         | ✅       | 标准   |
+| get_group_info          | ✅       | 标准   |
+| get_group_list          | ✅       | 标准   |
+| get_group_member_info   | ✅       | 标准   |
+| get_group_member_list   | ✅       | 标准   |
+| get_cookies             | ✅       | 标准   |
+| get_csrf_token          | ✅       | 标准   |
+| get_status              | ❌       | 标准   |
+| get_version_info        | ✅       | 标准   |
 
 </details>
 
 <details>
 <summary>事件类型</summary>
 
-| 事件名称                 | 支持状态 |
-|--------------------------|----------|
-| message.private          | ✅       |
-| message.group            | ✅       |
-| notice.group_upload      | ✅       |
-| notice.friend_upload     | ✅       |
-| notice.group_admin       | ✅       |
-| notice.group_decrease    | ✅       |
-| notice.group_increase    | ✅       |
-| notice.group_ban         | ✅       |
-| notice.friend_add        | ✅       |
-| notice.group_recall      | ✅       |
-| notice.friend_recall     | ✅       |
-| notice.notify.poke       | ✅       |
-| notice.notify.lucky_king | ❌       |
-| notice.notify.honor      | ❌       |
-| notice.reaction          | ✅       |
-| request.friend           | ✅       |
-| request.group            | ✅       |
-| meta_event.lifecycle     | ❌       |
-| meta_event.heartbeat     | ✅       |
+| 事件名称                 | 支持状态 | 类型   |
+| ------------------------ | -------- | ------ |
+| message.private          | ✅       | 标准   |
+| message.group            | ✅       | 标准   |
+| notice.group_upload      | ✅       | 标准   |
+| notice.friend_upload     | ✅       | 扩展   |
+| notice.group_admin       | ✅       | 标准   |
+| notice.group_decrease    | ✅       | 标准   |
+| notice.group_increase    | ✅       | 标准   |
+| notice.group_ban         | ✅       | 标准   |
+| notice.friend_add        | ✅       | 标准   |
+| notice.group_recall      | ✅       | 标准   |
+| notice.friend_recall     | ✅       | 标准   |
+| notice.notify.poke       | ✅       | 标准   |
+| notice.notify.lucky_king | ❌       | 标准   |
+| notice.notify.honor      | ❌       | 标准   |
+| notice.reaction          | ✅       | 扩展   |
+| request.friend           | ✅       | 标准   |
+| request.group            | ✅       | 标准   |
+| meta_event.lifecycle     | ❌       | 标准   |
+| meta_event.heartbeat     | ✅       | 标准   |
 
 </details>
 
 <details>
 <summary>消息段类型</summary>
 
-| 消息段类型 | 支持状态 |
-|------------|----------|
-| text       | ✅       |
-| at         | ✅       |
-| reply      | ✅       |
-| face       | ✅       |
-| poke       | API      |
-| mface      | ✅       |
-| node       | ✅       |
-| forward    | ✅       |
-| image      | ✅       |
-| record     | ✅       |
-| video      | 🚧       |
-| contact    | ❌       |
-| location   | ❌       |
-| music      | ❌       |
-| custom     | ❌       |
-| redbag     | ❌       |
-| rps        | ❌       |
-| dice       | ❌       |
-| shake      | ❌       |
-| json       | ✅       |
-| xml        | ❌       |
-| markdown   | ❌       |
+| 消息段类型 | 支持状态 | 类型   |
+| ---------- | -------- | ------ |
+| text       | ✅       | 标准   |
+| at         | ✅       | 标准   |
+| reply      | ✅       | 标准   |
+| face       | ✅       | 标准   |
+| poke       | ✅ API   | 标准   |
+| mface      | ✅       | 扩展   |
+| node       | ✅       | 标准   |
+| forward    | ✅       | 标准   |
+| image      | ✅       | 标准   |
+| record     | ✅       | 标准   |
+| video      | 🚧       | 标准   |
+| contact    | ❌       | 标准   |
+| location   | ❌       | 标准   |
+| music      | ❌       | 标准   |
+| redbag     | ❌       | 扩展   |
+| rps        | ❌       | 标准   |
+| dice       | ❌       | 标准   |
+| shake      | ❌       | 标准   |
+| json       | ✅       | 标准   |
+| xml        | ❌       | 标准   |
+| markdown   | ❌       | 扩展   |
 
 </details>
 
 <details>
 <summary>通信方式</summary>
 
-| 通信方式       | 支持状态 |
-|----------------|----------|
-| HTTP           | ❌       |
-| HTTP Webhook   | ❌       |
-| 正向 WebSocket | ✅       |
-| 反向 WebSocket | ❌       |
+| 通信方式       | 支持状态 | 类型 |
+| -------------- | -------- | ---- |
+| HTTP           | ✅       | 标准 |
+| HTTP POST      | ✅       | 标准 |
+| 正向 WebSocket | ✅       | 标准 |
+| 反向 WebSocket | ✅       | 标准 |
 
 </details>
 
 ---
 
-[^1]: 尽管这里的连接指向 [LagrangeDev](https://github.com/LagrangeDev)
-，本仓库的依赖项中该包裹指向 [我自己的fork](https://github.com/HarcicYang/lagrange-python)
-，这是因为我为了该项目，在fork中照葫芦画瓢做了一些自己的实现。因此，如果您安装了 LagrangeDev
-提供的包裹，该项目可能无法正常运行。
+[^1]:
+    尽管这里的连接指向 [LagrangeDev](https://github.com/LagrangeDev)
+    ，本仓库的依赖项中该包裹指向 [我自己的fork](https://github.com/HarcicYang/lagrange-python)
+    ，这是因为我为了该项目，在fork中照葫芦画瓢做了一些自己的实现。因此，如果您安装了 LagrangeDev
+    提供的包裹，该项目可能无法正常运行。

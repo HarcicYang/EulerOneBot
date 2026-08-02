@@ -158,6 +158,11 @@
       "title": "Log Nf",
       "type": "boolean"
     },
+    "access_token": {
+      "default": "",
+      "title": "Access Token",
+      "type": "string"
+    },
     "connections": {
       "default": [
         {

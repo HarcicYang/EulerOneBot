@@ -59,6 +59,7 @@ class LoginConfig(BaseModel):
 class BotConfig(BaseSettings):
     log_level: Literal["INFO", "DEBUG", "TRACE", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_nf: bool = True
+    access_token: str = ""
     connections: list[AdapterConfig] = [ForwardWebsocketConfig()]
     login: LoginConfig = LoginConfig()
     heartbeat: HeartbeatConfig = HeartbeatConfig()

@@ -13,7 +13,7 @@ logger.set_handler()
 logger.info("Euler OneBot")
 logger = logger.name_custom("euler.main")
 
-adapter = Adapter(impls=cfg.connections)
+adapter = Adapter(impls=cfg.connections, access_token=cfg.access_token)
 protocol = LagrangeProtocol(cfg, adapter)
 
 asyncio.run(protocol.run())

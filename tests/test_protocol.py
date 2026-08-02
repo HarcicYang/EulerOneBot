@@ -67,10 +67,10 @@ class TestConnectorClose:
             await adapter.setup()
             task = asyncio.create_task(adapter.connector.run())
             for _ in range(200):
-                if adapter.connector._server is not None and adapter.connector._server.started:
+                if adapter.connector._servers and adapter.connector._servers[0].started:
                     break
                 await asyncio.sleep(0.01)
-            assert adapter.connector._server is not None and adapter.connector._server.started
+            assert adapter.connector._servers and adapter.connector._servers[0].started
             await adapter.close()
             for _ in range(200):
                 if task.done():

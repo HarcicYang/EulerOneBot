@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "euler-onebot"
-version = "0.1.0"
+version = "0.1.2"
 description = "A OneBot v11 implementation in Python, based on lagrange-python"
 readme = "readme.md"
 license = "GPL-3.0-or-later"
@@ -18,6 +18,8 @@ dependencies = [
     "pydantic-settings",
     "fastapi",
     "uvicorn[standard]",
+    "websockets",
+    "python-multipart",
     "httpx",
     "qrcode>=8.2",
     "cryptography>=49.0.0",
