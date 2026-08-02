@@ -123,8 +123,6 @@ uv sync
 | get_msg                 | ✅       | 标准 |
 | get_forward_msg         | ✅       | 标准 |
 | send_like               | ✅       | 标准 |
-| send_poke               | ✅       | 扩展 |
-| send_forward_msg        | NoDesign | 扩展 |
 | set_group_kick          | ✅       | 标准 |
 | set_group_ban           | ✅       | 标准 |
 | set_group_whole_ban     | ✅       | 标准 |
@@ -135,7 +133,6 @@ uv sync
 | set_group_special_title | ✅       | 标准 |
 | set_friend_add_request  | ✅       | 标准 |
 | set_group_add_request   | ✅       | 标准 |
-| group_reaction          | ✅       | 扩展 |
 | get_login_info          | ✅       | 标准 |
 | get_stranger_info       | ✅       | 标准 |
 | get_friend_list         | ✅       | 标准 |
@@ -147,6 +144,8 @@ uv sync
 | get_csrf_token          | ✅       | 标准 |
 | get_status              | ❌       | 标准 |
 | get_version_info        | ✅       | 标准 |
+| send_poke               | ✅       | 扩展 |
+| group_reaction          | ✅       | 扩展 |
 
 </details>
 
@@ -158,7 +157,6 @@ uv sync
 | message.private          | ✅       | 标准 |
 | message.group            | ✅       | 标准 |
 | notice.group_upload      | ✅       | 标准 |
-| notice.friend_upload     | ✅       | 扩展 |
 | notice.group_admin       | ✅       | 标准 |
 | notice.group_decrease    | ✅       | 标准 |
 | notice.group_increase    | ✅       | 标准 |
@@ -169,11 +167,12 @@ uv sync
 | notice.notify.poke       | ✅       | 标准 |
 | notice.notify.lucky_king | ❌       | 标准 |
 | notice.notify.honor      | ❌       | 标准 |
-| notice.reaction          | ✅       | 扩展 |
 | request.friend           | ✅       | 标准 |
 | request.group            | ✅       | 标准 |
 | meta_event.lifecycle     | ❌       | 标准 |
 | meta_event.heartbeat     | ✅       | 标准 |
+| notice.friend_upload     | ✅       | 扩展 |
+| notice.reaction          | ✅       | 扩展 |
 
 </details>
 
@@ -187,7 +186,6 @@ uv sync
 | reply      | ✅       | 标准 |
 | face       | ✅       | 标准 |
 | poke       | ✅ API   | 标准 |
-| mface      | ✅       | 扩展 |
 | node       | ✅       | 标准 |
 | forward    | ✅       | 标准 |
 | image      | ✅       | 标准 |
@@ -196,13 +194,12 @@ uv sync
 | contact    | ❌       | 标准 |
 | location   | ❌       | 标准 |
 | music      | ❌       | 标准 |
-| redbag     | ❌       | 扩展 |
 | rps        | ❌       | 标准 |
 | dice       | ❌       | 标准 |
 | shake      | ❌       | 标准 |
 | json       | ✅       | 标准 |
 | xml        | ❌       | 标准 |
-| markdown   | ❌       | 扩展 |
+| mface      | ✅       | 扩展 |
 
 </details>
 

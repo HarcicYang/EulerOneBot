@@ -6,7 +6,7 @@ from functools import reduce
 from operator import or_
 from typing import TYPE_CHECKING, Any, NoReturn
 
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 
 from ..hyperogger import Logger
 from .api import *
@@ -25,6 +25,38 @@ else:
     FORWARD_WEBSOCKET_CONFIG = Any
 
 logger = Logger.fetch("euler").name_custom("euler.onebot")
+
+
+def _summarize_validation_error(e: ValidationError, raw: dict, known_actions: set[str]) -> str:
+    """把 pydantic union 验证错误压成一行摘要。
+
+    未知 action 时 69 个 variant 会各自报 action 字面量错误,只取与 action 匹配
+    的 variant 的 params 错误,避免完整 traceback 刷屏。
+    """
+    action = raw.get("action")
+    if action is None:
+        return "缺少 action 字段"
+    if action not in known_actions:
+        return f"未知 action: {action!r}"
+    errors = e.errors()
+    # action 字面量校验失败的 variant(与调用方无关),其 params 错误一并忽略
+    action_fail = {err["loc"][0] for err in errors if err["type"] == "literal_error" and err["loc"][-1] == "action"}
+    useful: list[str] = []
+    seen: set[tuple[Any, str]] = set()
+    for err in errors:
+        loc: tuple = err["loc"]
+        if len(loc) < 2 or loc[0] in action_fail:
+            continue
+        key = (loc, err["type"])
+        if key in seen:
+            continue
+        seen.add(key)
+        useful.append(f"{'.'.join(map(str, loc))}: {err['msg']}")
+    head = "; ".join(useful[:5])
+    if len(useful) > 5:
+        head += f" ... 共 {len(useful)} 处"
+    return head or "参数无效"
+
 
 API_CALL_TYPES = (
     SendPrivateMessage,
@@ -86,18 +118,23 @@ class Adapter:
             data = await self.connector.received.get()
             try:
                 api_call = self.api_validation.validate_json(data)
-                await self.api_calls.put(api_call)
-            except (ValueError, TypeError):
-                logger.error(data)
-                logger.error(traceback.format_exc())
+            except (ValueError, TypeError) as e:
                 raw: dict = {}
                 with suppress(ValueError, TypeError):
                     raw = json.loads(data)
+                if isinstance(e, ValidationError):
+                    # pydantic union 验证错误极其冗长(每个 variant 一份),只打一行摘要
+                    logger.warning(f"API 请求验证失败: {_summarize_validation_error(e, raw, self.api_actions)}")
+                    logger.trace(traceback.format_exc())
+                else:
+                    logger.error(data)
+                    logger.error(traceback.format_exc())
                 retcode = 1404 if raw.get("action") not in self.api_actions else 1400
                 await self.report(
                     ActionFailedResponse(status="failed", retcode=retcode, data=EmptyRsp(), echo=raw.get("echo", ""))
                 )
                 continue
+            await self.api_calls.put(api_call)
         # noinspection PyUnreachableCode
         raise RuntimeError()
 

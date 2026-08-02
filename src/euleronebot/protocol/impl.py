@@ -76,7 +76,7 @@ class LagrangeImpl:
                 await self.adapter.report(rsp)
             except Exception as e:  # noinspection PyBroadException
                 logger.error(repr(e))
-                logger.error(traceback.format_exc())
+                logger.trace(traceback.format_exc())
                 rsp = ActionFailedResponse(status="failed", retcode=1400, data=EmptyRsp(), echo=call.echo)
                 await self.adapter.report(rsp)
 
