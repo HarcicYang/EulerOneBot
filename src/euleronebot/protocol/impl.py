@@ -158,7 +158,8 @@ class LagrangeImpl:
         msgid = data.message_id
         msg_info = await info_mgr.msgid_mgr.fetch(msgid)
         if msg_info.scene_type == "user":
-            pass
+            uid = await info_mgr.uid_mgr.from_uin(msg_info.scene_id)
+            await self.lag.client.recall_friend_msg(uid=uid, seq=msg_info.seq)
         else:
             await self.lag.client.recall_grp_msg(grp_id=msg_info.scene_id, seq=msg_info.seq)
         return DeleteMessageResponse(status="ok", retcode=0, data=EmptyRsp())

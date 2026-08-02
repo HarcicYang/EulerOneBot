@@ -228,7 +228,7 @@ wheels = [
 
 [[package]]
 name = "euler-onebot"
-version = "0.0.3"
+version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
@@ -255,7 +255,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=49.0.0" },
     { name = "fastapi" },
     { name = "httpx" },
-    { name = "lagrange-python", git = "https://github.com/LagrangeDev/lagrange-python.git" },
+    { name = "lagrange-python", git = "https://github.com/HarcicYang/lagrange-python.git" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "qrcode", specifier = ">=8.2" },
@@ -386,7 +386,7 @@ wheels = [
 [[package]]
 name = "lagrange-python"
 version = "0.1.8"
-source = { git = "https://github.com/LagrangeDev/lagrange-python.git#9f1d77310bc9a1c3c0acc19b5be881c982b10e85" }
+source = { git = "https://github.com/HarcicYang/lagrange-python.git#ca178bd8a717fb68d575c8d69fcae7310a30fc9c" }
 dependencies = [
     { name = "cryptography" },
     { name = "qrcode" },

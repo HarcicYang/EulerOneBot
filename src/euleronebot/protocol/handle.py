@@ -71,9 +71,7 @@ class LagrangeEventHandler:
 
     def subscribe(self) -> None:
         for i in dir(self):
-            attr = getattr(self, i)
-            # Python 3.14 起 runtime_checkable Protocol 不再接受绑定方法,
-            # 统一取底层函数做注册判断与属性访问
+            attr = getattr(self, i)  # it seems like py3.14 has a **** change
             func = getattr(attr, "__func__", attr)
             if isinstance(func, RegisteredHandler):
                 self.lag.subscribe(func.ev_type, attr)  # type: ignore
@@ -158,6 +156,7 @@ class LagrangeEventHandler:
                     timestamp=event.timestamp,
                     uin=event.from_uin,
                     uid=event.from_uid,
+                    rand=event.msg_id,  # 我实在想不明白为什么私聊的 msg_id 是 random
                     text=event.msg,
                 )
             ),
