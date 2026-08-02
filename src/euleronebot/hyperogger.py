@@ -110,11 +110,11 @@ class Logger:
 
     def _effective_level(self) -> str:
         if self._key and self._key in Logger.running_loggers:
-            return Logger.running_loggers[self._key].log_level
-        return self.log_level
+            return Logger.running_loggers[self._key].log_level_text
+        return self.log_level_text
 
     def _log(self, message: str, level: str) -> None:
-        if self.levels.level_nums[level] < self.levels.level_nums[self._effective_level()]:
+        if self.levels.level_nums[level] < self.levels.level_nums[self.levels.level_names[self._effective_level()]]:
             return
         time = color_txt(
             self.levels.nf_icons.nf_weather_time_4 + " " + str(datetime.datetime.now())[:-4],
