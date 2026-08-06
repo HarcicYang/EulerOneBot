@@ -30,7 +30,7 @@ from lagrange.client.events.group import (
     GroupReaction,
     GroupRecall,
 )
-from lagrange.client.events.service import ClientOnline, ServerKick
+from lagrange.client.events.service import ClientOffline, ClientOnline, ServerKick
 
 from ..hyperogger import Logger
 from ..onebot import Adapter as OneBotAdapter
@@ -97,6 +97,11 @@ class LagrangeEventHandler:
         self.adapter.connector.self_id = client.uin
         await info_mgr.uid_mgr.load_all(client)
         self.info_updated = True
+
+    @on(ClientOffline)
+    async def offline_handler(self, _client: Client, event: ClientOffline) -> None:
+        logger.warning(f"client offline! recoverable = {event.recoverable}")
+        await self.protocol.set_offline(event.recoverable)
 
     @on(ServerKick)
     async def kick_handler(self, _client: Client, event: ServerKick) -> None:

@@ -257,7 +257,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=49.0.0" },
     { name = "fastapi" },
     { name = "httpx" },
-    { name = "lagrange-python", git = "https://github.com/HarcicYang/lagrange-python.git" },
+    { name = "lagrange-python", git = "https://github.com/LagrangeDev/lagrange-python.git" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
@@ -390,7 +390,7 @@ wheels = [
 [[package]]
 name = "lagrange-python"
 version = "0.1.8"
-source = { git = "https://github.com/HarcicYang/lagrange-python.git#ca178bd8a717fb68d575c8d69fcae7310a30fc9c" }
+source = { git = "https://github.com/LagrangeDev/lagrange-python.git#f122b4f93f577caa4c1500c828fdd223aefbed43" }
 dependencies = [
     { name = "cryptography" },
     { name = "qrcode" },
