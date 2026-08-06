@@ -79,7 +79,7 @@ class LagrangeProtocol:
                     await info_mgr.close()
                 self._offline_ev.clear()
                 self._offline_recoverable = True
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, asyncio.CancelledError):
             # noinspection PyProtectedMember
             self.lag.client._task_clear()
             logger.info("Program exited by user")
