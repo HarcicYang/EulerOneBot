@@ -58,8 +58,6 @@ class LagrangeImpl:
     def subscribe(self) -> None:
         for i in dir(self):
             attr = getattr(self, i)
-            # Python 3.14 起 runtime_checkable Protocol 不再接受绑定方法,
-            # 统一取底层函数做注册判断与属性访问
             func = getattr(attr, "__func__", attr)
             if isinstance(func, RegisteredHandler):
                 self.subscriptions[func.call_type.model_fields["action"].default] = attr
@@ -81,7 +79,7 @@ class LagrangeImpl:
                 try:
                     await self.adapter.report(rsp)
                 except Exception:
-                    logger.error("error handler 中的 report 调用失败,API 响应丢失")
+                    logger.error("error in handler, can't deliver")
 
     @on(SendMessage)
     async def send_message(self, data: SendMsgData) -> SendMessageResponse:

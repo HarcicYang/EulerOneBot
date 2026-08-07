@@ -30,7 +30,7 @@ from lagrange.client.events.group import (
     GroupReaction,
     GroupRecall,
 )
-from lagrange.client.events.service import ClientOffline, ClientOnline, ServerKick
+from lagrange.client.events.service import ClientOnline, ServerKick
 
 from ..hyperogger import Logger
 from ..onebot import Adapter as OneBotAdapter
@@ -72,13 +72,11 @@ class LagrangeEventHandler:
 
     @staticmethod
     def _make_safe(handler):
-        """Wrap handler to prevent exceptions from silently disappearing into lagrange's _task_exec."""
-
         async def wrapper(client, event):
             try:
                 await handler(client, event)
             except Exception:
-                logger.error(f"事件处理异常: {type(event).__name__}")
+                logger.error(f"error handling event: {type(event).__name__}")
                 logger.trace(traceback.format_exc())
 
         return wrapper
@@ -98,10 +96,10 @@ class LagrangeEventHandler:
         await info_mgr.uid_mgr.load_all(client)
         self.info_updated = True
 
-    @on(ClientOffline)
-    async def offline_handler(self, _client: Client, event: ClientOffline) -> None:
-        logger.warning(f"client offline! recoverable = {event.recoverable}")
-        await self.protocol.set_offline(event.recoverable)
+    # @on(ClientOffline)
+    # async def offline_handler(self, _client: Client, event: ClientOffline) -> None:
+    #     logger.warning(f"client offline! recoverable = {event.recoverable}")
+    #     await self.protocol.set_offline(event.recoverable)
 
     @on(ServerKick)
     async def kick_handler(self, _client: Client, event: ServerKick) -> None:

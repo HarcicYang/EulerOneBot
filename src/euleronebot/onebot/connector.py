@@ -203,7 +203,7 @@ class Connector:
                         else:
                             await ws.wait_closed()
                 except Exception as e:  # noinspection PyBroadException
-                    logger.warning(f"ReverseWS[{role}] 连接失败: {e!r}")
+                    logger.warning(f"ReverseWS[{role}] failed to connect: {e!r}")
                 finally:
                     self._reverse_ws[role] = None
                 await asyncio.sleep(interval)
@@ -235,7 +235,7 @@ class Connector:
             results = await asyncio.gather(*tasks, return_exceptions=True)
             for r in results:
                 if isinstance(r, BaseException) and not isinstance(r, asyncio.CancelledError):
-                    logger.error(f"Connector 子任务异常: {r!r}")
+                    logger.error(f"Connector subtask error: {r!r}")
         else:
             await asyncio.Event().wait()
 
@@ -258,16 +258,38 @@ class Connector:
                 await socket.send_text(data)
 
     async def trigger(self, data: str) -> None:
+        tasks = []
         logger.trace(f"Event trigger: {data}")
         if self._http_post is not None:
-            await self._http_post_push(data)
-        await self._send_reverse_ws(data, "Event", "Universal")
+            tasks.append(asyncio.create_task(self._http_post_push(data)))
+        tasks.append(asyncio.create_task(self._send_reverse_ws(data, "Event", "Universal")))
         for key in ("root", "event"):
             socket = self.active_websocket_servers.get(key)
             if socket is None or socket.client_state == socket.client_state.DISCONNECTED:
                 continue
-            with suppress(Exception):
-                await socket.send_text(data)
+            tasks.append(asyncio.create_task(self._forward_websocket_push(socket, data)))
+
+        event = asyncio.Event()
+        excute = asyncio.create_task(self._push_excute(tasks, event))
+        timed = 0
+        while not event.is_set():
+            await asyncio.sleep(0.02)
+            timed += 0.02
+            if timed >= 10:
+                logger.warning("event trigger timed out, giving up")
+                excute.cancel()
+                break
+
+    async def _push_excute(self, tasks: list[asyncio.Task], event: asyncio.Event) -> None:
+        try:
+            await asyncio.gather(*tasks)
+            event.set()
+        except asyncio.CancelledError:
+            return
+
+    async def _forward_websocket_push(self, socket: WebSocket, data: str) -> None:
+        with suppress(Exception):
+            await socket.send_text(data)
 
     async def _http_post_push(self, data: str) -> None:
         cfg = self._http_post
@@ -283,4 +305,4 @@ class Connector:
             if rsp.text:
                 logger.trace(f"Webhook response: {rsp.text}")
         except Exception as e:  # noinspection PyBroadException
-            logger.warning(f"Webhook push 失败: {e!r}")
+            logger.warning(f"Webhook push failed: {e!r}")
