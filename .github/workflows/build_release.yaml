@@ -26,12 +26,12 @@ on:
       fail_if_no_release:
         description: 'Fail the job if no matching release exists'
         required: false
-        default: 'false'
+        default: false
         type: boolean
       match_version:
         description: 'Only attach to a release whose version matches'
         required: false
-        default: 'true'
+        default: true
         type: boolean
 
 permissions:
@@ -89,7 +89,7 @@ jobs:
       - name: Compile with Nuitka
         shell: bash
         run: |
-          uv sync --frozen
+          uv sync --frozen --group dev
           EXTRA_ARGS=()
           if [ "${{ matrix.platform }}" = "macos" ]; then
             EXTRA_ARGS+=("--macos-create-app-bundle")
