@@ -304,7 +304,7 @@ class LagrangeEventHandler:
         if not await info_mgr.uid_mgr.is_exist(event.uin) and event.uin != event.grp_id:
             await info_mgr.uid_mgr.add(event.uid, event.uin)
         ev = onebot_events.GroupDecreaseEvent(
-            group_id=event.grp_id,
+            group_id=event.uin,
             operator_id=opt_uin,
             self_id=self.lag.client.uin,
             sub_type=tp,
