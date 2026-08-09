@@ -38,9 +38,6 @@ class LagrangeProtocol:
         self.impl = LagrangeImpl(self.adapter, self.lag, self)
         self.handler = LagrangeEventHandler(self.adapter, self.lag, self)
 
-        self._offline_ev = asyncio.Event()
-        self._offline_recoverable = True
-
     def _subscribe(self) -> None:
         self.impl.subscribe()
         self.handler.subscribe()
@@ -63,23 +60,8 @@ class LagrangeProtocol:
             ]
             if self.cfg.heartbeat.enabled:
                 self._tasks.append(asyncio.create_task(self.heartbeat()))
-            lag_task = asyncio.create_task(self.lag.run())
-            while await self._offline_ev.wait():
-                if self._offline_recoverable:
-                    # noinspection PyProtectedMember
-                    self.lag.client._task_clear()
-                    lag_task.cancel()
-                    lag_task = asyncio.create_task(self.lag.run())
-                else:
-                    self.lag.client._task_clear()
-                    lag_task.cancel()
-                    logger.critical("Program exited abnormally")
-                    await self._cancel_tasks()
-                    await self.adapter.close()
-                    await info_mgr.close()
-                self._offline_ev.clear()
-                self._offline_recoverable = True
-        except (KeyboardInterrupt, asyncio.CancelledError):
+            await self.lag.run()
+        except KeyboardInterrupt:
             # noinspection PyProtectedMember
             self.lag.client._task_clear()
             logger.info("Program exited by user")
@@ -105,7 +87,3 @@ class LagrangeProtocol:
             except Exception as e:  # noinspection PyBroadException
                 logger.error(repr(e))
                 logger.error(traceback.format_exc())
-
-    async def set_offline(self, recoverable: bool) -> None:
-        self._offline_recoverable = recoverable
-        self._offline_ev.set()

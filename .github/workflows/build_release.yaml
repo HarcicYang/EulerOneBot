@@ -88,6 +88,9 @@ jobs:
 
       - name: Compile with Nuitka
         shell: bash
+        env:
+          # 项目内补丁优先于 site-packages 的同名模块(规避 Nuitka for 循环编译 bug?)
+          PYTHONPATH: ${{ github.workspace }}/patches
         run: |
           uv sync --frozen --group dev
           EXTRA_ARGS=()
@@ -99,8 +102,6 @@ jobs:
           fi
           uv run python -m nuitka main.py \
             --onefile \
-            --enable-plugin=pydantic \
-            --include-package-data \
             --output-filename="euler-onebot-$VERSION" \
             --output-dir="${{ matrix.output_dir }}" \
             --assume-yes-for-downloads \

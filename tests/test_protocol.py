@@ -2,6 +2,8 @@ import asyncio
 from contextlib import suppress
 from typing import Any, cast
 
+import pytest
+
 from euleronebot.config import BotConfig, ForwardWebsocketConfig
 from euleronebot.onebot import Adapter
 from euleronebot.protocol import LagrangeProtocol
