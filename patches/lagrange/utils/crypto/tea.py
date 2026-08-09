@@ -102,17 +102,17 @@ def qqtea_encrypt(data: bytes, key: bytes) -> bytes:
     return _TEA(key).encrypt(data)
 
 
-def qqtea_decrypt(data: bytes, key: bytes) -> bytes:
+def qqtea_decrypt(data: bytes, key: bytes) -> bytes | None:
     return _TEA(key).decrypt(data)
 
 
 try:
-    from ftea import TEA as FTEA
+    from ftea import TEA as FTEA  # type: ignore[missing-import]
 
     def qqtea_encrypt(data: bytes, key: bytes) -> bytes:
         return FTEA(key).encrypt_qq(data)
 
-    def qqtea_decrypt(data: bytes, key: bytes) -> bytes:
+    def qqtea_decrypt(data: bytes, key: bytes) -> bytes | None:
         return FTEA(key).decrypt_qq(data)
 
 except ImportError:
