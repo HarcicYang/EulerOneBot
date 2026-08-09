@@ -1,0 +1,173 @@
+name: Build & Release (Nuitka)
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'src/**'
+      - 'main.py'
+      - 'pyproject.toml'
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (defaults to pyproject.toml)'
+        required: false
+        type: string
+      branch:
+        description: 'Branch to build'
+        required: false
+        default: 'master'
+        type: choice
+        options:
+          - master
+          - main
+      fail_if_no_release:
+        description: 'Fail the job if no matching release exists'
+        required: false
+        default: 'false'
+        type: boolean
+      match_version:
+        description: 'Only attach to a release whose version matches'
+        required: false
+        default: 'true'
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Nuitka ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            runner: ubuntu-latest
+            output_dir: dist/nuitka/linux
+          - platform: macos
+            runner: macos-13
+            output_dir: dist/nuitka/macos
+          - platform: windows
+            runner: windows-latest
+            output_dir: dist/nuitka/windows
+
+    env:
+      VERSION: ''
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.ref }}
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          INPUT_VERSION="${{ inputs.version || '' }}"
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)"
+          fi
+          VERSION="${VERSION#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Resolved version: $VERSION"
+
+      - name: Compile with Nuitka
+        shell: bash
+        run: |
+          uv sync --frozen
+          EXTRA_ARGS=()
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            EXTRA_ARGS+=("--macos-create-app-bundle")
+          fi
+          if [ "${{ matrix.platform }}" = "windows" ]; then
+            EXTRA_ARGS+=("--windows-console-mode=disable")
+          fi
+          uv run python -m nuitka main.py \
+            --onefile \
+            --enable-plugin=pydantic \
+            --include-package-data \
+            --output-filename="euler-onebot-$VERSION" \
+            --output-dir="${{ matrix.output_dir }}" \
+            --assume-yes-for-downloads \
+            --disable-ccache \
+            --lto=no \
+            "${EXTRA_ARGS[@]}"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: euler-onebot-${{ env.VERSION }}-${{ matrix.platform }}-${{ runner.arch }}-${{ github.run_id }}
+          path: ${{ matrix.output_dir }}
+
+      - name: Locate release to attach to
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          EVENT="${{ github.event_name }}"
+          VERSION="${{ env.VERSION }}"
+          FAIL_IF_NONE="${{ inputs.fail_if_no_release || 'false' }}"
+          MATCH_VERSION="${{ inputs.match_version || 'true' }}"
+
+          RELEASE_ID=""
+          if [ "$EVENT" = "release" ]; then
+            RELEASE_ID="${{ github.event.release.id }}"
+          else
+            CANDIDATES="$(gh release list --limit 100 --json tagName,isDraft,name --jq '.[] | "\(.tagName)\t\(.isDraft)\t\(.name)"' || true)"
+            for CANDIDATE in $CANDIDATES; do
+              TAG="$(printf '%s' "$CANDIDATE" | cut -f1)"
+              DRAFT="$(printf '%s' "$CANDIDATE" | cut -f2)"
+              if [ "$MATCH_VERSION" = "true" ]; then
+                if [ "$TAG" != "v$VERSION" ] && [ "$TAG" != "$VERSION" ]; then
+                  continue
+                fi
+              fi
+              RELEASE_ID="$(gh release view "$TAG" --json id --jq .id)"
+              echo "Attaching to release: $TAG (id=$RELEASE_ID)"
+              break
+            done
+          fi
+
+          if [ -z "$RELEASE_ID" ]; then
+            echo "No matching release found"
+            if [ "$FAIL_IF_NONE" = "true" ]; then
+              exit 1
+            fi
+            echo "release_found=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_found=true" >> "$GITHUB_OUTPUT"
+            echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Attach assets to release
+        if: steps.release.outputs.release_found == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          RELEASE_ID="${{ steps.release.outputs.release_id }}"
+          cd "${{ matrix.output_dir }}"
+          ASSETS=( euler-onebot-* )
+          for ASSET in "${ASSETS[@]}"; do
+            [ -e "$ASSET" ] || continue
+            echo "Uploading $ASSET"
+            gh release upload "$RELEASE_ID" "$ASSET" --clobber
+          done
