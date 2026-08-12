@@ -13,13 +13,32 @@
 
 ## 环境要求
 
+若您使用：
+
+ - Apple M 系列或 A 系列芯片的 macOS 设备
+ - 几乎任何 Windows x64/arm64 设备
+ - 几乎任何非 musl 的 x64/arm64 Linux 发行版
+
+则您可以跳过环境配置，前往 [actions](https://github.com/HarcicYang/EulerOneBot/actions/workflows/build_release.yaml) 下载打包的可执行文件。
+
 - Python >= 3.11
-- [lagrange-python](https://github.com/LagrangeDev/lagrange-python) [^1]
+- [lagrange-python](https://github.com/LagrangeDev/lagrange-python) [^1][^2]
 - Lagrange V2 签名服务（见[签名指南](https://github.com/LagrangeDev/SignApiGuide)）
 
 ## 安装与使用
 
-### 方式一：作为独立应用运行
+### 方式一：使用预编译可执行文件（推荐）
+
+前往 [Actions](https://github.com/HarcicYang/EulerOneBot/actions/workflows/build_release.yaml) 下载与您设备架构对应的产物（`-linux-x64` / `-linux-arm64` / `-macos-arm64` / `-windows-x64` / `-windows-arm64`）并解压，随后运行：
+
+```shell
+./euler-onebot-<版本号>       # Linux / macOS
+euler-onebot-<版本号>.exe     # Windows
+```
+
+首次启动会自动生成 `appconfig.json` 配置模板，填写后重启即可。
+
+### 方式二：从源码运行
 
 1. 克隆本项目：
 
@@ -28,22 +47,19 @@
    cd EulerOneBot
    ```
 
-2. 安装依赖：
-
-   Euler OneBot 使用 uv，您可以如是设置：
+2. 安装依赖并运行（首次启动会自动生成 `appconfig.json`）：
 
    ```shell
    uv sync
-   pip install .  # 若您不希望使用uv
-   ```
-
-3. 运行，首次启动会自动生成 `appconfig.json` 配置模板：
-   ```shell
    uv run main.py
-   python main.py  # 若您不希望使用uv
    ```
 
-4.填写配置文件后重启即可。
+   若您不希望使用 uv：
+
+   ```shell
+   pip install .
+   python main.py
+   ```
 
 ## 配置文件
 
@@ -237,3 +253,5 @@ uv sync
     提供的包裹，该项目可能无法正常运行。~~
 
     目前进度同步。
+
+[^2]: 部分环境下，安装有关依赖库可能需要额外配置 openssl 和 rust 开发环境.
