@@ -1,5 +1,6 @@
 import base64
 import io
+import os
 import time
 import traceback
 from collections.abc import Callable, Coroutine
@@ -39,6 +40,16 @@ else:
 
 logger = Logger.fetch("euler").name_custom("euler.protocol.impl")
 APICallHandler = Callable[..., Coroutine[Any, Any, Any]]
+
+
+def _process_memory_bytes() -> int:
+    """返回当前进程常驻内存字节数;非 Linux 平台无法读取时返回 0。"""
+    try:
+        with open("/proc/self/statm", encoding="utf-8") as f:
+            resident_pages = int(f.read().split()[1])
+        return resident_pages * os.sysconf("SC_PAGE_SIZE")
+    except (FileNotFoundError, IndexError, OSError, ValueError):
+        return 0
 
 
 @runtime_checkable
@@ -193,6 +204,22 @@ class LagrangeImpl:
     @on(GetVersionInfo)
     async def get_version_info(self, _data: GetVersionInfoData) -> GetVersionInfoResponse:
         return GetVersionInfoResponse(status="ok", retcode=0, data=GetVersionInfoRsp())
+
+    @on(GetStatus)
+    async def get_status(self, _data: GetStatusData) -> GetStatusResponse:
+        return GetStatusResponse(
+            status="ok",
+            retcode=0,
+            data=GetStatusRsp(
+                app_initialized=True,
+                app_enabled=True,
+                plugins_good=None,
+                app_good=True,
+                online=self.protocol.status.online,
+                good=self.protocol.status.good,
+                memory=_process_memory_bytes(),
+            ),
+        )
 
     @on(GetMessage)
     async def get_message(self, data: GetMsgData) -> GetMessageResponse:

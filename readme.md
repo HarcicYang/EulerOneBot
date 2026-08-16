@@ -158,7 +158,7 @@ uv sync
 | get_group_member_list   | ✅       | 标准 |
 | get_cookies             | ✅       | 标准 |
 | get_csrf_token          | ✅       | 标准 |
-| get_status              | ❌       | 标准 |
+| get_status              | ✅       | 标准 |
 | get_version_info        | ✅       | 标准 |
 | send_poke               | ✅       | 扩展 |
 | group_reaction          | ✅       | 扩展 |
@@ -189,7 +189,7 @@ uv sync
 | notice.notify.honor      | Never    | 标准 |
 | request.friend           | ✅       | 标准 |
 | request.group            | ✅       | 标准 |
-| meta_event.lifecycle     | ❌       | 标准 |
+| meta_event.lifecycle     | ✅       | 标准 |
 | meta_event.heartbeat     | ✅       | 标准 |
 | notice.friend_upload     | ✅       | 扩展 |
 | notice.reaction          | ✅       | 扩展 |

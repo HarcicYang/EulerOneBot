@@ -95,3 +95,28 @@ class TestCycleSurvival:
                 await task
 
         run(main())
+
+
+class TestLifecycle:
+    class RecordingAdapter:
+        def __init__(self):
+            self.calls = []
+
+        async def trigger(self, event):
+            self.calls.append((event.meta_event_type, event.sub_type, event.self_id))
+
+    def test_disable_dedup_connect_and_self_id(self):
+        async def main():
+            adapter = self.RecordingAdapter()
+            protocol = LagrangeProtocol(BotConfig(login={"uin": 123}), cast(Any, adapter))
+            assert protocol.status.online is False
+
+            await protocol.emit_lifecycle("disable")
+            await protocol.emit_lifecycle("disable")
+            assert adapter.calls == [("lifecycle", "disable", 123)]
+
+            await protocol.emit_lifecycle("connect")
+            assert protocol.status.online is True
+            assert adapter.calls[-1] == ("lifecycle", "connect", 123)
+
+        run(main())

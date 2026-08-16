@@ -2,7 +2,7 @@ import asyncio
 import time
 import traceback
 from collections.abc import Callable, Coroutine
-from typing import Any, NoReturn
+from typing import Any, Literal, NoReturn
 
 from lagrange import Client, Lagrange
 from lagrange.client.events import BaseEvent
@@ -24,6 +24,8 @@ class LagrangeProtocol:
     def __init__(self, cfg: BotConfig, onebot_adapter: OneBotAdapter):
         self.cfg = cfg
         self.adapter = onebot_adapter
+        self.status = onebot_events.BotStatus(online=False, good=True)
+        self._disable_sent = False
         self._tasks: list[asyncio.Task[None]] = []
         self.lag = Lagrange(
             cfg.login.uin,
@@ -43,6 +45,31 @@ class LagrangeProtocol:
         self.impl.subscribe()
         self.handler.subscribe()
 
+    def set_online(self, online: bool) -> None:
+        self.status = onebot_events.BotStatus(online=online, good=self.status.good)
+
+    def _self_id(self) -> int:
+        client = getattr(self.lag, "client", None)
+        if client is not None:
+            uin = getattr(client, "uin", 0)
+            if uin:
+                return uin
+        return getattr(self.lag, "uin", 0)
+
+    async def emit_lifecycle(self, sub_type: Literal["enable", "disable", "connect"]) -> None:
+        if sub_type == "disable":
+            if self._disable_sent:
+                return
+            self._disable_sent = True
+        elif sub_type == "connect":
+            self.set_online(True)
+        try:
+            await self.adapter.trigger(
+                onebot_events.LifecycleEvent(time=round(time.time()), self_id=self._self_id(), sub_type=sub_type)
+            )
+        except Exception as e:  # noinspection PyBroadException
+            logger.error(f"发送 lifecycle[{sub_type}] 失败: {e!r}")
+
     async def _cancel_tasks(self) -> None:
         for t in self._tasks:
             t.cancel()
@@ -61,6 +88,7 @@ class LagrangeProtocol:
             ]
             if self.cfg.heartbeat.enabled:
                 self._tasks.append(asyncio.create_task(self.heartbeat()))
+            await self.emit_lifecycle("enable")
             await self.lag.run()
         except KeyboardInterrupt:
             # noinspection PyProtectedMember
@@ -69,6 +97,7 @@ class LagrangeProtocol:
         else:
             logger.info("Program exited normally")
         finally:
+            await self.emit_lifecycle("disable")
             await self._cancel_tasks()
             await self.adapter.close()
             await info_mgr.close()
@@ -80,8 +109,8 @@ class LagrangeProtocol:
                 await self.adapter.trigger(
                     onebot_events.HeartbeatEvent(
                         interval=self.cfg.heartbeat.interval,
-                        self_id=self.lag.client.uin,
-                        status=onebot_events.BotStatus(good=True, online=True),
+                        self_id=self._self_id(),
+                        status=self.status.model_copy(deep=True),
                         time=round(time.time()),
                     )
                 )

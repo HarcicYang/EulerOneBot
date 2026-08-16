@@ -276,7 +276,7 @@ class GetStatus(BaseAPICall[GetStatusData]):
     action: Literal["get_status"] = "get_status"
 
 
-class GetStatusResponse(BaseAPIResponse[EmptyRsp]): ...
+class GetStatusResponse(BaseAPIResponse[GetStatusRsp]): ...
 
 
 class GetVersionInfo(BaseAPICall[GetVersionInfoData]):

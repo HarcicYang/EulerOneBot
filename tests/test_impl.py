@@ -1,6 +1,7 @@
 import asyncio
 import base64
 from contextlib import suppress
+from types import SimpleNamespace
 from typing import Any, cast
 
 from lagrange.client.message import elems
@@ -10,12 +11,13 @@ from euleronebot.onebot.api import SendPrivateMessage
 from euleronebot.onebot.api_data import (
     GetGroupFileUrlData,
     GetPrivateFileUrlData,
+    GetStatusData,
     SendGroupMsgData,
     SetFriendAddRequestData,
     UploadGroupFileData,
     UploadPrivateFileData,
 )
-from euleronebot.onebot.models import TargetInfo
+from euleronebot.onebot.models import BotStatus, TargetInfo
 from euleronebot.onebot.segments import At, AtData, File, FileData, Text, TextData, Video, VideoData
 from euleronebot.protocol.impl import LagrangeImpl
 from euleronebot.utils import infomgr as im
@@ -177,7 +179,7 @@ class TestSubscription:
         impl.subscribe()
         assert "send_group_msg" in impl.subscriptions
         assert "set_friend_add_request" in impl.subscriptions
-        assert len(impl.subscriptions) == 33
+        assert len(impl.subscriptions) == 34
 
 
 class TestOnDecorator:
@@ -373,5 +375,23 @@ class TestVideoAndFileSegments:
                 assert out[0].data.url == "https://example.com/a.txt"
             finally:
                 await mgr.close()
+
+        run(main())
+
+
+class TestGetStatus:
+    def test_returns_protocol_status_and_standard_fields(self):
+        async def main():
+            protocol = SimpleNamespace(status=BotStatus(online=False, good=True))
+            impl = LagrangeImpl(cast(Any, None), cast(Any, StubLag()), cast(Any, protocol))
+            rsp = await impl.get_status(GetStatusData())
+            assert rsp.status == "ok"
+            assert rsp.data.app_initialized is True
+            assert rsp.data.app_enabled is True
+            assert rsp.data.plugins_good is None
+            assert rsp.data.app_good is True
+            assert rsp.data.online is False
+            assert rsp.data.good is True
+            assert rsp.data.memory >= 0
 
         run(main())

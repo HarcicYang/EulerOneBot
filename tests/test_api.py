@@ -5,6 +5,8 @@ from euleronebot.onebot import Adapter
 from euleronebot.onebot.api import (
     GetGroupFileUrl,
     GetPrivateFileUrl,
+    GetStatus,
+    GetStatusResponse,
     GetVersionInfo,
     SendGroupMessage,
     SendMessageResponse,
@@ -98,3 +100,24 @@ def test_adapter_discriminates_new_file_actions():
 def test_get_version_info_default_action():
     call = GetVersionInfo.model_validate({"action": "get_version_info", "params": {}})
     assert call.action == "get_version_info"
+
+
+def test_get_status_action_and_response():
+    call = GetStatus.model_validate({"action": "get_status", "params": {}})
+    assert call.action == "get_status"
+    rsp = GetStatusResponse(
+        status="ok",
+        retcode=0,
+        data={
+            "app_initialized": True,
+            "app_enabled": True,
+            "plugins_good": None,
+            "app_good": True,
+            "online": False,
+            "good": True,
+            "memory": 123,
+        },
+    )
+    assert rsp.data is not None
+    assert rsp.data.plugins_good is None
+    assert rsp.data.memory == 123

@@ -30,7 +30,7 @@ from lagrange.client.events.group import (
     GroupReaction,
     GroupRecall,
 )
-from lagrange.client.events.service import ClientOnline, ServerKick
+from lagrange.client.events.service import ClientOffline, ClientOnline, ServerKick
 
 from ..hyperogger import Logger
 from ..onebot import Adapter as OneBotAdapter
@@ -90,15 +90,24 @@ class LagrangeEventHandler:
 
     @on(ClientOnline)
     async def online_handler(self, client: Client, _event: ClientOnline) -> None:
-        if self.info_updated:
-            return
         self.adapter.connector.self_id = client.uin
-        await info_mgr.uid_mgr.load_all(client)
-        self.info_updated = True
+        await self.protocol.emit_lifecycle("connect")
+        if not self.info_updated:
+            await info_mgr.uid_mgr.load_all(client)
+            self.info_updated = True
+
+    @on(ClientOffline)
+    async def offline_handler(self, _client: Client, event: ClientOffline) -> None:
+        logger.warning(f"client offline, recoverable = {event.recoverable}")
+        self.protocol.set_online(False)
+        if not event.recoverable:
+            await self.protocol.emit_lifecycle("disable")
 
     @on(ServerKick)
     async def kick_handler(self, _client: Client, event: ServerKick) -> None:
         logger.error(f"Kicked by server: {event.title} {event.tips}")
+        self.protocol.set_online(False)
+        await self.protocol.emit_lifecycle("disable")
 
     @on(GroupMessage)
     async def grp_msg_handler(self, client: Client, event: GroupMessage) -> None:

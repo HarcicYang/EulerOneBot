@@ -46,6 +46,7 @@ __all__ = [
     "GetPrivateFileUrlData",
     "GetPrivateFileUrlRsp",
     "GetStatusData",
+    "GetStatusRsp",
     "GetStrangerInfoData",
     "GetStrangerInfoRsp",
     "GetVersionInfoData",
@@ -272,6 +273,16 @@ class GetGroupMemberListRsp(RootModel[list[GetGroupMemberInfoRsp]]): ...
 
 
 class GetStatusData(BaseModel): ...
+
+
+class GetStatusRsp(BaseModel):
+    app_initialized: bool
+    app_enabled: bool
+    plugins_good: bool | None
+    app_good: bool
+    online: bool
+    good: bool
+    memory: int
 
 
 class GetVersionInfoData(BaseModel): ...
