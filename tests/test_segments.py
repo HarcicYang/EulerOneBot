@@ -4,6 +4,7 @@ from pydantic import TypeAdapter, ValidationError
 from euleronebot.onebot.segments import (
     At,
     Face,
+    File,
     Forward,
     Image,
     Json,
@@ -28,12 +29,13 @@ CASES = [
     (MarketFace, {"face_id": "a", "tab_id": "1", "name": "x"}),
     (
         Node,
-        {"user_id": "1", "nick_name": "n", "content": [{"type": "text", "data": {"text": "hi"}}]},
+        {"user_id": "1", "nickname": "n", "content": [{"type": "text", "data": {"text": "hi"}}]},
     ),
     (Forward, {"id": "resid1", "content": []}),
     (Image, {"file": "abc.png", "summary": "img", "is_emoji": False}),
     (Record, {"file": "a.wav"}),
     (Video, {"file": "a.mp4"}),
+    (File, {"file_name": "a.txt", "file_hash": "hash", "file_id": "fid", "url": "https://example.com/a.txt"}),
     (Json, {"data": '{"k": 1}'}),
 ]
 
@@ -62,7 +64,7 @@ def test_node_holds_nested_segments():
             "type": "node",
             "data": {
                 "user_id": "1",
-                "nick_name": "n",
+                "nickname": "n",
                 "content": [{"type": "text", "data": {"text": "hi"}}],
             },
         }

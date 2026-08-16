@@ -1,16 +1,22 @@
+import base64
+import io
 import time
 import traceback
 from collections.abc import Callable, Coroutine
+from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
+    BinaryIO,
     Literal,
     NoReturn,
     Protocol,
     cast,
     runtime_checkable,
 )
+from urllib.parse import unquote, urlparse
 
+import httpx
 from lagrange import Lagrange
 from lagrange.client.message.elems import MulitMsg
 from lagrange.client.message.types import Element
@@ -61,6 +67,25 @@ class LagrangeImpl:
             func = getattr(attr, "__func__", attr)
             if isinstance(func, RegisteredHandler):
                 self.subscriptions[func.call_type.model_fields["action"].default] = attr
+
+    async def _open_upload_file(self, file: str, name: str | None = None) -> tuple[BinaryIO, str]:
+        """解析 Lagrange.OneBot 风格的上传文件字段,返回可读流和文件名。"""
+        if file.startswith("base64://"):
+            data = base64.b64decode(file.removeprefix("base64://"))
+            return io.BytesIO(data), name or "file"
+
+        parsed = urlparse(file)
+        if parsed.scheme in ("http", "https"):
+            async with httpx.AsyncClient() as cli:
+                rsp = await cli.get(parsed.geturl())
+                rsp.raise_for_status()
+                data = rsp.content
+            filename = name or unquote(Path(parsed.path).name) or "file"
+            return io.BytesIO(data), filename
+
+        path = unquote(parsed.path) if parsed.scheme == "file" else file
+        filename = name or Path(path).name
+        return open(path, "rb"), filename
 
     async def api_service(self) -> NoReturn:
         while True:
@@ -449,3 +474,33 @@ class LagrangeImpl:
         uid = await info_mgr.uid_mgr.from_uin(data.user_id)
         await self.lag.client.set_grp_special_title(data.group_id, uid, data.special_title)
         return SetGroupSpecialTitleResponse(status="ok", retcode=0, data=EmptyRsp())
+
+    @on(UploadGroupFile)
+    async def upload_group_file(self, data: UploadGroupFileData) -> UploadGroupFileResponse:
+        source, filename = await self._open_upload_file(data.file, data.name)
+        try:
+            await self.lag.client.upload_grp_file(source, data.group_id, data.folder or "/", filename)
+        finally:
+            source.close()
+        return UploadGroupFileResponse(status="ok", retcode=0, data=EmptyRsp())
+
+    @on(UploadPrivateFile)
+    async def upload_private_file(self, data: UploadPrivateFileData) -> UploadPrivateFileResponse:
+        uid = await info_mgr.uid_mgr.from_uin(data.user_id)
+        source, filename = await self._open_upload_file(data.file, data.name)
+        try:
+            await self.lag.client.upload_friend_file(source, uid, filename)
+        finally:
+            source.close()
+        return UploadPrivateFileResponse(status="ok", retcode=0, data=EmptyRsp())
+
+    @on(GetGroupFileUrl)
+    async def get_group_file_url(self, data: GetGroupFileUrlData) -> GetGroupFileUrlResponse:
+        url = await self.lag.client.fetch_grp_file_url(data.group_id, data.file_id)
+        return GetGroupFileUrlResponse(status="ok", retcode=0, data=GetGroupFileUrlRsp(url=url))
+
+    @on(GetPrivateFileUrl)
+    async def get_private_file_url(self, data: GetPrivateFileUrlData) -> GetPrivateFileUrlResponse:
+        uid = await info_mgr.uid_mgr.from_uin(data.user_id)
+        url = await self.lag.client.fetch_friend_file_url(data.file_id, data.file_hash, uid)
+        return GetPrivateFileUrlResponse(status="ok", retcode=0, data=GetPrivateFileUrlRsp(url=url))

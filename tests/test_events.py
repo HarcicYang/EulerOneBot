@@ -104,10 +104,11 @@ def test_friend_file_upload_notice_type():
             "post_type": "notice",
             "notice_type": "friend_upload",
             "user_id": 3,
-            "file": {"id": "a", "name": "b", "size": 1, "busid": 0},
+            "file": {"id": "a", "name": "b", "size": 1, "busid": 0, "hash": "h", "url": "https://example.com/b"},
         }
     )
     assert ev.notice_type == "friend_upload"
+    assert ev.file.url == "https://example.com/b"
 
 
 def test_group_file_upload_notice_type():
@@ -119,10 +120,11 @@ def test_group_file_upload_notice_type():
             "notice_type": "group_upload",
             "group_id": 3,
             "user_id": 4,
-            "file": {"id": "a", "name": "b", "size": 1, "busid": 0},
+            "file": {"id": "a", "name": "b", "size": 1, "busid": 0, "url": "https://example.com/b"},
         }
     )
     assert ev.notice_type == "group_upload"
+    assert ev.file.url == "https://example.com/b"
 
 
 def test_friend_recall():

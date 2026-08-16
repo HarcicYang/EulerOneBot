@@ -115,6 +115,7 @@ class FileInfo(BaseModel):
     size: int
     busid: int
     hash: str = ""
+    url: str = ""
 
 
 class GroupFileUploadEvent(NoticeEvent):

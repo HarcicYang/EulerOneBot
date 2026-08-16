@@ -90,31 +90,45 @@ async def to_onebot_msg(
             new.append(
                 seg.MarketFace(data=seg.MarketFaceData(face_id=str(i.face_id), tab_id=str(i.tab_id), name=i.name))
             )
-        elif isinstance(i, elems.File) and event:
-            if isinstance(event, GroupMessage):
-                ev = onebot_events.GroupFileUploadEvent(
-                    time=event.time,
-                    self_id=adp.lag.client.uin,
-                    group_id=event.grp_id,
-                    user_id=event.uin,
-                    file=FileInfo(id=i.file_id or "", name=i.file_name, size=i.file_size, busid=0),
+        elif isinstance(i, elems.File):
+            file_id = i.file_id or i.file_uuid or ""
+            if event:
+                if isinstance(event, GroupMessage):
+                    ev = onebot_events.GroupFileUploadEvent(
+                        time=event.time,
+                        self_id=adp.lag.client.uin,
+                        group_id=event.grp_id,
+                        user_id=event.uin,
+                        file=FileInfo(
+                            id=i.file_id or "", name=i.file_name, size=i.file_size, busid=0, url=i.file_url or ""
+                        ),
+                    )
+                    await adp.adapter.trigger(ev)
+                elif isinstance(event, FriendMessage):
+                    ev = onebot_events.FriendFileUploadEvent(
+                        time=event.timestamp,
+                        self_id=adp.lag.client.uin,
+                        user_id=event.from_uin,
+                        file=FileInfo(
+                            id=i.file_uuid or "",
+                            name=i.file_name,
+                            size=i.file_size,
+                            busid=0,
+                            hash=i.file_hash or "",
+                            url=i.file_url or "",
+                        ),
+                    )
+                    await adp.adapter.trigger(ev)
+            new.append(
+                seg.File(
+                    data=seg.FileData(
+                        file_name=i.file_name,
+                        file_hash=i.file_hash or "",
+                        file_id=file_id,
+                        url=i.file_url or "",
+                    )
                 )
-                await adp.adapter.trigger(ev)
-            elif isinstance(event, FriendMessage):
-                ev = onebot_events.FriendFileUploadEvent(
-                    time=event.timestamp,
-                    self_id=adp.lag.client.uin,
-                    user_id=event.from_uin,
-                    file=FileInfo(
-                        id=i.file_uuid or "",
-                        name=i.file_name,
-                        size=i.file_size,
-                        busid=0,
-                        hash=i.file_hash or "",
-                    ),
-                )
-                await adp.adapter.trigger(ev)
-            new.append(seg.Text(data=seg.TextData(text="")))
+            )
         elif isinstance(i, elems.MulitMsg):
             new.append(
                 seg.Forward(
@@ -317,6 +331,44 @@ async def to_lagrange_msg(
             else:
                 continue
             new.append(voice)
+
+        elif isinstance(i, seg.Video):
+            url = urlparse(i.data.file)
+            scheme = url.scheme
+            path = unquote(url.path)
+            if scheme in ["http", "https"]:
+                async with httpx.AsyncClient() as cli:
+                    response = await cli.get(url.geturl())
+                    if response.status_code != 200:
+                        continue
+                    if target.target == "group":
+                        video = await lgrc.upload_grp_video(io.BytesIO(response.content), target.id)
+                    else:
+                        video = await lgrc.upload_friend_video(
+                            io.BytesIO(response.content),
+                            await info_mgr.uid_mgr.from_uin(target.id),
+                        )
+            elif scheme == "file":
+                with open(path, "rb") as f:
+                    if target.target == "group":
+                        video = await lgrc.upload_grp_video(f, target.id)
+                    else:
+                        video = await lgrc.upload_friend_video(f, await info_mgr.uid_mgr.from_uin(target.id))
+            elif scheme == "base64":
+                data = i.data.file.removeprefix("base64://")
+                video = base64.b64decode(data)
+                if target.target == "group":
+                    video = await lgrc.upload_grp_video(io.BytesIO(video), target.id)
+                else:
+                    video = await lgrc.upload_friend_video(
+                        io.BytesIO(video), await info_mgr.uid_mgr.from_uin(target.id)
+                    )
+            else:
+                continue
+            new.append(video)
+        elif isinstance(i, seg.File):
+            logger.warning("file 段暂不支持在消息中直接发送,请使用 upload_group_file / upload_private_file")
+            continue
         else:
             continue
 

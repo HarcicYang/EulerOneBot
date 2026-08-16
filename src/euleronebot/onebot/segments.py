@@ -6,6 +6,8 @@ __all__ = [
     "At",
     "BaseSegment",
     "Face",
+    "File",
+    "FileData",
     "Forward",
     "Image",
     "Json",
@@ -39,6 +41,7 @@ class BaseSegment(BaseModel, Generic[SegmentType]):
         "image",
         "record",
         "video",
+        "file",
         "json",
     ]
     data: SegmentType
@@ -153,6 +156,18 @@ class Video(BaseSegment[VideoData]):
     data: VideoData
 
 
+class FileData(BaseSegmentData):
+    file_name: str = ""
+    file_hash: str = ""
+    file_id: str = ""
+    url: str = ""
+
+
+class File(BaseSegment[FileData]):
+    type: Literal["file"] = "file"
+    data: FileData
+
+
 class JsonData(BaseSegmentData):
     data: str
 
@@ -163,6 +178,6 @@ class Json(BaseSegment[JsonData]):
 
 
 SegmentUnion = Annotated[
-    Text | At | Reply | Face | Poke | MarketFace | Node | Forward | Image | Record | Video | Json,
+    Text | At | Reply | Face | Poke | MarketFace | Node | Forward | Image | Record | Video | File | Json,
     Field(discriminator="type"),
 ]

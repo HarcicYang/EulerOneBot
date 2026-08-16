@@ -89,6 +89,10 @@ API_CALL_TYPES = (
     GetCookie,
     GetCSRFToken,
     GroupReaction,
+    UploadGroupFile,
+    UploadPrivateFile,
+    GetGroupFileUrl,
+    GetPrivateFileUrl,
 )
 
 

@@ -3,11 +3,15 @@ from pydantic import ValidationError
 
 from euleronebot.onebot import Adapter
 from euleronebot.onebot.api import (
+    GetGroupFileUrl,
+    GetPrivateFileUrl,
     GetVersionInfo,
     SendGroupMessage,
     SendMessageResponse,
     SendPrivateMessage,
     SetGroupBan,
+    UploadGroupFile,
+    UploadPrivateFile,
 )
 from euleronebot.onebot.api_data import SendPrivateMsgData, SetGroupBanData
 from euleronebot.onebot.segments import Text
@@ -54,6 +58,41 @@ def test_response_roundtrip():
     rsp = SendMessageResponse(status="ok", retcode=0, data={"message_id": 1})
     restored = SendMessageResponse.model_validate(rsp.model_dump())
     assert restored == rsp
+
+
+def test_upload_group_file_action():
+    call = UploadGroupFile.model_validate(
+        {"action": "upload_group_file", "params": {"group_id": 1, "file": "a.txt", "name": "b.txt", "folder": "/x"}}
+    )
+    assert call.action == "upload_group_file"
+    assert call.params.folder == "/x"
+
+
+def test_upload_private_file_action_defaults():
+    call = UploadPrivateFile.model_validate(
+        {"action": "upload_private_file", "params": {"user_id": 1, "file": "a.txt"}}
+    )
+    assert call.action == "upload_private_file"
+    assert call.params.name is None
+
+
+def test_get_file_url_actions():
+    group = GetGroupFileUrl.model_validate(
+        {"action": "get_group_file_url", "params": {"group_id": 1, "file_id": "fid"}}
+    )
+    assert group.action == "get_group_file_url"
+    private = GetPrivateFileUrl.model_validate(
+        {"action": "get_private_file_url", "params": {"user_id": 1, "file_id": "fid", "file_hash": "hash"}}
+    )
+    assert private.action == "get_private_file_url"
+
+
+def test_adapter_discriminates_new_file_actions():
+    adapter = Adapter(impls=[])
+    call = adapter.api_validation.validate_json(
+        '{"action": "upload_group_file", "params": {"group_id": 1, "file": "a.txt"}}'
+    )
+    assert isinstance(call, UploadGroupFile)
 
 
 def test_get_version_info_default_action():

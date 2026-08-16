@@ -29,6 +29,8 @@ __all__ = [
     "GetForwardMsgRsp",
     "GetFriendListData",
     "GetFriendListRsp",
+    "GetGroupFileUrlData",
+    "GetGroupFileUrlRsp",
     "GetGroupInfoData",
     "GetGroupInfoRsp",
     "GetGroupListData",
@@ -41,6 +43,8 @@ __all__ = [
     "GetLoginInfoRsp",
     "GetMsgData",
     "GetMsgRsp",
+    "GetPrivateFileUrlData",
+    "GetPrivateFileUrlRsp",
     "GetStatusData",
     "GetStrangerInfoData",
     "GetStrangerInfoRsp",
@@ -63,6 +67,8 @@ __all__ = [
     "SetGroupNameData",
     "SetGroupSpecialTitleData",
     "SetGroupWholeBanData",
+    "UploadGroupFileData",
+    "UploadPrivateFileData",
 ]
 
 
@@ -298,3 +304,36 @@ class GroupReactionData(BaseModel):
     code: int | None = Field(default=None)  # qface
     emoji: str | None = Field(default=None)  # emoji
     is_add: bool = True
+
+
+class UploadGroupFileData(BaseModel):
+    group_id: int
+    file: str
+    name: str | None = None
+    folder: str | None = None
+
+
+class UploadPrivateFileData(BaseModel):
+    user_id: int
+    file: str
+    name: str | None = None
+
+
+class GetGroupFileUrlData(BaseModel):
+    group_id: int
+    file_id: str
+    busid: int = 0
+
+
+class GetGroupFileUrlRsp(BaseModel):
+    url: str
+
+
+class GetPrivateFileUrlData(BaseModel):
+    user_id: int
+    file_id: str
+    file_hash: str
+
+
+class GetPrivateFileUrlRsp(BaseModel):
+    url: str

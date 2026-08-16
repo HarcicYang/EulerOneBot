@@ -1,4 +1,5 @@
 import asyncio
+import base64
 from contextlib import suppress
 from typing import Any, cast
 
@@ -6,12 +7,19 @@ from lagrange.client.message import elems
 
 from euleronebot.onebot import Adapter
 from euleronebot.onebot.api import SendPrivateMessage
-from euleronebot.onebot.api_data import SendGroupMsgData, SetFriendAddRequestData
+from euleronebot.onebot.api_data import (
+    GetGroupFileUrlData,
+    GetPrivateFileUrlData,
+    SendGroupMsgData,
+    SetFriendAddRequestData,
+    UploadGroupFileData,
+    UploadPrivateFileData,
+)
 from euleronebot.onebot.models import TargetInfo
-from euleronebot.onebot.segments import At, AtData, Text, TextData
+from euleronebot.onebot.segments import At, AtData, File, FileData, Text, TextData, Video, VideoData
 from euleronebot.protocol.impl import LagrangeImpl
 from euleronebot.utils import infomgr as im
-from euleronebot.utils.transformer import to_lagrange_msg
+from euleronebot.utils.transformer import to_lagrange_msg, to_onebot_msg
 
 
 def run(coro):
@@ -38,6 +46,22 @@ class StubClient:
 
     async def set_friend_request(self, target_uid, accept):
         self.calls.append(("set_friend_request", target_uid, accept))
+
+    async def upload_grp_file(self, file, grp_id, target_directory="/", file_name=None):
+        self.calls.append(("upload_grp_file", grp_id, target_directory, file_name, file.read()))
+        return None
+
+    async def upload_friend_file(self, file, uid, file_name=None):
+        self.calls.append(("upload_friend_file", uid, file_name, file.read()))
+        return None
+
+    async def fetch_grp_file_url(self, grp_id, file_id):
+        self.calls.append(("fetch_grp_file_url", grp_id, file_id))
+        return "https://group.example/file"
+
+    async def fetch_friend_file_url(self, file_uuid, file_hash, uid):
+        self.calls.append(("fetch_friend_file_url", file_uuid, file_hash, uid))
+        return "https://friend.example/file"
 
 
 class StubLag:
@@ -153,7 +177,7 @@ class TestSubscription:
         impl.subscribe()
         assert "send_group_msg" in impl.subscriptions
         assert "set_friend_add_request" in impl.subscriptions
-        assert len(impl.subscriptions) == 29
+        assert len(impl.subscriptions) == 33
 
 
 class TestOnDecorator:
@@ -200,6 +224,153 @@ class TestGetMessageFallback:
                 assert rsp.data.sender.nickname == ""
                 assert rsp.data.sender.sex == "unknown"
                 assert rsp.data.sender.age == 0
+            finally:
+                await mgr.close()
+
+        run(main())
+
+
+class TestFileUploadHandlers:
+    def test_upload_group_file(self, tmp_path):
+        async def main():
+            mgr = await init_mgr(tmp_path)
+            try:
+                path = tmp_path / "data.txt"
+                path.write_text("hello", encoding="utf-8")
+                impl = make_impl()
+                rsp = await impl.upload_group_file(
+                    UploadGroupFileData(group_id=123, file=str(path), name="renamed.bin", folder="/sub")
+                )
+                assert rsp.status == "ok"
+                assert stub_client(impl).calls == [
+                    ("upload_grp_file", 123, "/sub", "renamed.bin", b"hello"),
+                ]
+            finally:
+                await mgr.close()
+
+        run(main())
+
+    def test_upload_private_file(self, tmp_path):
+        async def main():
+            mgr = await init_mgr(tmp_path)
+            try:
+                await mgr.uid_mgr.add("u_456", 456)
+                path = tmp_path / "private.txt"
+                path.write_text("world", encoding="utf-8")
+                impl = make_impl()
+                rsp = await impl.upload_private_file(UploadPrivateFileData(user_id=456, file=str(path), name="p.bin"))
+                assert rsp.status == "ok"
+                assert stub_client(impl).calls == [
+                    ("upload_friend_file", "u_456", "p.bin", b"world"),
+                ]
+            finally:
+                await mgr.close()
+
+        run(main())
+
+    def test_get_group_file_url(self):
+        async def main():
+            impl = make_impl()
+            rsp = await impl.get_group_file_url(GetGroupFileUrlData(group_id=123, file_id="fid"))
+            assert rsp.status == "ok"
+            assert rsp.data.url == "https://group.example/file"
+            assert stub_client(impl).calls == [("fetch_grp_file_url", 123, "fid")]
+
+        run(main())
+
+    def test_get_private_file_url(self, tmp_path):
+        async def main():
+            mgr = await init_mgr(tmp_path)
+            try:
+                await mgr.uid_mgr.add("u_456", 456)
+                impl = make_impl()
+                rsp = await impl.get_private_file_url(
+                    GetPrivateFileUrlData(user_id=456, file_id="uuid", file_hash="hash")
+                )
+                assert rsp.status == "ok"
+                assert rsp.data.url == "https://friend.example/file"
+                assert stub_client(impl).calls == [("fetch_friend_file_url", "uuid", "hash", "u_456")]
+            finally:
+                await mgr.close()
+
+        run(main())
+
+
+class TestVideoAndFileSegments:
+    class VideoClient:
+        def __init__(self):
+            self.calls = []
+
+        async def upload_grp_video(self, file, grp_id, thumb=None):
+            self.calls.append(("grp", grp_id, file.read()))
+            return elems.Video(
+                name="v.mp4",
+                size=1,
+                url="",
+                id=0,
+                md5=b"\x00" * 16,
+                qmsg=None,
+                width=1,
+                height=1,
+                time=1,
+                file_key="",
+            )
+
+        async def upload_friend_video(self, file, uid, thumb=None):
+            self.calls.append(("friend", uid, file.read()))
+            return "uploaded-video"
+
+    def test_send_group_video(self):
+        async def main():
+            client = self.VideoClient()
+            out = await to_lagrange_msg(
+                [Video(data=VideoData(file="base64://" + base64.b64encode(b"video").decode()))],
+                lgrc=cast(Any, client),
+                target=TargetInfo(target="group", id=123),
+            )
+            assert len(out) == 1
+            assert isinstance(out[0], elems.Video)
+            assert client.calls == [("grp", 123, b"video")]
+
+        run(main())
+
+    def test_file_segment_is_not_sent_via_message(self):
+        async def main():
+            out = await to_lagrange_msg(
+                [File(data=FileData(file_name="a.txt", file_id="fid", url="https://example.com/a.txt"))],
+                lgrc=cast(Any, None),
+                target=TargetInfo(target="group", id=123),
+            )
+            assert out == []
+
+        run(main())
+
+    def test_incoming_file_converts_to_file_segment(self, tmp_path):
+        from euleronebot.utils.infomgr import MsgInfo
+
+        async def main():
+            mgr = await init_mgr(tmp_path)
+            try:
+                raw = [
+                    elems.File(
+                        file_size=3,
+                        file_name="a.txt",
+                        file_md5=b"\x00" * 16,
+                        file_url="https://example.com/a.txt",
+                        file_id="fid",
+                        file_uuid=None,
+                        file_hash=None,
+                    )
+                ]
+                out = await to_onebot_msg(
+                    adp=cast(Any, None),
+                    msg=MsgInfo(scene_type="group", scene_id=1, seq=1, raw_msg=raw),
+                )
+                assert len(out) == 1
+                assert isinstance(out[0], File)
+                assert out[0].data.file_name == "a.txt"
+                assert out[0].data.file_id == "fid"
+                assert out[0].data.url == "https://example.com/a.txt"
             finally:
                 await mgr.close()
 

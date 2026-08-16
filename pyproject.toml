@@ -21,7 +21,7 @@ dependencies = [
     "websockets",
     "python-multipart",
     "httpx",
-    "lagrange-python @ git+https://github.com/LagrangeDev/lagrange-python.git",
+    "lagrange-python @ git+https://github.com/HarcicYang/lagrange-python.git",
     "aiosqlite",
 ]
 

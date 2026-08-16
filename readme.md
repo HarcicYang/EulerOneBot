@@ -15,9 +15,9 @@
 
 若您使用：
 
- - Apple M 系列或 A 系列芯片的 macOS 设备
- - 几乎任何 Windows x64/arm64 设备
- - 几乎任何非 musl 的 x64/arm64 Linux 发行版
+- Apple M 系列或 A 系列芯片的 macOS 设备
+- 几乎任何 Windows x64/arm64 设备
+- 几乎任何非 musl 的 x64/arm64 Linux 发行版
 
 则您可以跳过环境配置，前往 [actions](https://github.com/HarcicYang/EulerOneBot/actions/workflows/build_release.yaml) 下载打包的可执行文件。
 
@@ -162,6 +162,10 @@ uv sync
 | get_version_info        | ✅       | 标准 |
 | send_poke               | ✅       | 扩展 |
 | group_reaction          | ✅       | 扩展 |
+| upload_group_file       | ✅       | 扩展 |
+| upload_private_file     | ✅       | 扩展 |
+| get_group_file_url      | ✅       | 扩展 |
+| get_private_file_url    | ✅       | 扩展 |
 
 </details>
 
@@ -181,8 +185,8 @@ uv sync
 | notice.group_recall      | ✅       | 标准 |
 | notice.friend_recall     | ✅       | 标准 |
 | notice.notify.poke       | ✅       | 标准 |
-| notice.notify.lucky_king | ❌       | 标准 |
-| notice.notify.honor      | ❌       | 标准 |
+| notice.notify.lucky_king | Never    | 标准 |
+| notice.notify.honor      | Never    | 标准 |
 | request.friend           | ✅       | 标准 |
 | request.group            | ✅       | 标准 |
 | meta_event.lifecycle     | ❌       | 标准 |
@@ -195,27 +199,28 @@ uv sync
 <details>
 <summary>消息段类型</summary>
 
-| 消息段类型 | 支持状态 | 类型 |
-| ---------- | -------- | ---- |
-| text       | ✅       | 标准 |
-| at         | ✅       | 标准 |
-| reply      | ✅       | 标准 |
-| face       | ✅       | 标准 |
-| poke       | ✅ API   | 标准 |
-| node       | ✅       | 标准 |
-| forward    | ✅       | 标准 |
-| image      | ✅       | 标准 |
-| record     | ✅       | 标准 |
-| video      | 🚧       | 标准 |
-| contact    | ❌       | 标准 |
-| location   | ❌       | 标准 |
-| music      | ❌       | 标准 |
-| rps        | ❌       | 标准 |
-| dice       | ❌       | 标准 |
-| shake      | ❌       | 标准 |
-| json       | ✅       | 标准 |
-| xml        | ❌       | 标准 |
-| mface      | ✅       | 扩展 |
+| 消息段类型 | 支持状态     | 类型 |
+| ---------- | ------------ | ---- |
+| text       | ✅           | 标准 |
+| at         | ✅           | 标准 |
+| reply      | ✅           | 标准 |
+| face       | ✅           | 标准 |
+| poke       | ✅ API       | 标准 |
+| node       | ✅           | 标准 |
+| forward    | ✅           | 标准 |
+| image      | ✅           | 标准 |
+| record     | ✅           | 标准 |
+| video      | ✅           | 标准 |
+| file       | ✅ Recv only | 扩展 |
+| contact    | ❌           | 标准 |
+| location   | ❌           | 标准 |
+| music      | ❌           | 标准 |
+| rps        | ❌           | 标准 |
+| dice       | ❌           | 标准 |
+| shake      | ❌           | 标准 |
+| json       | ✅           | 标准 |
+| xml        | ❌           | 标准 |
+| mface      | ✅           | 扩展 |
 
 </details>
 
@@ -247,11 +252,9 @@ uv sync
 ---
 
 [^1]:
-    ~~尽管这里的连接指向 [LagrangeDev](https://github.com/LagrangeDev)
+    尽管这里的连接指向 [LagrangeDev](https://github.com/LagrangeDev)
     ，本仓库的依赖项中该包裹指向 [我自己的fork](https://github.com/HarcicYang/lagrange-python)
     ，这是因为我为了该项目，在fork中照葫芦画瓢做了一些自己的实现。因此，如果您安装了 LagrangeDev
-    提供的包裹，该项目可能无法正常运行。~~
-
-    目前进度同步。
+    提供的包裹，该项目可能无法正常运行。
 
 [^2]: 部分环境下，安装有关依赖库可能需要额外配置 openssl 和 rust 开发环境.

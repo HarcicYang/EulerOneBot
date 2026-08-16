@@ -255,7 +255,7 @@ requires-dist = [
     { name = "aiosqlite" },
     { name = "fastapi" },
     { name = "httpx" },
-    { name = "lagrange-python", git = "https://github.com/LagrangeDev/lagrange-python.git" },
+    { name = "lagrange-python", git = "https://github.com/HarcicYang/lagrange-python.git" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
@@ -388,7 +388,7 @@ wheels = [
 [[package]]
 name = "lagrange-python"
 version = "0.1.8"
-source = { git = "https://github.com/LagrangeDev/lagrange-python.git#f122b4f93f577caa4c1500c828fdd223aefbed43" }
+source = { git = "https://github.com/HarcicYang/lagrange-python.git#a9763ab12c3400fdd71ba6c85a558bc11b4e414f" }
 dependencies = [
     { name = "cryptography" },
     { name = "qrcode" },

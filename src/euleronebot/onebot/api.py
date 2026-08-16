@@ -23,6 +23,8 @@ __all__ = [
     "GetForwardMessageResponse",
     "GetFriendList",
     "GetFriendListResponse",
+    "GetGroupFileUrl",
+    "GetGroupFileUrlResponse",
     "GetGroupInfo",
     "GetGroupInfoResponse",
     "GetGroupList",
@@ -35,6 +37,8 @@ __all__ = [
     "GetLoginInfoResponse",
     "GetMessage",
     "GetMessageResponse",
+    "GetPrivateFileUrl",
+    "GetPrivateFileUrlResponse",
     "GetStatus",
     "GetStatusResponse",
     "GetStrangerInfo",
@@ -73,6 +77,10 @@ __all__ = [
     "SetGroupSpecialTitleResponse",
     "SetGroupWholeBan",
     "SetGroupWholeBanResponse",
+    "UploadGroupFile",
+    "UploadGroupFileResponse",
+    "UploadPrivateFile",
+    "UploadPrivateFileResponse",
 ]
 
 
@@ -297,6 +305,34 @@ class GroupReaction(BaseAPICall[GroupReactionData]):
 
 
 class GroupReactionResponse(BaseAPIResponse[EmptyRsp]): ...
+
+
+class UploadGroupFile(BaseAPICall[UploadGroupFileData]):
+    action: Literal["upload_group_file"] = "upload_group_file"
+
+
+class UploadGroupFileResponse(BaseAPIResponse[EmptyRsp]): ...
+
+
+class UploadPrivateFile(BaseAPICall[UploadPrivateFileData]):
+    action: Literal["upload_private_file"] = "upload_private_file"
+
+
+class UploadPrivateFileResponse(BaseAPIResponse[EmptyRsp]): ...
+
+
+class GetGroupFileUrl(BaseAPICall[GetGroupFileUrlData]):
+    action: Literal["get_group_file_url"] = "get_group_file_url"
+
+
+class GetGroupFileUrlResponse(BaseAPIResponse[GetGroupFileUrlRsp]): ...
+
+
+class GetPrivateFileUrl(BaseAPICall[GetPrivateFileUrlData]):
+    action: Literal["get_private_file_url"] = "get_private_file_url"
+
+
+class GetPrivateFileUrlResponse(BaseAPIResponse[GetPrivateFileUrlRsp]): ...
 
 
 class ActionFailedResponse(BaseAPIResponse[EmptyRsp]): ...
