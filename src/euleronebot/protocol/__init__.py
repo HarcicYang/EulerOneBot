@@ -27,10 +27,11 @@ class LagrangeProtocol:
         self._tasks: list[asyncio.Task[None]] = []
         self.lag = Lagrange(
             cfg.login.uin,
-            "linux",
+            "custom" if cfg.login.use_custom else "linux",
             (cfg.login.signer_url + "/api/sign/sec-sign")
             .replace("https://", f"https://{cfg.login.signer_token}@")
             .replace("http://", f"http://{cfg.login.signer_token}@"),
+            custom_protocol_path=cfg.login.appinfo_path,
         )
 
         self.lag.log.set_level("DEBUG")

@@ -149,7 +149,7 @@ async def to_onebot_msg(
                             ),
                         ),
                         user_id=str(i.sender_uin),
-                        nick_name=i.sender_nick,
+                        nickname=i.sender_nick,
                     )
                 )
             )
@@ -219,7 +219,7 @@ async def to_lagrange_msg(
                 elems.ForwardNode(
                     content=await to_lagrange_msg(i.data.content, lgrc, target),  # type: ignore
                     sender_uin=int(i.data.user_id),
-                    sender_nick=i.data.nick_name,
+                    sender_nick=i.data.nickname,
                 )
             )
         elif isinstance(i, seg.Forward):

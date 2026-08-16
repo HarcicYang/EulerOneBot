@@ -103,7 +103,7 @@ class MarketFace(BaseSegment[MarketFaceData]):
 
 class NodeData(BaseSegmentData):
     user_id: str
-    nick_name: str
+    nickname: str
     content: list["SegmentUnion"]
 
 

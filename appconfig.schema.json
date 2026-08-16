@@ -95,6 +95,16 @@
           "default": "",
           "title": "Signer Token",
           "type": "string"
+        },
+        "use_custom": {
+          "default": false,
+          "title": "Use Custom",
+          "type": "boolean"
+        },
+        "appinfo_path": {
+          "default": "./appinfo.json",
+          "title": "Appinfo Path",
+          "type": "string"
         }
       },
       "title": "LoginConfig",
@@ -203,7 +213,9 @@
       "default": {
         "uin": 0,
         "signer_url": "https://",
-        "signer_token": ""
+        "signer_token": "",
+        "use_custom": false,
+        "appinfo_path": "./appinfo.json"
       }
     },
     "heartbeat": {

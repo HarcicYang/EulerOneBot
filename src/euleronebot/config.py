@@ -54,6 +54,8 @@ class LoginConfig(BaseModel):
     uin: int = 0
     signer_url: str = "https://"
     signer_token: str = ""
+    use_custom: bool = False
+    appinfo_path: str = "./appinfo.json"
 
 
 class BotConfig(BaseSettings):

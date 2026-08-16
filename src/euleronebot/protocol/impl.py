@@ -438,9 +438,9 @@ class LagrangeImpl:
 
     @on(GroupReaction)
     async def group_reaction(self, data: GroupReactionData) -> GroupReactionResponse:
-        msg_info = await info_mgr.msgid_mgr.fetch(int(data.message_id or 0))
+        msg_info = await info_mgr.msgid_mgr.fetch(data.message_id or 0)
         await self.lag.client.send_grp_reaction(
-            grp_id=data.group_id, msg_seq=msg_info.seq, content=data.emoji or data.code or 0
+            grp_id=data.group_id, msg_seq=msg_info.seq, content=data.emoji or data.code or 0, is_cancel=not data.is_add
         )
         return GroupReactionResponse(status="ok", retcode=0, data=EmptyRsp())
 

@@ -294,6 +294,7 @@ class GetCSRFTokenRsp(BaseModel):
 
 class GroupReactionData(BaseModel):
     group_id: int
-    message_id: str
+    message_id: int
     code: int | None = Field(default=None)  # qface
     emoji: str | None = Field(default=None)  # emoji
+    is_add: bool = True
