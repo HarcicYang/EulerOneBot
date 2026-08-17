@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 from contextlib import suppress
+from typing import Any, cast
 
 import httpx
 import pytest
@@ -175,6 +176,54 @@ class TestForwardWebSocket:
             task.cancel()
             with suppress(asyncio.CancelledError):
                 await task
+
+        run(main())
+
+
+class FakeSocket:
+    def __init__(self):
+        self.closed = False
+
+    async def close(self):
+        self.closed = True
+
+
+class SlowSocket:
+    async def send_text(self, data):
+        await asyncio.sleep(10)
+
+
+class TestForwardWebSocketRegistry:
+    def test_register_replaces_and_closes_old_socket(self):
+        async def main():
+            adapter = Adapter(impls=[])
+            old, new = FakeSocket(), FakeSocket()
+            adapter.connector.active_websocket_servers["event"] = cast(Any, old)
+            await adapter.connector._register_websocket("event", cast(Any, new))
+            assert adapter.connector.active_websocket_servers["event"] is new
+            assert old.closed
+
+        run(main())
+
+    def test_unregister_only_removes_own_socket(self):
+        async def main():
+            adapter = Adapter(impls=[])
+            old, new = FakeSocket(), FakeSocket()
+            adapter.connector.active_websocket_servers["event"] = cast(Any, new)
+            adapter.connector._unregister_websocket("event", cast(Any, old))
+            assert adapter.connector.active_websocket_servers.get("event") is new
+            adapter.connector._unregister_websocket("event", cast(Any, new))
+            assert "event" not in adapter.connector.active_websocket_servers
+
+        run(main())
+
+    def test_push_has_timeout(self):
+        async def main():
+            adapter = Adapter(impls=[])
+            adapter.connector.forward_send_timeout = 0.05
+            t0 = asyncio.get_running_loop().time()
+            await adapter.connector._forward_websocket_push(cast(Any, SlowSocket()), "x")
+            assert asyncio.get_running_loop().time() - t0 < 2
 
         run(main())
 

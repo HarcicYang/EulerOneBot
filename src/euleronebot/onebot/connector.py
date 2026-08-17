@@ -50,6 +50,7 @@ class Connector:
         self.http_app: FastAPI | None = None
         self.received: asyncio.Queue[str] = asyncio.Queue()
         self.active_websocket_servers: dict[Literal["root", "api", "event"], WebSocket] = dict()
+        self.forward_send_timeout = 2.0
         self._servers: list[UvicornServer] = []
         self._reverse_ws: dict[ReverseRole, ClientConnection | None] = {
             "API": None,
@@ -90,6 +91,17 @@ class Connector:
             websocket.headers.get("authorization") == f"Bearer {self.access_token}"
             or websocket.query_params.get("access_token") == self.access_token
         )
+
+    async def _register_websocket(self, key: Literal["root", "api", "event"], websocket: WebSocket) -> None:
+        old = self.active_websocket_servers.get(key)
+        if old is not None and old is not websocket:
+            with suppress(Exception):
+                await old.close()
+        self.active_websocket_servers[key] = websocket
+
+    def _unregister_websocket(self, key: Literal["root", "api", "event"], websocket: WebSocket) -> None:
+        if self.active_websocket_servers.get(key) is websocket:
+            self.active_websocket_servers.pop(key, None)
 
     async def set_http(self, _cfg: HTTPConfig) -> None:
         self.http_app = FastAPI()
@@ -146,13 +158,13 @@ class Connector:
                 await websocket.close(code=1008)
                 return
             await websocket.accept()
-            self.active_websocket_servers["root"] = websocket
+            await self._register_websocket("root", websocket)
             try:
                 while True:
                     await self.received.put(await websocket.receive_text())
             except (WebSocketDisconnect, RuntimeError):
                 logger.error("Connection lost")
-                self.active_websocket_servers.pop("root", None)
+                self._unregister_websocket("root", websocket)
 
         @self.forward_app.websocket("/api")
         @self.forward_app.websocket("/api/")
@@ -161,13 +173,13 @@ class Connector:
                 await websocket.close(code=1008)
                 return
             await websocket.accept()
-            self.active_websocket_servers["api"] = websocket
+            await self._register_websocket("api", websocket)
             try:
                 while True:
                     await self.received.put(await websocket.receive_text())
             except (WebSocketDisconnect, RuntimeError):
                 logger.error("Connection lost")
-                self.active_websocket_servers.pop("api", None)
+                self._unregister_websocket("api", websocket)
 
         @self.forward_app.websocket("/event")
         @self.forward_app.websocket("/event/")
@@ -176,13 +188,13 @@ class Connector:
                 await websocket.close(code=1008)
                 return
             await websocket.accept()
-            self.active_websocket_servers["event"] = websocket
+            await self._register_websocket("event", websocket)
             try:
                 while True:
                     await websocket.receive_text()
             except (WebSocketDisconnect, RuntimeError):
                 logger.error("Connection lost")
-                self.active_websocket_servers.pop("event", None)
+                self._unregister_websocket("event", websocket)
 
     async def set_reverse_websocket(self, cfg: ReverseWebsocketConfig) -> None:
         api_url = cfg.api_url or cfg.url
@@ -254,8 +266,7 @@ class Connector:
             socket = self.active_websocket_servers.get(key)
             if socket is None or socket.client_state == socket.client_state.DISCONNECTED:
                 continue
-            with suppress(Exception):
-                await socket.send_text(data)
+            await self._forward_websocket_push(socket, data)
 
     async def trigger(self, data: str) -> None:
         tasks = []
@@ -289,7 +300,7 @@ class Connector:
 
     async def _forward_websocket_push(self, socket: WebSocket, data: str) -> None:
         with suppress(Exception):
-            await socket.send_text(data)
+            await asyncio.wait_for(socket.send_text(data), timeout=self.forward_send_timeout)
 
     async def _http_post_push(self, data: str) -> None:
         cfg = self._http_post
