@@ -108,7 +108,8 @@ class Adapter:
     async def setup(self) -> None:
         self.connector = await self.connector.setup()
 
-    def _connector_done(self, task: asyncio.Task) -> None:
+    @staticmethod
+    def _connector_done(task: asyncio.Task) -> None:
         if task.cancelled():
             return
         if exc := task.exception():

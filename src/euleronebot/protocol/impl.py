@@ -79,7 +79,8 @@ class LagrangeImpl:
             if isinstance(func, RegisteredHandler):
                 self.subscriptions[func.call_type.model_fields["action"].default] = attr
 
-    async def _open_upload_file(self, file: str, name: str | None = None) -> tuple[BinaryIO, str]:
+    @staticmethod
+    async def _open_upload_file(file: str, name: str | None = None) -> tuple[BinaryIO, str]:
         """解析 Lagrange.OneBot 风格的上传文件字段,返回可读流和文件名。"""
         if file.startswith("base64://"):
             data = base64.b64decode(file.removeprefix("base64://"))

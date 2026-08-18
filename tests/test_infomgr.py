@@ -232,7 +232,8 @@ class TestRequestPool:
 
 
 class TestMigration:
-    def _write_legacy_cache(self, tmp_path) -> str:
+    @staticmethod
+    def _write_legacy_cache(tmp_path) -> str:
         data = {
             "uid_mgr": {"pool": {"u_real": 10001, "u_fake": 2000145}},
             "msgid_mgr": {

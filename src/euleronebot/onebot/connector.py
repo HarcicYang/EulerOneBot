@@ -291,7 +291,8 @@ class Connector:
                 excute.cancel()
                 break
 
-    async def _push_excute(self, tasks: list[asyncio.Task], event: asyncio.Event) -> None:
+    @staticmethod
+    async def _push_excute(tasks: list[asyncio.Task], event: asyncio.Event) -> None:
         try:
             await asyncio.gather(*tasks)
             event.set()

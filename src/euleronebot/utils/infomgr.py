@@ -67,7 +67,7 @@ class MsgIDPool:
 
     @property
     def db(self) -> aiosqlite.Connection:
-        return self._mgr._require_db()
+        return self._mgr.require_db()
 
     @staticmethod
     def _gen_id(info: MsgInfo) -> int:
@@ -135,7 +135,7 @@ class UIDPool:
 
     @property
     def db(self) -> aiosqlite.Connection:
-        return self._mgr._require_db()
+        return self._mgr.require_db()
 
     async def add(self, uid: str | bytes, uin: int) -> int:
         if isinstance(uid, bytes):
@@ -250,7 +250,7 @@ class RequestPool:
 
     @property
     def db(self) -> aiosqlite.Connection:
-        return self._mgr._require_db()
+        return self._mgr.require_db()
 
     async def _get_flag(self) -> str:
         while True:
@@ -291,7 +291,7 @@ class InfoManager:
         self.uid_mgr = UIDPool(self)
         self.req_mgr = RequestPool(self)
 
-    def _require_db(self) -> aiosqlite.Connection:
+    def require_db(self) -> aiosqlite.Connection:
         if self.db is None:
             raise RuntimeError("InfoManager 尚未初始化,请先 await info_mgr.init()")
         return self.db
@@ -306,7 +306,7 @@ class InfoManager:
         return self
 
     async def _create_tables(self) -> None:
-        db = self._require_db()
+        db = self.require_db()
         await db.execute(
             "CREATE TABLE IF NOT EXISTS messages ("
             "message_id INTEGER PRIMARY KEY,"
@@ -344,7 +344,7 @@ class InfoManager:
     async def _migrate_from_json(self, cache_file: str) -> None:
         if not os.path.exists(cache_file):
             return
-        db = self._require_db()
+        db = self.require_db()
         cur = await db.execute("SELECT COUNT(*) FROM messages")
         row = await cur.fetchone()
         if row and row[0]:

@@ -14,3 +14,4 @@
 /.zed/
 __pycache__/
 appinfo.json
+scripts/buffer.py

@@ -43,7 +43,8 @@ class StubClient:
         self.calls.append(("send_grp_msg", grp_id))
         return 42
 
-    async def get_grp_msg(self, **kw):
+    @staticmethod
+    async def get_grp_msg(**kw):
         return []
 
     async def set_friend_request(self, target_uid, accept):

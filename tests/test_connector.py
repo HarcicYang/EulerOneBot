@@ -14,7 +14,8 @@ from uvicorn import Server as UvicornServer
 
 from euleronebot.config import ForwardWebsocketConfig, HTTPConfig, HTTPPostConfig, ReverseWebsocketConfig
 from euleronebot.onebot import Adapter
-from euleronebot.onebot.api import SendMessageResponse, SendMsgRsp
+from euleronebot.onebot.api import SendMessageResponse
+from euleronebot.onebot.api_data import SendMsgRsp
 
 
 def run(coro):
@@ -41,7 +42,8 @@ async def start_server(app: FastAPI, host: str = "127.0.0.1", port: int = 0) -> 
 
 
 class TestHTTP:
-    async def make(self, access_token: str = "") -> Adapter:
+    @staticmethod
+    async def make(access_token: str = "") -> Adapter:
         adapter = Adapter(impls=[HTTPConfig(url="http://127.0.0.1:0")], access_token=access_token)
         await adapter.setup()
         return adapter
@@ -189,7 +191,8 @@ class FakeSocket:
 
 
 class SlowSocket:
-    async def send_text(self, data):
+    @staticmethod
+    async def send_text(data):
         await asyncio.sleep(10)
 
 

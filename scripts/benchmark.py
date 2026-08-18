@@ -150,11 +150,13 @@ class StubClient:
         return self._next()
 
     # 查消息
-    async def get_grp_msg(self, **kw: Any) -> list[Any]:
+    @staticmethod
+    async def get_grp_msg(**kw: Any) -> list[Any]:
         return [SimpleNamespace(rand=1)]
 
     # 用户信息
-    async def get_user_info(self, _x: Any) -> Any:
+    @staticmethod
+    async def get_user_info(_x: Any) -> Any:
         return SimpleNamespace(
             name="stub",
             age=20,
@@ -165,16 +167,20 @@ class StubClient:
         )
 
     # 上传素材(transformer 调用)
-    async def upload_grp_image(self, grp_id: int, image: Any) -> Any:
+    @staticmethod
+    async def upload_grp_image(grp_id: int, image: Any) -> Any:
         return SimpleNamespace(display="[图片]")
 
-    async def upload_friend_image(self, uid: str, is_emoji: bool, image: Any) -> Any:
+    @staticmethod
+    async def upload_friend_image(uid: str, is_emoji: bool, image: Any) -> Any:
         return SimpleNamespace(display="[图片]")
 
-    async def upload_grp_audio(self, grp_id: int, voice: Any) -> Any:
+    @staticmethod
+    async def upload_grp_audio(grp_id: int, voice: Any) -> Any:
         return SimpleNamespace(display="[语音]")
 
-    async def upload_friend_audio(self, uid: str, voice: Any) -> Any:
+    @staticmethod
+    async def upload_friend_audio(uid: str, voice: Any) -> Any:
         return SimpleNamespace(display="[语音]")
 
 
@@ -612,7 +618,8 @@ class ResourceSampler:
         self._last_wall: float | None = None
         self._last_ticks: int | None = None
 
-    def _cpu_ticks(self) -> int | None:
+    @staticmethod
+    def _cpu_ticks() -> int | None:
         try:
             with open(f"/proc/{os.getpid()}/stat", encoding="utf-8") as f:
                 raw = f.read()
