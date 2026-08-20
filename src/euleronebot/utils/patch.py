@@ -21,10 +21,20 @@ def patch_lagrange_heartbeat_timeout() -> None:
     original_sso_heartbeat = BaseClient.sso_heartbeat
 
     async def sso_heartbeat_with_total_timeout(self: BaseClient, *args: Any, **kwargs: Any) -> float:
-        return await asyncio.wait_for(
-            original_sso_heartbeat(self, *args, **kwargs),
-            timeout=_HEARTBEAT_TIMEOUT,
-        )
+        try:
+            return await asyncio.wait_for(
+                original_sso_heartbeat(self, *args, **kwargs),
+                timeout=_HEARTBEAT_TIMEOUT,
+            )
+        except TimeoutError:
+            raise
+        except (ConnectionError, OSError) as exc:
+            raise TimeoutError("Lagrange heartbeat network failure") from exc
+        except asyncio.CancelledError as exc:
+            task = asyncio.current_task()
+            if task is not None and task.cancelling():
+                raise
+            raise TimeoutError("Lagrange heartbeat response cancelled") from exc
 
     BaseClient.sso_heartbeat = sso_heartbeat_with_total_timeout
     _heartbeat_timeout_patched = True
