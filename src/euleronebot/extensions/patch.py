@@ -4,7 +4,7 @@ from typing import Any
 
 from lagrange.client.base import BaseClient
 
-from ..hyperogger import Logger
+from euleronebot.hyperogger import Logger
 
 _HEARTBEAT_TIMEOUT = 10
 _heartbeat_timeout_patched = False
