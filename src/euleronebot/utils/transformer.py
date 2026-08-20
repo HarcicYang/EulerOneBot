@@ -69,6 +69,8 @@ async def to_onebot_msg(
             new.append(seg.Reply(data=seg.ReplyData(id=str(msgid))))
 
         elif isinstance(i, elems.AtAll):
+            if isinstance(new[-1], elems.Quote):
+                continue
             new.append(seg.At(data=seg.AtData(qq="all")))
         elif isinstance(i, elems.At):
             if not await info_mgr.uid_mgr.is_exist(i.uid):
