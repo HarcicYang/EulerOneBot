@@ -128,7 +128,6 @@ class Adapter:
                 with suppress(ValueError, TypeError):
                     raw = json.loads(data)
                 if isinstance(e, ValidationError):
-                    # pydantic union 验证错误极其冗长(每个 variant 一份),只打一行摘要
                     logger.warning(f"API 请求验证失败: {_summarize_validation_error(e, raw, self.api_actions)}")
                     logger.trace(traceback.format_exc())
                 else:

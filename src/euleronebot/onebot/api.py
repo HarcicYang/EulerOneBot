@@ -1,4 +1,4 @@
-from typing import Generic, Literal, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -87,14 +87,14 @@ __all__ = [
 class BaseAPICall(BaseModel, Generic[DataType]):
     action: str
     params: DataType
-    echo: str = ""
+    echo: Any = Field(default=None)
 
 
 class BaseAPIResponse(BaseModel, Generic[ResponseType]):
     status: Literal["ok", "async", "failed"]
     retcode: int
     data: ResponseType | None
-    echo: str = ""
+    echo: Any = Field(default=None)
 
 
 class AsyncResponse(BaseAPIResponse[EmptyRsp]):
