@@ -49,6 +49,7 @@ def patch_lagrange_heartbeat_recovery() -> None:
     Lagrange only recovers from asyncio.TimeoutError here. Any other exception kills
     the heartbeat task silently while the TCP connection may remain half-open.
     """
+
     async def resilient_heartbeat_task(self: BaseClient) -> Never:
         error_count = 0
         while True:
