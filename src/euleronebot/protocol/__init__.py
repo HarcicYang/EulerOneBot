@@ -41,9 +41,42 @@ class LagrangeProtocol:
         self.impl = LagrangeImpl(self.adapter, self.lag, self)
         self.handler = LagrangeEventHandler(self.adapter, self.lag, self)
 
+        self._relog_ev = asyncio.Event()
+
     def _subscribe(self) -> None:
         self.impl.subscribe()
         self.handler.subscribe()
+
+    async def watchdog_svc(self) -> None:
+        while True:
+            last = self.handler.last_handled
+            await asyncio.sleep(60 * 5)
+            if last == self.handler.last_handled:
+                self.relog()
+
+    def relog(self) -> None:
+        self._relog_ev.set()
+
+    async def _re_log(self) -> None:
+        await self._cancel_tasks()
+        # noinspection PyProtectedMember
+        del self.lag
+        self.lag = Lagrange(
+            self.cfg.login.uin,
+            "custom" if self.cfg.login.use_custom else "linux",
+            (self.cfg.login.signer_url + "/api/sign/sec-sign")
+            .replace("https://", f"https://{self.cfg.login.signer_token}@")
+            .replace("http://", f"http://{self.cfg.login.signer_token}@"),
+            custom_protocol_path=self.cfg.login.appinfo_path,
+        )
+
+        self.lag.log.set_level("DEBUG")
+
+        self.impl.lag = self.lag
+        self.handler.lag = self.lag
+        self._subscribe()
+
+        self._relog_ev = asyncio.Event()
 
     def set_online(self, online: bool) -> None:
         self.status = onebot_events.BotStatus(online=online, good=self.status.good)
@@ -85,12 +118,17 @@ class LagrangeProtocol:
             self._tasks = [
                 asyncio.create_task(self.adapter.cycle()),
                 asyncio.create_task(self.impl.api_service()),
+                asyncio.create_task(self.watchdog_svc())
             ]
             if self.cfg.heartbeat.enabled:
                 self._tasks.append(asyncio.create_task(self.heartbeat()))
             await self.emit_lifecycle("enable")
-            await self.lag.run()
-        except KeyboardInterrupt:
+            while True:
+                lagrange = asyncio.create_task(self.lag.run())
+                await self._relog_ev.wait()
+                lagrange.cancel()
+                await self._re_log()
+        except (KeyboardInterrupt, asyncio.exceptions.CancelledError):
             # noinspection PyProtectedMember
             self.lag.client._task_clear()
             logger.info("Program exited by user")

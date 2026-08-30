@@ -50,15 +50,37 @@ LagrangeEvent = BaseEvent
 F = TypeVar("F", bound=Callable[..., object])
 
 
+class HandlerHook:
+    def __init__(self, raw_func: "RegisteredHandler | None" = None):
+        self.handler: LagrangeEventHandler | None = None
+        self.raw_func = raw_func
+
+    def set_handler(self, handler: "LagrangeEventHandler") -> None:
+        self.handler = handler
+        if self.raw_func:
+            self.raw_func.handler_hook.set_handler(handler)
+
+    def update(self):
+        self.handler.last_handled = time.time()
+
+
 @runtime_checkable
 class RegisteredHandler(Protocol):
     ev_type: type[LagrangeEvent]
+    handler_hook: HandlerHook
 
 
 def on(ev_type: type[LagrangeEvent]) -> Callable[[F], F]:
     def dec(func: F) -> F:
         cast(RegisteredHandler, func).ev_type = ev_type
-        return func
+        cast(RegisteredHandler, func).handler_hook = HandlerHook()
+        async def wrapper(*args, **kwargs) -> Any:
+            cast(RegisteredHandler, func).handler_hook.update()
+            return await func(*args, **kwargs)
+
+        cast(RegisteredHandler, cast(object, wrapper)).ev_type = ev_type
+        cast(RegisteredHandler, cast(object, wrapper)).handler_hook = HandlerHook(raw_func=func)
+        return wrapper
 
     return dec
 
@@ -69,6 +91,8 @@ class LagrangeEventHandler:
         self.lag = lag
         self.info_updated = False
         self.protocol = protocol
+
+        self.last_handled = time.time()
 
     @staticmethod
     def _make_safe(handler):
@@ -86,6 +110,7 @@ class LagrangeEventHandler:
             attr = getattr(self, i)  # it seems like py3.14 has a **** change
             func = getattr(attr, "__func__", attr)
             if isinstance(func, RegisteredHandler):
+                func.handler_hook.set_handler(self)
                 self.lag.subscribe(func.ev_type, self._make_safe(attr))  # type: ignore
 
     @on(ClientOnline)
