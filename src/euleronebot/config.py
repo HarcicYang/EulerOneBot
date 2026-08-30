@@ -56,6 +56,7 @@ class LoginConfig(BaseModel):
     signer_token: str = ""
     use_custom: bool = False
     appinfo_path: str = "./appinfo.json"
+    setup_watchdog: bool = False
 
 
 class BotConfig(BaseSettings):

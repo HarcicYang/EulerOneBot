@@ -50,7 +50,7 @@ class LagrangeProtocol:
     async def watchdog_svc(self) -> None:
         while True:
             last = self.handler.last_handled
-            await asyncio.sleep(60 * 5)
+            await asyncio.sleep(60 * 10)
             if last == self.handler.last_handled:
                 self.relog()
 
@@ -119,10 +119,11 @@ class LagrangeProtocol:
             self._tasks = [
                 asyncio.create_task(self.adapter.cycle()),
                 asyncio.create_task(self.impl.api_service()),
-                asyncio.create_task(self.watchdog_svc()),
             ]
             if self.cfg.heartbeat.enabled:
                 self._tasks.append(asyncio.create_task(self.heartbeat()))
+            if self.cfg.login.setup_watchdog:
+                self._tasks.append(asyncio.create_task(self.watchdog_svc()))
             await self.emit_lifecycle("enable")
             while True:
                 lagrange = asyncio.create_task(self.lag.run())
