@@ -61,7 +61,8 @@ class HandlerHook:
             self.raw_func.handler_hook.set_handler(handler)
 
     def update(self):
-        self.handler.last_handled = time.time()
+        if self.handler:
+            self.handler.last_handled = time.time()
 
 
 @runtime_checkable
@@ -74,13 +75,16 @@ def on(ev_type: type[LagrangeEvent]) -> Callable[[F], F]:
     def dec(func: F) -> F:
         cast(RegisteredHandler, func).ev_type = ev_type
         cast(RegisteredHandler, func).handler_hook = HandlerHook()
+
         async def wrapper(*args, **kwargs) -> Any:
             cast(RegisteredHandler, func).handler_hook.update()
-            return await func(*args, **kwargs)
+            return await func(*args, **kwargs)  # type: ignore
 
         cast(RegisteredHandler, cast(object, wrapper)).ev_type = ev_type
-        cast(RegisteredHandler, cast(object, wrapper)).handler_hook = HandlerHook(raw_func=func)
-        return wrapper
+        cast(RegisteredHandler, cast(object, wrapper)).handler_hook = HandlerHook(
+            raw_func=cast(RegisteredHandler, func)
+        )
+        return cast(F, wrapper)
 
     return dec
 
