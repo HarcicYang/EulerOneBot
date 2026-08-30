@@ -119,7 +119,7 @@ class LagrangeProtocol:
             self._tasks = [
                 asyncio.create_task(self.adapter.cycle()),
                 asyncio.create_task(self.impl.api_service()),
-                asyncio.create_task(self.watchdog_svc())
+                asyncio.create_task(self.watchdog_svc()),
             ]
             if self.cfg.heartbeat.enabled:
                 self._tasks.append(asyncio.create_task(self.heartbeat()))
