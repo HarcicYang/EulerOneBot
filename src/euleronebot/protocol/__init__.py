@@ -77,6 +77,7 @@ class LagrangeProtocol:
         self._subscribe()
 
         self._relog_ev = asyncio.Event()
+        await asyncio.sleep(10)
 
     def set_online(self, online: bool) -> None:
         self.status = onebot_events.BotStatus(online=online, good=self.status.good)
