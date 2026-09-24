@@ -32,11 +32,11 @@
 前往 [Actions](https://github.com/HarcicYang/EulerOneBot/actions/workflows/build_release.yaml) 下载与您设备架构对应的产物（`-linux-x64` / `-linux-arm64` / `-macos-arm64` / `-windows-x64` / `-windows-arm64`）并解压，随后运行：
 
 ```shell
-./euler-onebot-<版本号>       # Linux / macOS
+./euler-onebot-<版本号>       # Linux / macOS（macOS 提供普通命令行程序）
 euler-onebot-<版本号>.exe     # Windows
 ```
 
-首次启动会自动生成 `appconfig.json` 配置模板，填写后重启即可。
+首次启动会在可执行文件旁自动生成 `appconfig.json` 配置模板并显示提示，填写后重启即可。源码运行时配置仍在当前目录生成。
 
 ### 方式二：从源码运行
 

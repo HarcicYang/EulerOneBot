@@ -119,12 +119,8 @@ jobs:
 
           EXTRA_ARGS=()
 
-          if [ "${{ matrix.platform }}" = "macos" ]; then
-            EXTRA_ARGS+=("--macos-create-app-bundle")
-          fi
-
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            EXTRA_ARGS+=("--windows-console-mode=disable")
+            EXTRA_ARGS+=("--windows-console-mode=force")
           fi
 
           uv run python -m nuitka main.py \
@@ -135,22 +131,6 @@ jobs:
             --disable-ccache \
             --lto=no \
             "${EXTRA_ARGS[@]}"
-
-
-      - name: Package macOS app bundle
-        if: matrix.platform == 'macos'
-        shell: bash
-        run: |
-          cd "${{ matrix.output_dir }}"
-
-          if [ -d "euler-onebot-${VERSION}.app" ]; then
-            zip -r \
-              "euler-onebot-${VERSION}-${{ matrix.platform }}-${{ matrix.arch }}.app.zip" \
-              "euler-onebot-${VERSION}.app"
-
-            rm -rf "euler-onebot-${VERSION}.app"
-          fi
-
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4

@@ -102,4 +102,4 @@ def load_config(file: str) -> BotConfig:
                 f.write(json.dumps(template, indent=2, ensure_ascii=False))
         except Exception as e:  # noinspection PyBroadException
             raise RuntimeError(f"无法创建配置文件: {e} ，请检查路径是否有误") from e
-        raise FileNotFoundError(f"配置文件 {file} 不存在， 已创建，请填写后重启")
+        raise FileNotFoundError(f"配置文件 {os.path.abspath(file)} 不存在，已创建模板，请填写后重启")
