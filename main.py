@@ -3,6 +3,7 @@ import asyncio
 
 from euleronebot import Adapter, LagrangeProtocol, apply_patches, setup
 
+
 def main() -> int:
     try:
         logger, cfg = setup()
