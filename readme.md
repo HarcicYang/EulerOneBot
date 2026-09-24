@@ -102,8 +102,49 @@ euler-onebot-<版本号>.exe     # Windows
 | `login.uin`          | QQ 账号（不要真的写0哦）                                                       |
 | `login.signer_url`   | 签名服务地址                                                                   |
 | `login.signer_token` | 签名服务 Token                                                                 |
+| `login.use_custom`   | 是否加载自定义协议参数；设为 `true` 后读取 `appinfo_path` 指定的 JSON 文件     |
+| `login.appinfo_path` | 自定义协议参数文件路径，默认 `./appinfo.json`，相对当前工作目录               |
 | `heartbeat.enabled`  | 是否启用心跳                                                                   |
 | `heartbeat.interval` | 心跳间隔（毫秒）                                                               |
+
+### 自定义 appinfo.json
+
+`appinfo.json` 是可选文件。不使用自定义协议时，无需创建它，保持 `login.use_custom` 为 `false` 即可继续使用内置 Linux 参数。
+
+如需使用自定义协议，请将下面的示例保存为本地 `appinfo.json`（或替换为目标客户端对应的参数），再在 `appconfig.json` 的 `login` 中启用自定义协议并填写该文件路径：
+
+注意，自定义协议版本可能与前文提到的 Lagrange V2 签名服务不兼容。遇到这种情况时，需要自行准备兼容的签名服务，并在 `login.signer_url` 和 `login.signer_token` 中填写对应配置。
+
+```json
+{
+  "use_custom": true,
+  "appinfo_path": "./appinfo.json"
+}
+```
+
+`appinfo.json` 需要包含 Lagrange `AppInfo` 使用的字段。下面以项目当前内置的 Linux 协议参数展示完整格式；若要模拟其他客户端，请替换为与目标客户端版本匹配的参数：
+
+```json
+{
+  "Os": "Linux",
+  "Kernel": "Linux",
+  "VendorOs": "linux",
+  "CurrentVersion": "3.2.26-46494",
+  "MiscBitmap": 32764,
+  "PtVersion": "2.0.0",
+  "SsoVersion": 19,
+  "PackageName": "com.tencent.qq",
+  "WtLoginSdk": "nt.wtlogin.0.0.1",
+  "AppId": 1600001615,
+  "SubAppId": 537345891,
+  "AppIdQrCode": 13697054,
+  "AppClientVersion": 46494,
+  "MainSigMap": 169742560,
+  "SubSigMap": 0,
+  "NtLoginType": 1,
+  "Qua": "V1_LNX_NQ_3.2.26_46494_GW_B"
+}
+```
 
 ### 已经支持的连接类型
 
