@@ -105,6 +105,11 @@
           "default": "./appinfo.json",
           "title": "Appinfo Path",
           "type": "string"
+        },
+        "setup_watchdog": {
+          "default": false,
+          "title": "Setup Watchdog",
+          "type": "boolean"
         }
       },
       "title": "LoginConfig",
@@ -215,7 +220,8 @@
         "signer_url": "https://",
         "signer_token": "",
         "use_custom": false,
-        "appinfo_path": "./appinfo.json"
+        "appinfo_path": "./appinfo.json",
+        "setup_watchdog": false
       }
     },
     "heartbeat": {

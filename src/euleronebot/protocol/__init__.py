@@ -126,9 +126,33 @@ class LagrangeProtocol:
                 self._tasks.append(asyncio.create_task(self.watchdog_svc()))
             await self.emit_lifecycle("enable")
             while True:
-                lagrange = asyncio.create_task(self.lag.run())
-                await self._relog_ev.wait()
-                lagrange.cancel()
+
+                async def run_lagrange() -> KeyboardInterrupt | None:
+                    try:
+                        await self.lag.run()
+                    except KeyboardInterrupt as exc:
+                        return exc
+                    return None
+
+                lagrange = asyncio.create_task(run_lagrange())
+                relog = asyncio.create_task(self._relog_ev.wait())
+                try:
+                    done, _ = await asyncio.wait(
+                        (lagrange, relog),
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
+                finally:
+                    for task in (lagrange, relog):
+                        if not task.done():
+                            task.cancel()
+                    await asyncio.gather(lagrange, relog, return_exceptions=True)
+
+                if lagrange in done:
+                    interrupt = lagrange.result()
+                    if interrupt is not None:
+                        raise interrupt
+                    break
+
                 await self._re_log()
         except (KeyboardInterrupt, asyncio.exceptions.CancelledError):
             # noinspection PyProtectedMember
