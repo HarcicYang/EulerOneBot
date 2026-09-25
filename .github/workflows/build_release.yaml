@@ -136,7 +136,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: euler-onebot-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.run_id }}
-          path: ${{ matrix.output_dir }}
+          # Only ship the executable, not Nuitka's intermediate build folders.
+          path: ${{ matrix.output_dir }}/euler-onebot-*
 
 
       - name: Locate release to attach to
@@ -208,7 +209,7 @@ jobs:
 
           cd "${{ matrix.output_dir }}"
 
-          for ASSET in *; do
+          for ASSET in euler-onebot-*; do
 
             [ -e "$ASSET" ] || continue
 
