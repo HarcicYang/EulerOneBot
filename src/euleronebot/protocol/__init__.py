@@ -34,6 +34,8 @@ class LagrangeProtocol:
             .replace("https://", f"https://{cfg.login.signer_token}@")
             .replace("http://", f"http://{cfg.login.signer_token}@"),
             custom_protocol_path=cfg.login.appinfo_path,
+            use_ipv6=cfg.login.use_ipv6,
+            use_optimum=cfg.login.use_optimum
         )
 
         self.lag.log.set_level("DEBUG")

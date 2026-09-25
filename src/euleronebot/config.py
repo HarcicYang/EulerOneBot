@@ -57,6 +57,8 @@ class LoginConfig(BaseModel):
     use_custom: bool = False
     appinfo_path: str = "./appinfo.json"
     setup_watchdog: bool = False
+    use_ipv6: bool = False
+    use_optimum: bool = True
 
 
 class BotConfig(BaseSettings):
