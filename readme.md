@@ -25,7 +25,7 @@ hook 方案的 OneBot 实现的用户。
 
 - Python >= 3.11
 - [lagrange-python](https://github.com/LagrangeDev/lagrange-python) [^1][^2]
-- Lagrange V2 签名服务（见[签名指南](https://github.com/LagrangeDev/SignApiGuide)）
+- 兼容 Lagrange V2 的签名服务（见[签名服务](#签名服务)）
 
 ## 安装与使用
 
@@ -108,8 +108,8 @@ euler-onebot-<版本号>.exe     # Windows
 | `access_token`         | 鉴权 Token，配置后 HTTP / 正向 WebSocket / 反向 WebSocket 需携带（空为不鉴权） |
 | `connections`          | 通信连接列表（见下方连接类型）                                                 |
 | `login.uin`            | QQ 账号（不要真的写0哦）                                                       |
-| `login.signer_url`     | 签名服务地址                                                                   |
-| `login.signer_token`   | 签名服务 Token                                                                 |
+| `login.signer_url`     | 签名服务地址（见[签名服务](#签名服务)）                                         |
+| `login.signer_token`   | 签名服务 access token                                                          |
 | `login.use_custom`     | 是否加载自定义协议参数；设为 `true` 后读取 `appinfo_path` 指定的 JSON 文件     |
 | `login.appinfo_path`   | 自定义协议参数文件路径，默认 `./appinfo.json`，相对当前工作目录                |
 | `login.setup_watchdog` | 是否启用看门狗；连续 10 分钟没有处理事件时触发重新登录                         |
@@ -118,6 +118,31 @@ euler-onebot-<版本号>.exe     # Windows
 | `heartbeat.enabled`    | 是否启用心跳                                                                   |
 | `heartbeat.interval`   | 心跳间隔（毫秒）                                                               |
 
+### 签名服务
+
+登录 QQ 时需要签名服务为关键数据包签名。除上面的示例所用的公开签名服务 `https://sign.lagrangecore.org`，本项目也提供自建的
+[Harcic 签名 API](https://api.harcic.me/api/sign/manage)，可按下面的步骤获取 access token 后使用：
+
+1. 打开管理页并用 GitHub 账号登录，然后设置 Owner QQ（仅用于标识账户，不占用 token 的绑定名额）；
+2. 创建 access token。每个 GitHub 账号同时只能有一个有效 token，每个 token 最多绑定 3 个 QQ，且 token 仅显示一次，请立即复制保存；
+3. 在管理页的「客户端配置示例」切到 `EulerOneBot` 标签复制配置，或按下面的形式手动填写：
+
+```json
+{
+  "login": {
+    "uin": 1234567890,
+    "signer_url": "https://api.harcic.me",
+    "signer_token": "YOUR_ACCESS_TOKEN"
+  }
+}
+```
+
+`signer_url` 只填服务地址即可，Euler OneBot 会自行追加 `/api/sign/sec-sign`，并以 `Authorization: Bearer <signer_token>` 的方式携带
+token，因此不要照搬 `Lagrange.Milky` 示例中带有 `/api/` 后缀的 `BaseUrl`。启动时使用的 QQ 必须已绑定到该 token，否则签名接口会
+返回 `Invalid access token`。
+
+若需要接入其它签名服务，把 `signer_url` 与 `signer_token` 换成对应服务提供的信息即可。
+
 ### 自定义 appinfo.json
 
 `appinfo.json` 是可选文件。不使用自定义协议时，无需创建它，保持 `login.use_custom` 为 `false` 即可继续使用内置 Linux 参数。
@@ -125,8 +150,8 @@ euler-onebot-<版本号>.exe     # Windows
 如需使用自定义协议，请将下面的示例保存为本地 `appinfo.json`（或替换为目标客户端对应的参数），再在 `appconfig.json` 的
 `login` 中启用自定义协议并填写该文件路径：
 
-注意，自定义协议版本可能与前文提到的 Lagrange V2 签名服务不兼容。遇到这种情况时，需要自行准备兼容的签名服务，并在
-`login.signer_url` 和 `login.signer_token` 中填写对应配置。
+注意，自定义协议版本可能与前文提到的签名服务不兼容。遇到这种情况时，需要自行准备兼容的签名服务，并在 `login.signer_url`
+和 `login.signer_token` 中填写对应配置。
 
 ```json
 {
