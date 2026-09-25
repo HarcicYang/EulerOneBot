@@ -110,6 +110,16 @@
           "default": false,
           "title": "Setup Watchdog",
           "type": "boolean"
+        },
+        "use_ipv6": {
+          "default": false,
+          "title": "Use Ipv6",
+          "type": "boolean"
+        },
+        "use_optimum": {
+          "default": true,
+          "title": "Use Optimum",
+          "type": "boolean"
         }
       },
       "title": "LoginConfig",
@@ -221,7 +231,9 @@
         "signer_token": "",
         "use_custom": false,
         "appinfo_path": "./appinfo.json",
-        "setup_watchdog": false
+        "setup_watchdog": false,
+        "use_ipv6": false,
+        "use_optimum": true
       }
     },
     "heartbeat": {
