@@ -9,7 +9,8 @@
 
 ## 项目特点
 
-本项目基本目的在于为曾经使用 Lagrange.OneBot 、在 Lagrange.OneBot 停止维护后暂时不愿迁移到 milky 或 期望基于协议库而非 hook 方案的 OneBot 实现的用户。
+本项目基本目的在于为曾经使用 Lagrange.OneBot 、在 Lagrange.OneBot 停止维护后暂时不愿迁移到 milky 或 期望基于协议库而非
+hook 方案的 OneBot 实现的用户。
 
 ## 环境要求
 
@@ -19,7 +20,8 @@
 - 几乎任何 Windows x64/arm64 设备
 - 几乎任何非 musl 的 x64/arm64 Linux 发行版
 
-则您可以跳过环境配置，前往 [actions](https://github.com/HarcicYang/EulerOneBot/actions/workflows/build_release.yaml) 下载打包的可执行文件。
+则您可以跳过环境配置，前往 [actions](https://github.com/HarcicYang/EulerOneBot/actions/workflows/build_release.yaml)
+下载打包的可执行文件。
 
 - Python >= 3.11
 - [lagrange-python](https://github.com/LagrangeDev/lagrange-python) [^1][^2]
@@ -29,7 +31,8 @@
 
 ### 方式一：使用预编译可执行文件（推荐）
 
-前往 [Actions](https://github.com/HarcicYang/EulerOneBot/actions/workflows/build_release.yaml) 下载与您设备架构对应的产物（`-linux-x64` / `-linux-arm64` / `-macos-arm64` / `-windows-x64` / `-windows-arm64`）并解压，随后运行：
+前往 [Actions](https://github.com/HarcicYang/EulerOneBot/actions/workflows/build_release.yaml) 下载与您设备架构对应的产物（
+`-linux-x64` / `-linux-arm64` / `-macos-arm64` / `-windows-x64` / `-windows-arm64`）并解压，随后运行：
 
 ```shell
 ./euler-onebot-<版本号>       # Linux / macOS（macOS 提供普通命令行程序）
@@ -80,7 +83,12 @@ euler-onebot-<版本号>.exe     # Windows
   "login": {
     "uin": 0,
     "signer_url": "https://sign.lagrangecore.org",
-    "signer_token": ""
+    "signer_token": "",
+    "use_custom": false,
+    "appinfo_path": "./appinfo.json",
+    "setup_watchdog": false,
+    "use_ipv6": false,
+    "use_optimum": true
   },
   "heartbeat": {
     "enabled": true,
@@ -93,27 +101,32 @@ euler-onebot-<版本号>.exe     # Windows
 保留配置开头的 `$schema` 字段后，VS Code / IDEA 等编辑器即可获得自动补全与校验。
 若模型有改动，CI 会校验 schema 文件与模型保持同步。
 
-| 字段                 | 说明                                                                           |
-| -------------------- | ------------------------------------------------------------------------------ |
-| `log_level`          | 日志级别：`TRACE` / `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL`        |
-| `log_nf`             | 是否为日志输出启用 NerdFont                                                    |
-| `access_token`       | 鉴权 Token，配置后 HTTP / 正向 WebSocket / 反向 WebSocket 需携带（空为不鉴权） |
-| `connections`        | 通信连接列表（见下方连接类型）                                                 |
-| `login.uin`          | QQ 账号（不要真的写0哦）                                                       |
-| `login.signer_url`   | 签名服务地址                                                                   |
-| `login.signer_token` | 签名服务 Token                                                                 |
-| `login.use_custom`   | 是否加载自定义协议参数；设为 `true` 后读取 `appinfo_path` 指定的 JSON 文件     |
-| `login.appinfo_path` | 自定义协议参数文件路径，默认 `./appinfo.json`，相对当前工作目录               |
-| `heartbeat.enabled`  | 是否启用心跳                                                                   |
-| `heartbeat.interval` | 心跳间隔（毫秒）                                                               |
+| 字段                   | 说明                                                                           |
+|------------------------|--------------------------------------------------------------------------------|
+| `log_level`            | 日志级别：`TRACE` / `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL`        |
+| `log_nf`               | 是否为日志输出启用 NerdFont                                                    |
+| `access_token`         | 鉴权 Token，配置后 HTTP / 正向 WebSocket / 反向 WebSocket 需携带（空为不鉴权） |
+| `connections`          | 通信连接列表（见下方连接类型）                                                 |
+| `login.uin`            | QQ 账号（不要真的写0哦）                                                       |
+| `login.signer_url`     | 签名服务地址                                                                   |
+| `login.signer_token`   | 签名服务 Token                                                                 |
+| `login.use_custom`     | 是否加载自定义协议参数；设为 `true` 后读取 `appinfo_path` 指定的 JSON 文件     |
+| `login.appinfo_path`   | 自定义协议参数文件路径，默认 `./appinfo.json`，相对当前工作目录                |
+| `login.setup_watchdog` | 是否启用看门狗；连续 10 分钟没有处理事件时触发重新登录                         |
+| `login.use_ipv6`       | 是否使用 IPv6 连接                                                             |
+| `login.use_optimum`    | 是否启用最优服务器选择                                                         |
+| `heartbeat.enabled`    | 是否启用心跳                                                                   |
+| `heartbeat.interval`   | 心跳间隔（毫秒）                                                               |
 
 ### 自定义 appinfo.json
 
 `appinfo.json` 是可选文件。不使用自定义协议时，无需创建它，保持 `login.use_custom` 为 `false` 即可继续使用内置 Linux 参数。
 
-如需使用自定义协议，请将下面的示例保存为本地 `appinfo.json`（或替换为目标客户端对应的参数），再在 `appconfig.json` 的 `login` 中启用自定义协议并填写该文件路径：
+如需使用自定义协议，请将下面的示例保存为本地 `appinfo.json`（或替换为目标客户端对应的参数），再在 `appconfig.json` 的
+`login` 中启用自定义协议并填写该文件路径：
 
-注意，自定义协议版本可能与前文提到的 Lagrange V2 签名服务不兼容。遇到这种情况时，需要自行准备兼容的签名服务，并在 `login.signer_url` 和 `login.signer_token` 中填写对应配置。
+注意，自定义协议版本可能与前文提到的 Lagrange V2 签名服务不兼容。遇到这种情况时，需要自行准备兼容的签名服务，并在
+`login.signer_url` 和 `login.signer_token` 中填写对应配置。
 
 ```json
 {
@@ -149,7 +162,7 @@ euler-onebot-<版本号>.exe     # Windows
 ### 已经支持的连接类型
 
 | 连接类型       | `type` 值          | 说明                                                                                                     |
-| -------------- | ------------------ | -------------------------------------------------------------------------------------------------------- |
+|----------------|--------------------|----------------------------------------------------------------------------------------------------------|
 | HTTP           | `HTTP`             | 在 `url` 指定的地址提供 HTTP API 服务（`GET`/`POST /:action`）                                           |
 | HTTP POST      | `HTTPPost`         | 将事件上报到 `url` 指定的 Webhook，可配置 `secret` 签名与 `timeout`                                      |
 | 正向 WebSocket | `ForwardWebSocket` | 在 `url` 指定的地址监听,提供 WebSocket 服务供 OneBot 客户端连接                                          |
@@ -172,7 +185,7 @@ uv sync
 <summary>API 类型</summary>
 
 | API 名称                | 支持状态 | 类型 |
-| ----------------------- | -------- | ---- |
+|-------------------------|----------|------|
 | send_private_msg        | ✅       | 标准 |
 | send_group_msg          | ✅       | 标准 |
 | send_msg                | ✅       | 标准 |
@@ -214,7 +227,7 @@ uv sync
 <summary>事件类型</summary>
 
 | 事件名称                 | 支持状态 | 类型 |
-| ------------------------ | -------- | ---- |
+|--------------------------|----------|------|
 | message.private          | ✅       | 标准 |
 | message.group            | ✅       | 标准 |
 | notice.group_upload      | ✅       | 标准 |
@@ -241,7 +254,7 @@ uv sync
 <summary>消息段类型</summary>
 
 | 消息段类型 | 支持状态     | 类型 |
-| ---------- | ------------ | ---- |
+|------------|--------------|------|
 | text       | ✅           | 标准 |
 | at         | ✅           | 标准 |
 | reply      | ✅           | 标准 |
@@ -269,7 +282,7 @@ uv sync
 <summary>通信方式</summary>
 
 | 通信方式       | 支持状态 | 类型 |
-| -------------- | -------- | ---- |
+|----------------|----------|------|
 | HTTP           | ✅       | 标准 |
 | HTTP POST      | ✅       | 标准 |
 | 正向 WebSocket | ✅       | 标准 |
@@ -282,7 +295,7 @@ uv sync
 在 i5-1135G7 / 16GB 上使用 `uv run python scripts/benchmark.py` 测得：
 
 | 场景                          | 吞吐         |
-| ----------------------------- | ------------ |
+|-------------------------------|--------------|
 | HTTP 端到端（send_group_msg） | ~600 req/s   |
 | 正向 WS 请求-响应（单连接）   | ~3,700 req/s |
 | WS 事件推送                   | ~60,000 条/s |
@@ -293,9 +306,9 @@ uv sync
 ---
 
 [^1]:
-    尽管这里的连接指向 [LagrangeDev](https://github.com/LagrangeDev)
-    ，本仓库的依赖项中该包裹指向 [我自己的fork](https://github.com/HarcicYang/lagrange-python)
-    ，这是因为我为了该项目，在fork中照葫芦画瓢做了一些自己的实现。因此，如果您安装了 LagrangeDev
-    提供的包裹，该项目可能无法正常运行。
+尽管这里的连接指向 [LagrangeDev](https://github.com/LagrangeDev)
+，本仓库的依赖项中该包裹指向 [我自己的fork](https://github.com/HarcicYang/lagrange-python)
+，这是因为我为了该项目，在fork中照葫芦画瓢做了一些自己的实现。因此，如果您安装了 LagrangeDev
+提供的包裹，该项目可能无法正常运行。
 
 [^2]: 部分环境下，安装有关依赖库可能需要额外配置 openssl 和 rust 开发环境.
