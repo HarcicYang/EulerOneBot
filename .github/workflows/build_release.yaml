@@ -115,7 +115,7 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/patches
         run: |
-          uv sync --frozen --group dev
+          uv sync --frozen --no-default-groups --group build
 
           EXTRA_ARGS=()
 
@@ -123,7 +123,7 @@ jobs:
             EXTRA_ARGS+=("--windows-console-mode=force")
           fi
 
-          uv run python -m nuitka main.py \
+          uv run --no-sync python -m nuitka main.py \
             --onefile \
             --output-filename="euler-onebot-$VERSION" \
             --output-dir="${{ matrix.output_dir }}" \

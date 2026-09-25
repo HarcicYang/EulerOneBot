@@ -53,9 +53,12 @@ bad-override-mutable-attribute = false
 testpaths = ["tests"]
 
 [dependency-groups]
+build = [
+    "nuitka>=4.1.3",
+]
 dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.1",
     "pyrefly>=0.60.0",
-    "nuitka>=4.1.3",
+    { include-group = "build" },
 ]
