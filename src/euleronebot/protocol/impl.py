@@ -294,10 +294,7 @@ class LagrangeImpl:
             uid = await info_mgr.uid_mgr.from_uin(data.user_id)
         except ValueError:
             uid = None
-        try:
-            info = await self.lag.client.get_user_info(uid or data.user_id)
-        except AttributeError:
-            info = await self.lag.client.get_user_info(data.user_id)
+        info = await self.lag.client.get_user_info(uid or data.user_id)
         return GetStrangerInfoResponse(
             status="ok",
             retcode=0,

@@ -208,10 +208,7 @@ async def to_lagrange_msg(
                 except ValueError:
                     logger.warning(f"未知 uin {qq},已跳过 at 段")
                     continue
-                try:
-                    info = await lgrc.get_user_info(uid)
-                except AttributeError:
-                    info = await lgrc.get_user_info(qq)
+                info = await lgrc.get_user_info(uid)
                 new.append(elems.At(text=f"@{info.name}", uin=qq, uid=uid))
         elif isinstance(i, seg.Reply):
             msgid = int(i.data.id)
