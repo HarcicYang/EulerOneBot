@@ -231,7 +231,7 @@ class LagrangeEventHandler:
         if not msgid:
             return
         try:
-            opt_uin = await info_mgr.uid_mgr.from_uid(event.uid)
+            opt_uin = await info_mgr.uid_mgr.from_uid(event.operator_id)
         except ValueError:
             opt_uin = 0
         real_info = await info_mgr.msgid_mgr.fetch(msgid)
