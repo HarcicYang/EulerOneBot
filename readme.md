@@ -1,6 +1,6 @@
 # Euler OneBot
 
-一个无聊的 OneBot 实现，完全使用 python 语言，基于 [lagrange-python](https://github.com/LagrangeDev/lagrange-python)
+一个无聊的 OneBot 实现，完全使用 python 语言，基于 [Hiro QQ](https://github.com/Harcic/hiro-qq)
 
 <img src="https://img.shields.io/badge/OneBot-11-black?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHAAAABwCAMAAADxPgR5AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAAxQTFRF////29vbr6+vAAAAk1hCcwAAAAR0Uk5T////AEAqqfQAAAKcSURBVHja7NrbctswDATQXfD//zlpO7FlmwAWIOnOtNaTM5JwDMa8E+PNFz7g3waJ24fviyDPgfhz8fHP39cBcBL9KoJbQUxjA2iYqHL3FAnvzhL4GtVNUcoSZe6eSHizBcK5LL7dBr2AUZlev1ARRHCljzRALIEog6H3U6bCIyqIZdAT0eBuJYaGiJaHSjmkYIZd+qSGWAQnIaz2OArVnX6vrItQvbhZJtVGB5qX9wKqCMkb9W7aexfCO/rwQRBzsDIsYx4AOz0nhAtWu7bqkEQBO0Pr+Ftjt5fFCUEbm0Sbgdu8WSgJ5NgH2iu46R/o1UcBXJsFusWF/QUaz3RwJMEgngfaGGdSxJkE/Yg4lOBryBiMwvAhZrVMUUvwqU7F05b5WLaUIN4M4hRocQQRnEedgsn7TZB3UCpRrIJwQfqvGwsg18EnI2uSVNC8t+0QmMXogvbPg/xk+Mnw/6kW/rraUlvqgmFreAA09xW5t0AFlHrQZ3CsgvZm0FbHNKyBmheBKIF2cCA8A600aHPmFtRB1XvMsJAiza7LpPog0UJwccKdzw8rdf8MyN2ePYF896LC5hTzdZqxb6VNXInaupARLDNBWgI8spq4T0Qb5H4vWfPmHo8OyB1ito+AysNNz0oglj1U955sjUN9d41LnrX2D/u7eRwxyOaOpfyevCWbTgDEoilsOnu7zsKhjRCsnD/QzhdkYLBLXjiK4f3UWmcx2M7PO21CKVTH84638NTplt6JIQH0ZwCNuiWAfvuLhdrcOYPVO9eW3A67l7hZtgaY9GZo9AFc6cryjoeFBIWeU+npnk/nLE0OxCHL1eQsc1IciehjpJv5mqCsjeopaH6r15/MrxNnVhu7tmcslay2gO2Z1QfcfX0JMACG41/u0RrI9QAAAABJRU5ErkJggg==" alt="OneBot V11">
 <img src="https://img.shields.io/static/v1?label=LICENSE&message=GPL-3.0&color=lightrey" alt="GPL-3.0">
@@ -24,7 +24,7 @@ hook 方案的 OneBot 实现的用户。
 下载打包的可执行文件。
 
 - Python >= 3.11
-- [lagrange-python](https://github.com/LagrangeDev/lagrange-python) [^1][^2]
+- [Hiro QQ](https://github.com/Harcic/hiro-qq) [^1]
 - 兼容 Lagrange V2 的签名服务（见[签名服务](#签名服务)，Lagrange 说明见 [SignApiGuide](https://github.com/LagrangeDev/SignApiGuide)）
 
 ## 安装与使用
@@ -330,6 +330,4 @@ uv sync
 
 ---
 
-[^1]: 尽管这里的连接指向 [LagrangeDev](https://github.com/LagrangeDev)，本仓库的依赖项中该包裹指向 [我自己的fork](https://github.com/HarcicYang/lagrange-python)，这是因为我为了该项目，在fork中照葫芦画瓢做了一些自己的实现。因此，如果您安装了LagrangeDev提供的包裹，该项目可能无法正常运行。
-
-[^2]: 部分环境下，安装有关依赖库可能需要额外配置 openssl 和 rust 开发环境.
+[^1]: 部分环境下，安装有关依赖库可能需要额外配置 openssl 和 rust 开发环境.

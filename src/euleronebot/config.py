@@ -84,7 +84,6 @@ def build_schema() -> dict:
     schema.setdefault("title", "EulerOneBot 配置文件")
     schema.setdefault("description", "Euler OneBot 的 appconfig.json 配置结构,由 BotConfig 模型自动生成")
     schema.setdefault("$id", "./appconfig.schema.json")
-    # 显式声明 $schema 字段,兼容不剥离该键的编辑器(配置解析时会忽略它)
     schema.setdefault("properties", {})["$schema"] = {"type": "string", "description": "JSON Schema 引用,解析时忽略"}
     return schema
 
