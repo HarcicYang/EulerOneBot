@@ -27,7 +27,7 @@ def make_handler(cfg: BotConfig | None = None) -> tuple[LagrangeEventHandler, Re
     adapter = RecordingAdapter()
     lag = cast(Any, SimpleNamespace(client=SimpleNamespace(uin=10001, uid="u_self")))
     protocol = cast(Any, SimpleNamespace(cfg=cfg or BotConfig(login={"uin": 10001})))
-    return LagrangeEventHandler(adapter, lag, protocol), adapter
+    return LagrangeEventHandler(cast(Any, adapter), lag, protocol), adapter
 
 
 def test_friend_poke_handler_reports_notice():
