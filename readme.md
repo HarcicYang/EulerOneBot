@@ -25,7 +25,7 @@ hook 方案的 OneBot 实现的用户。
 
 - Python >= 3.11
 - [lagrange-python](https://github.com/LagrangeDev/lagrange-python) [^1][^2]
-- 兼容 Lagrange V2 的签名服务（见[签名服务](#签名服务)）
+- 兼容 Lagrange V2 的签名服务（见[签名服务](#签名服务)，Lagrange 说明见 [SignApiGuide](https://github.com/LagrangeDev/SignApiGuide)）
 
 ## 安装与使用
 
@@ -120,12 +120,8 @@ euler-onebot-<版本号>.exe     # Windows
 
 ### 签名服务
 
-登录 QQ 时需要签名服务为关键数据包签名。除上面的示例所用的公开签名服务 `https://sign.lagrangecore.org`，本项目也提供自建的
-[Harcic 签名 API](https://api.harcic.me/api/sign/manage)，可按下面的步骤获取 access token 后使用：
-
-1. 打开管理页并用 GitHub 账号登录，然后设置 Owner QQ（仅用于标识账户，不占用 token 的绑定名额）；
-2. 创建 access token。每个 GitHub 账号同时只能有一个有效 token，每个 token 最多绑定 3 个 QQ，且 token 仅显示一次，请立即复制保存；
-3. 在管理页的「客户端配置示例」切到 `EulerOneBot` 标签复制配置，或按下面的形式手动填写：
+登录 QQ 时需要签名服务为关键数据包签名。除上面的示例所用的[Lagrange 提供的签名服务 `https://sign.lagrangecore.org`](https://github.com/LagrangeDev/SignApiGuide)，本项目也提供
+[自建的签名 API](https://api.harcic.me/api/sign/manage)，目前的长时间测试没有遇到风控/踢出问题，注册应该是更加简单的。
 
 ```json
 {
@@ -136,10 +132,6 @@ euler-onebot-<版本号>.exe     # Windows
   }
 }
 ```
-
-`signer_url` 只填服务地址即可，Euler OneBot 会自行追加 `/api/sign/sec-sign`，并以 `Authorization: Bearer <signer_token>` 的方式携带
-token，因此不要照搬 `Lagrange.Milky` 示例中带有 `/api/` 后缀的 `BaseUrl`。启动时使用的 QQ 必须已绑定到该 token，否则签名接口会
-返回 `Invalid access token`。
 
 若需要接入其它签名服务，把 `signer_url` 与 `signer_token` 换成对应服务提供的信息即可。
 
@@ -330,10 +322,6 @@ uv sync
 
 ---
 
-[^1]:
-尽管这里的连接指向 [LagrangeDev](https://github.com/LagrangeDev)
-，本仓库的依赖项中该包裹指向 [我自己的fork](https://github.com/HarcicYang/lagrange-python)
-，这是因为我为了该项目，在fork中照葫芦画瓢做了一些自己的实现。因此，如果您安装了 LagrangeDev
-提供的包裹，该项目可能无法正常运行。
+[^1]: 尽管这里的连接指向 [LagrangeDev](https://github.com/LagrangeDev)，本仓库的依赖项中该包裹指向 [我自己的fork](https://github.com/HarcicYang/lagrange-python)，这是因为我为了该项目，在fork中照葫芦画瓢做了一些自己的实现。因此，如果您安装了LagrangeDev提供的包裹，该项目可能无法正常运行。
 
 [^2]: 部分环境下，安装有关依赖库可能需要额外配置 openssl 和 rust 开发环境.
