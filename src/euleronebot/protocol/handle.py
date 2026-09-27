@@ -226,7 +226,6 @@ class LagrangeEventHandler:
 
     @on(GroupRecall)
     async def grp_recall_handler(self, _client: Client, event: GroupRecall) -> None:
-        logger.info(f"[Group] {event.grp_id}: message {event.seq} had been deleted")
         msgid = await info_mgr.msgid_mgr.search(MsgInfo(scene_id=event.grp_id, scene_type="group", seq=event.seq))
         if not msgid:
             return
@@ -234,6 +233,7 @@ class LagrangeEventHandler:
             opt_uin = await info_mgr.uid_mgr.from_uid(event.operator_id)
         except ValueError:
             opt_uin = 0
+        logger.info(f"[Group] {event.grp_id}: message {event.seq} had been deleted by {opt_uin}")
         real_info = await info_mgr.msgid_mgr.fetch(msgid)
         ev = onebot_events.GroupRecallEvent(
             group_id=event.grp_id,
