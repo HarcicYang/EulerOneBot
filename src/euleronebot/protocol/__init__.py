@@ -104,7 +104,7 @@ class LagrangeProtocol:
                 onebot_events.LifecycleEvent(time=round(time.time()), self_id=self._self_id(), sub_type=sub_type)
             )
         except Exception as e:  # noinspection PyBroadException
-            logger.error(f"发送 lifecycle[{sub_type}] 失败: {e!r}")
+            logger.error(f"lifecycle[{sub_type}] failed: {e!r}")
 
     async def _cancel_tasks(self) -> None:
         for t in self._tasks:
