@@ -3,6 +3,7 @@ from pydantic import ValidationError
 
 from euleronebot.onebot.events import (
     FriendFileUploadEvent,
+    FriendPokeEvent,
     FriendRecallEvent,
     GroupDecreaseEvent,
     GroupFileUploadEvent,
@@ -23,7 +24,7 @@ def test_group_message_event():
             "self_id": 2,
             "post_type": "message",
             "message_type": "group",
-            "sub_type": "group",
+            "sub_type": "normal",
             "message_id": 3,
             "user_id": 4,
             "group_id": 5,
@@ -43,6 +44,65 @@ def test_group_message_event():
         }
     )
     assert ev.group_id == 5
+    assert ev.sub_type == "normal"
+
+
+@pytest.mark.parametrize("sub_type", ["normal", "anonymous", "notice"])
+def test_group_message_event_sub_types(sub_type):
+    ev = GroupMessageEvent.model_validate(
+        {
+            "time": 1,
+            "self_id": 2,
+            "post_type": "message",
+            "message_type": "group",
+            "sub_type": sub_type,
+            "message_id": 3,
+            "user_id": 4,
+            "group_id": 5,
+            "message": [],
+            "raw_message": "",
+            "sender": {
+                "user_id": 4,
+                "nickname": "n",
+                "sex": "unknown",
+                "age": 0,
+                "card": "",
+                "area": "",
+                "level": "",
+                "role": "member",
+                "title": "",
+            },
+        }
+    )
+    assert ev.sub_type == sub_type
+
+
+def test_group_message_event_rejects_old_group_sub_type():
+    with pytest.raises(ValidationError):
+        GroupMessageEvent.model_validate(
+            {
+                "time": 1,
+                "self_id": 2,
+                "message_type": "group",
+                "sub_type": "group",
+                "message_id": 3,
+                "user_id": 4,
+                "group_id": 5,
+                "message": [],
+                "raw_message": "",
+                "sender": {
+                    "user_id": 4,
+                    "nickname": "n",
+                    "sex": "unknown",
+                    "age": 0,
+                    "card": "",
+                    "area": "",
+                    "level": "",
+                    "role": "member",
+                    "title": "",
+                },
+            }
+        )
 
 
 def test_private_message_event_defaults():
@@ -157,6 +217,22 @@ def test_group_poke():
     assert ev.target_id == 4
 
 
+def test_friend_poke():
+    ev = FriendPokeEvent.model_validate(
+        {
+            "time": 1,
+            "self_id": 2,
+            "post_type": "notice",
+            "notice_type": "notify",
+            "sub_type": "poke",
+            "target_id": 3,
+            "user_id": 4,
+        }
+    )
+    assert ev.target_id == 3
+    assert ev.user_id == 4
+
+
 def test_reaction_event():
     ev = ReactionEvent.model_validate(
         {
@@ -172,6 +248,20 @@ def test_reaction_event():
         }
     )
     assert ev.code == 1
+
+
+def test_reaction_event_supports_group_msg_emoji_like_alias():
+    ev = ReactionEvent(
+        time=1,
+        self_id=2,
+        notice_type="group_msg_emoji_like",
+        message_id=3,
+        operator_id=4,
+        sub_type="add",
+        code=1,
+        count=2,
+    )
+    assert ev.notice_type == "group_msg_emoji_like"
 
 
 def test_lifecycle_event():

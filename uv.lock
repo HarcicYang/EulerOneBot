@@ -391,7 +391,7 @@ wheels = [
 [[package]]
 name = "lagrange-python"
 version = "0.1.8"
-source = { git = "https://github.com/HarcicYang/lagrange-python.git#76a0e52294d468f21235e75af4c80b907b72837c" }
+source = { git = "https://github.com/HarcicYang/lagrange-python.git#4fec81028538a671364de00bb5036183e57e4f70" }
 dependencies = [
     { name = "cryptography" },
     { name = "qrcode" },

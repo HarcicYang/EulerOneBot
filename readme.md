@@ -74,6 +74,9 @@ euler-onebot-<版本号>.exe     # Windows
   "log_level": "INFO",
   "log_nf": true,
   "access_token": "",
+  "event_compatibility": {
+    "reaction_event_type": "reaction"
+  },
   "connections": [
     {
       "type": "ForwardWebSocket",
@@ -106,6 +109,7 @@ euler-onebot-<版本号>.exe     # Windows
 | `log_level`            | 日志级别：`TRACE` / `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL`        |
 | `log_nf`               | 是否为日志输出启用 NerdFont                                                    |
 | `access_token`         | 鉴权 Token，配置后 HTTP / 正向 WebSocket / 反向 WebSocket 需携带（空为不鉴权） |
+| `event_compatibility.reaction_event_type` | reaction 事件下发类型，可选 `reaction` 或 `group_msg_emoji_like` |
 | `connections`          | 通信连接列表（见下方连接类型）                                                 |
 | `login.uin`            | QQ 账号（不要真的写0哦）                                                       |
 | `login.signer_url`     | 签名服务地址（见[签名服务](#签名服务)）                                         |
@@ -117,6 +121,9 @@ euler-onebot-<版本号>.exe     # Windows
 | `login.use_optimum`    | 是否启用最优服务器选择                                                         |
 | `heartbeat.enabled`    | 是否启用心跳                                                                   |
 | `heartbeat.interval`   | 心跳间隔（毫秒）                                                               |
+
+`event_compatibility.reaction_event_type` 默认值为 `reaction`。设置为 `group_msg_emoji_like` 后，群表情回应事件的
+`notice_type` 会使用该兼容名称，其余字段保持不变。
 
 ### 签名服务
 
@@ -276,7 +283,7 @@ uv sync
 | at         | ✅           | 标准 |
 | reply      | ✅           | 标准 |
 | face       | ✅           | 标准 |
-| poke       | ✅ API       | 标准 |
+| poke       | ✅           | 标准 |
 | node       | ✅           | 标准 |
 | forward    | ✅           | 标准 |
 | image      | ✅           | 标准 |
@@ -286,12 +293,13 @@ uv sync
 | contact    | ❌           | 标准 |
 | location   | ❌           | 标准 |
 | music      | ❌           | 标准 |
-| rps        | ❌           | 标准 |
-| dice       | ❌           | 标准 |
+| rps        | ✅           | 标准 |
+| dice       | ✅           | 标准 |
 | shake      | ❌           | 标准 |
 | json       | ✅           | 标准 |
 | xml        | ❌           | 标准 |
 | mface      | ✅           | 扩展 |
+| grey_tips  | ✅ Send only | 扩展 |
 
 </details>
 

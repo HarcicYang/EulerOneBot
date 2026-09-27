@@ -15,8 +15,11 @@ from ..onebot import events as onebot_events
 from ..onebot import segments as seg
 from ..onebot.events import FileInfo
 from ..onebot.models import TargetInfo
-from ..onebot.segments import JsonData, Node
+from ..onebot.segments import Dice, DiceData, GreyTips, JsonData, Node, Rps, RpsData
 from .infomgr import MsgInfo, info_mgr
+
+RPS_FACE_ID = 359
+DICE_FACE_ID = 358
 
 if TYPE_CHECKING:
     from ..protocol import LagrangeProtocol
@@ -83,11 +86,18 @@ async def to_onebot_msg(
         elif isinstance(i, elems.Audio):
             new.append(seg.Record(data=seg.RecordData(file=i.url, url=i.url)))
         elif isinstance(i, elems.Emoji):
-            new.append(seg.Face(data=seg.FaceData(id=str(i.id))))
+            if i.id == RPS_FACE_ID:
+                new.append(Rps(data=RpsData()))
+            elif i.id == DICE_FACE_ID:
+                new.append(Dice(data=DiceData()))
+            else:
+                new.append(seg.Face(data=seg.FaceData(id=str(i.id))))
         elif isinstance(i, elems.Reaction):
             pass
         elif isinstance(i, elems.Poke):
-            new.append(seg.Poke(data=seg.PokeData(id=str(i.id), type="")))
+            new.append(seg.Poke(data=seg.PokeData(id=str(i.id), type=str(i.f7))))
+        elif isinstance(i, elems.GreyTips):
+            continue
         elif isinstance(i, elems.MarketFace):
             new.append(
                 seg.MarketFace(data=seg.MarketFaceData(face_id=str(i.face_id), tab_id=str(i.tab_id), name=i.name))
@@ -218,8 +228,18 @@ async def to_lagrange_msg(
         elif isinstance(i, seg.Face):
             faceid = int(i.data.id)
             new.append(elems.Emoji(id=faceid))
+        elif isinstance(i, Rps):
+            new.append(elems.Emoji(id=RPS_FACE_ID))
+        elif isinstance(i, Dice):
+            new.append(elems.Emoji(id=DICE_FACE_ID))
         elif isinstance(i, seg.Poke):
-            pass
+            try:
+                poke_id = int(i.data.id)
+                poke_type = int(i.data.type)
+            except ValueError:
+                logger.warning(f"无效 poke 段: id={i.data.id!r}, type={i.data.type!r}")
+                continue
+            new.append(elems.Poke(id=poke_id, f7=poke_type, f8=0))
         elif isinstance(i, seg.MarketFace):
             new.append(
                 elems.MarketFace(
@@ -371,6 +391,8 @@ async def to_lagrange_msg(
         elif isinstance(i, seg.File):
             logger.warning("file 段暂不支持在消息中直接发送,请使用 upload_group_file / upload_private_file")
             continue
+        elif isinstance(i, GreyTips):
+            new.append(elems.GreyTips(text=i.data.text))
         else:
             continue
 

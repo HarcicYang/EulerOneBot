@@ -101,6 +101,7 @@ class TestSchema:
         ]
         assert "login" in schema["properties"]
         assert "heartbeat" in schema["properties"]
+        assert "event_compatibility" in schema["properties"]
         assert schema["properties"]["$schema"]["type"] == "string"
 
     def test_committed_schema_in_sync(self):
@@ -122,3 +123,17 @@ def test_non_object_config_rejected(tmp_path, monkeypatch):
 def test_heartbeat_interval_must_be_positive():
     with pytest.raises(ValidationError):
         BotConfig(heartbeat={"enabled": True, "interval": 0})
+
+
+def test_event_compatibility_defaults_to_reaction():
+    assert BotConfig().event_compatibility.reaction_event_type == "reaction"
+
+
+def test_event_compatibility_accepts_group_msg_emoji_like():
+    cfg = BotConfig(event_compatibility={"reaction_event_type": "group_msg_emoji_like"})
+    assert cfg.event_compatibility.reaction_event_type == "group_msg_emoji_like"
+
+
+def test_event_compatibility_rejects_unknown_reaction_type():
+    with pytest.raises(ValidationError):
+        BotConfig(event_compatibility={"reaction_event_type": "unknown"})

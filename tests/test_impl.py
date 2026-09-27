@@ -18,7 +18,24 @@ from euleronebot.onebot.api_data import (
     UploadPrivateFileData,
 )
 from euleronebot.onebot.models import BotStatus, TargetInfo
-from euleronebot.onebot.segments import At, AtData, File, FileData, Text, TextData, Video, VideoData
+from euleronebot.onebot.segments import (
+    At,
+    AtData,
+    Dice,
+    DiceData,
+    File,
+    FileData,
+    GreyTips,
+    GreyTipsData,
+    Poke,
+    PokeData,
+    Rps,
+    RpsData,
+    Text,
+    TextData,
+    Video,
+    VideoData,
+)
 from euleronebot.protocol.impl import LagrangeImpl
 from euleronebot.utils import infomgr as im
 from euleronebot.utils.transformer import to_lagrange_msg, to_onebot_msg
@@ -374,6 +391,90 @@ class TestVideoAndFileSegments:
                 assert out[0].data.file_name == "a.txt"
                 assert out[0].data.file_id == "fid"
                 assert out[0].data.url == "https://example.com/a.txt"
+            finally:
+                await mgr.close()
+
+        run(main())
+
+
+class TestExtendedSegments:
+    def test_send_poke_rps_dice_and_grey_tips(self):
+        async def main():
+            out = await to_lagrange_msg(
+                [
+                    Poke(data=PokeData(id="2003", type="126")),
+                    Rps(data=RpsData()),
+                    Dice(data=DiceData()),
+                    GreyTips(data=GreyTipsData(text="tip")),
+                ],
+                lgrc=cast(Any, None),
+                target=TargetInfo(target="group", id=1),
+            )
+            assert isinstance(out[0], elems.Poke)
+            assert (out[0].id, out[0].f7, out[0].f8) == (2003, 126, 0)
+            assert isinstance(out[1], elems.Emoji)
+            assert out[1].id == 359
+            assert isinstance(out[2], elems.Emoji)
+            assert out[2].id == 358
+            assert isinstance(out[3], elems.GreyTips)
+            assert out[3].text == "tip"
+
+        run(main())
+
+    def test_invalid_poke_is_skipped(self):
+        async def main():
+            out = await to_lagrange_msg(
+                [Poke(data=PokeData(id="bad", type="126"))],
+                lgrc=cast(Any, None),
+                target=TargetInfo(target="group", id=1),
+            )
+            assert out == []
+
+        run(main())
+
+    def test_receive_special_faces_and_poke(self, tmp_path):
+        from euleronebot.utils.infomgr import MsgInfo
+
+        async def main():
+            mgr = await init_mgr(tmp_path)
+            try:
+                out = await to_onebot_msg(
+                    adp=cast(Any, None),
+                    msg=MsgInfo(
+                        scene_type="group",
+                        scene_id=1,
+                        seq=1,
+                        raw_msg=[
+                            elems.Emoji(id=359),
+                            elems.Emoji(id=358),
+                            elems.Emoji(id=1),
+                            elems.Poke(id=2003, f7=126, f8=0),
+                        ],
+                    ),
+                )
+                assert isinstance(out[0], Rps)
+                assert isinstance(out[1], Dice)
+                assert out[2].type == "face"
+                assert out[2].data.id == "1"
+                assert isinstance(out[3], Poke)
+                assert out[3].data.id == "2003"
+                assert out[3].data.type == "126"
+            finally:
+                await mgr.close()
+
+        run(main())
+
+    def test_receive_grey_tips_is_not_mapped(self, tmp_path):
+        from euleronebot.utils.infomgr import MsgInfo
+
+        async def main():
+            mgr = await init_mgr(tmp_path)
+            try:
+                out = await to_onebot_msg(
+                    adp=cast(Any, None),
+                    msg=MsgInfo(scene_type="group", scene_id=1, seq=1, raw_msg=[elems.GreyTips(text="tip")]),
+                )
+                assert out == []
             finally:
                 await mgr.close()
 

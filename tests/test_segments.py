@@ -3,9 +3,11 @@ from pydantic import TypeAdapter, ValidationError
 
 from euleronebot.onebot.segments import (
     At,
+    Dice,
     Face,
     File,
     Forward,
+    GreyTips,
     Image,
     Json,
     MarketFace,
@@ -13,6 +15,7 @@ from euleronebot.onebot.segments import (
     Poke,
     Record,
     Reply,
+    Rps,
     SegmentUnion,
     Text,
     Video,
@@ -25,6 +28,8 @@ CASES = [
     (At, {"qq": "12345"}),
     (Reply, {"id": "42"}),
     (Face, {"id": "1"}),
+    (Rps, {}),
+    (Dice, {}),
     (Poke, {"id": "1", "type": "1"}),
     (MarketFace, {"face_id": "a", "tab_id": "1", "name": "x"}),
     (
@@ -37,6 +42,7 @@ CASES = [
     (Video, {"file": "a.mp4"}),
     (File, {"file_name": "a.txt", "file_hash": "hash", "file_id": "fid", "url": "https://example.com/a.txt"}),
     (Json, {"data": '{"k": 1}'}),
+    (GreyTips, {"text": "tip"}),
 ]
 
 

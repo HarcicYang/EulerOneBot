@@ -50,6 +50,10 @@ class HeartbeatConfig(BaseModel):
     interval: int = Field(15000, gt=0, description="心跳间隔(毫秒),必须大于 0")
 
 
+class EventCompatibilityConfig(BaseModel):
+    reaction_event_type: Literal["reaction", "group_msg_emoji_like"] = "reaction"
+
+
 class LoginConfig(BaseModel):
     uin: int = 0
     signer_url: str = "https://"
@@ -68,6 +72,7 @@ class BotConfig(BaseSettings):
     connections: list[AdapterConfig] = [ForwardWebsocketConfig()]
     login: LoginConfig = LoginConfig()
     heartbeat: HeartbeatConfig = HeartbeatConfig()
+    event_compatibility: EventCompatibilityConfig = EventCompatibilityConfig()
 
 
 loaded_config: BotConfig | None = None

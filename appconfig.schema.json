@@ -1,5 +1,20 @@
 {
   "$defs": {
+    "EventCompatibilityConfig": {
+      "properties": {
+        "reaction_event_type": {
+          "default": "reaction",
+          "enum": [
+            "reaction",
+            "group_msg_emoji_like"
+          ],
+          "title": "Reaction Event Type",
+          "type": "string"
+        }
+      },
+      "title": "EventCompatibilityConfig",
+      "type": "object"
+    },
     "ForwardWebsocketConfig": {
       "properties": {
         "type": {
@@ -241,6 +256,12 @@
       "default": {
         "enabled": true,
         "interval": 15000
+      }
+    },
+    "event_compatibility": {
+      "$ref": "#/$defs/EventCompatibilityConfig",
+      "default": {
+        "reaction_event_type": "reaction"
       }
     },
     "$schema": {

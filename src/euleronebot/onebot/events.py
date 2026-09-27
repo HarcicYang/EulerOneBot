@@ -16,6 +16,7 @@ __all__ = [
     "FileInfo",
     "FriendAddEvent",
     "FriendFileUploadEvent",
+    "FriendPokeEvent",
     "FriendRecallEvent",
     "FriendRequestEvent",
     "GroupAdminEvent",
@@ -69,7 +70,7 @@ class GroupSender(BaseModel):
 class MessageEvent(BaseEvent):
     post_type: Literal["message"] = "message"
     message_type: Literal["private", "group"]
-    sub_type: Literal["friend", "group", "other"]
+    sub_type: Literal["friend", "group", "other", "normal", "anonymous", "notice"]
     message_id: int
     user_id: int
     message: list[SEGMENT]
@@ -80,7 +81,7 @@ class MessageEvent(BaseEvent):
 
 class GroupMessageEvent(MessageEvent):
     message_type: Literal["group"] = "group"
-    sub_type: Literal["group"] = "group"
+    sub_type: Literal["normal", "anonymous", "notice"] = "normal"
     anonymous: None = None
     sender: GroupSender
     group_id: int
@@ -190,8 +191,15 @@ class GroupPokeEvent(NoticeEvent):
     user_id: int
 
 
+class FriendPokeEvent(NoticeEvent):
+    notice_type: Literal["notify"] = "notify"
+    sub_type: Literal["poke"] = "poke"
+    target_id: int
+    user_id: int
+
+
 class ReactionEvent(NoticeEvent):
-    notice_type: Literal["reaction"] = "reaction"
+    notice_type: Literal["reaction", "group_msg_emoji_like"] = "reaction"
     message_id: int
     operator_id: int
     sub_type: Literal["add", "remove"]

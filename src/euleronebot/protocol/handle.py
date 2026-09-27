@@ -15,6 +15,7 @@ from lagrange.client.events import BaseEvent
 from lagrange.client.events.friend import (
     FriendAddNotify,
     FriendMessage,
+    FriendPoke,
     FriendRecall,
     FriendRequest,
 )
@@ -357,6 +358,24 @@ class LagrangeEventHandler:
         )
         await self.adapter.trigger(ev)
 
+    @on(FriendPoke)
+    async def friend_poke_handler(self, _client: Client, event: FriendPoke) -> None:
+        if event.from_uin == self.lag.client.uin:
+            return
+        target_id = event.target_uin
+        if not target_id and event.target_uid:
+            try:
+                target_id = await info_mgr.uid_mgr.from_uid(event.target_uid)
+            except ValueError:
+                target_id = 0
+        ev = onebot_events.FriendPokeEvent(
+            time=event.timestamp or round(time.time()),
+            self_id=self.lag.client.uin,
+            user_id=event.from_uin or event.sender_uin,
+            target_id=target_id,
+        )
+        await self.adapter.trigger(ev)
+
     @on(GroupReaction)
     async def reaction_handler(self, _client: Client, event: GroupReaction) -> None:
         try:
@@ -387,6 +406,7 @@ class LagrangeEventHandler:
         ev = onebot_events.ReactionEvent(
             time=round(time.time()),
             self_id=self.lag.client.uin,
+            notice_type=self.protocol.cfg.event_compatibility.reaction_event_type,
             message_id=msgid,
             operator_id=uin,
             sub_type="add" if event.is_increase else "remove",

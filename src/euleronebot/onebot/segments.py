@@ -5,10 +5,14 @@ from pydantic import BaseModel, Field
 __all__ = [
     "At",
     "BaseSegment",
+    "Dice",
+    "DiceData",
     "Face",
     "File",
     "FileData",
     "Forward",
+    "GreyTips",
+    "GreyTipsData",
     "Image",
     "Json",
     "JsonData",
@@ -17,6 +21,8 @@ __all__ = [
     "Poke",
     "Record",
     "Reply",
+    "Rps",
+    "RpsData",
     "SegmentUnion",
     "Text",
     "Video",
@@ -43,6 +49,9 @@ class BaseSegment(BaseModel, Generic[SegmentType]):
         "video",
         "file",
         "json",
+        "rps",
+        "dice",
+        "grey_tips",
     ]
     data: SegmentType
 
@@ -81,6 +90,22 @@ class FaceData(BaseSegmentData):
 class Face(BaseSegment[FaceData]):
     type: Literal["face"] = "face"
     data: FaceData
+
+
+class RpsData(BaseSegmentData): ...
+
+
+class Rps(BaseSegment[RpsData]):
+    type: Literal["rps"] = "rps"
+    data: RpsData
+
+
+class DiceData(BaseSegmentData): ...
+
+
+class Dice(BaseSegment[DiceData]):
+    type: Literal["dice"] = "dice"
+    data: DiceData
 
 
 class PokeData(BaseSegmentData):
@@ -177,7 +202,31 @@ class Json(BaseSegment[JsonData]):
     data: JsonData
 
 
+class GreyTipsData(BaseSegmentData):
+    text: str
+
+
+class GreyTips(BaseSegment[GreyTipsData]):
+    type: Literal["grey_tips"] = "grey_tips"
+    data: GreyTipsData
+
+
 SegmentUnion = Annotated[
-    Text | At | Reply | Face | Poke | MarketFace | Node | Forward | Image | Record | Video | File | Json,
+    Text
+    | At
+    | Reply
+    | Face
+    | Rps
+    | Dice
+    | Poke
+    | MarketFace
+    | Node
+    | Forward
+    | Image
+    | Record
+    | Video
+    | File
+    | Json
+    | GreyTips,
     Field(discriminator="type"),
 ]
