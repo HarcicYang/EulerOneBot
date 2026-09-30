@@ -38,7 +38,7 @@ __all__ = [
     "PrivateSender",
     "ReactionEvent",
     "RequestEvent",
-    "__all__",
+    "__all__",  # type: ignore
 ]
 
 

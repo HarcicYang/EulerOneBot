@@ -208,7 +208,7 @@ class LagrangeEventHandler:
                     timestamp=event.timestamp,
                     uin=event.from_uin,
                     uid=event.from_uid,
-                    rand=event.msg_id,  # 我实在想不明白为什么私聊的 msg_id 是 random
+                    rand=event.rand,
                     text=event.msg,
                 )
             ),
@@ -329,10 +329,10 @@ class LagrangeEventHandler:
             except ValueError:
                 opt_uin = 0
 
-        if event.is_kicked:
-            tp = "kick"
-        elif event.is_kicked_self:
+        if event.is_kicked_self:
             tp = "kick_me"
+        elif event.is_kicked:
+            tp = "kick"
         else:
             tp = "leave"
         if not await info_mgr.uid_mgr.is_exist(event.uin) and event.uin != event.grp_id:
