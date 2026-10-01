@@ -6,6 +6,17 @@ from euleronebot.config import BotConfig, ForwardWebsocketConfig
 from euleronebot.onebot import Adapter
 from euleronebot.protocol import LagrangeProtocol
 from euleronebot.utils import infomgr as im
+from euleronebot.utils import sign_provider as sign_provider_module
+
+PROVIDER_SOURCE = "\n".join(
+    [
+        "def make_sign_provider(sign_url, uin, guid, qua):",
+        "    async def get_sign(cmd, seq, buf):",
+        '        return {"sign": "ab" * 32, "token": "", "extra": "cd" * 8}',
+        "",
+        "    return get_sign",
+    ]
+)
 
 
 def run(coro):
@@ -120,3 +131,43 @@ class TestLifecycle:
             assert adapter.calls[-1] == ("lifecycle", "connect", 123)
 
         run(main())
+
+
+class TestSignProviderWiring:
+    def _cfg(self, tmp_path):
+        path = tmp_path / "provider.py"
+        path.write_text(PROVIDER_SOURCE, encoding="utf-8")
+        return BotConfig(
+            login={
+                "uin": 123,
+                "use_custom_sign_provider": True,
+                "sign_provider_path": str(path),
+                "sign_provider_entry": "make_sign_provider",
+            }
+        )
+
+    def test_default_config_signs_via_url(self):
+        cfg = BotConfig(login={"uin": 123, "signer_url": "https://sign.example.com", "signer_token": "tok"})
+        protocol = LagrangeProtocol(cfg, Adapter(impls=[]))
+        assert protocol.lag._custom_sign_provider is None
+        assert protocol.lag._sign_url == "https://tok@sign.example.com/api/sign/sec-sign"
+
+    def test_custom_provider_is_loaded_and_wired(self, tmp_path):
+        protocol = LagrangeProtocol(self._cfg(tmp_path), Adapter(impls=[]))
+        factory = cast(Any, protocol.lag._custom_sign_provider)
+        assert callable(factory)
+
+        get_sign = factory(protocol.lag._sign_url, 123, "00" * 16, "V1_LNX_NQ_3.2.26_46494_GW_B")
+        assert asyncio.run(get_sign("MessageSvc.PbSendMsg", 1, b"\x00")) == {
+            "sign": "ab" * 32,
+            "token": "",
+            "extra": "cd" * 8,
+        }
+
+    def test_relog_keeps_the_same_provider(self, tmp_path):
+        protocol = LagrangeProtocol(self._cfg(tmp_path), Adapter(impls=[]))
+        first = protocol.lag._custom_sign_provider
+        rebuilt = protocol._build_lagrange()
+        assert rebuilt._custom_sign_provider is first
+        assert rebuilt.use_ipv6 is protocol.cfg.login.use_ipv6
+        assert sign_provider_module.load_sign_provider is not None

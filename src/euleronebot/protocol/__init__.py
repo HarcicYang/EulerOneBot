@@ -2,7 +2,7 @@ import asyncio
 import time
 import traceback
 from collections.abc import Callable, Coroutine
-from typing import Any, Literal, NoReturn
+from typing import Any, Literal, NoReturn, cast
 
 from lagrange import Client, Lagrange
 from lagrange.client.events import BaseEvent
@@ -12,6 +12,7 @@ from ..hyperogger import Logger
 from ..onebot import Adapter as OneBotAdapter
 from ..onebot import events as onebot_events
 from ..utils.infomgr import info_mgr
+from ..utils.sign_provider import SignFactory, load_sign_provider
 from .handle import LagrangeEventHandler
 from .impl import LagrangeImpl
 
@@ -27,16 +28,8 @@ class LagrangeProtocol:
         self.status = onebot_events.BotStatus(online=False, good=True)
         self._disable_sent = False
         self._tasks: list[asyncio.Task[None]] = []
-        self.lag = Lagrange(
-            cfg.login.uin,
-            "custom" if cfg.login.use_custom else "linux",
-            (cfg.login.signer_url + "/api/sign/sec-sign")
-            .replace("https://", f"https://{cfg.login.signer_token}@")
-            .replace("http://", f"http://{cfg.login.signer_token}@"),
-            custom_protocol_path=cfg.login.appinfo_path,
-            use_ipv6=cfg.login.use_ipv6,
-            use_optimum=cfg.login.use_optimum,
-        )
+        self._sign_provider = self._load_sign_provider()
+        self.lag = self._build_lagrange()
 
         self.lag.log.set_level("DEBUG")
 
@@ -44,6 +37,26 @@ class LagrangeProtocol:
         self.handler = LagrangeEventHandler(self.adapter, self.lag, self)
 
         self._relog_ev = asyncio.Event()
+
+    def _load_sign_provider(self) -> SignFactory | None:
+        if not self.cfg.login.use_custom_sign_provider:
+            return None
+        return load_sign_provider(self.cfg.login.sign_provider_path, self.cfg.login.sign_provider_entry)
+
+    def _build_lagrange(self) -> Lagrange:
+        return Lagrange(
+            self.cfg.login.uin,
+            "custom" if self.cfg.login.use_custom else "linux",
+            (self.cfg.login.signer_url + "/api/sign/sec-sign")
+            .replace("https://", f"https://{self.cfg.login.signer_token}@")
+            .replace("http://", f"http://{self.cfg.login.signer_token}@"),
+            custom_protocol_path=self.cfg.login.appinfo_path,
+            use_ipv6=self.cfg.login.use_ipv6,
+            use_optimum=self.cfg.login.use_optimum,
+            # hiro-qq's annotation for this parameter is shifted by one; the
+            # real call is (sign_url, uin, guid, qua).
+            custom_sign_provider=cast("Any", self._sign_provider),
+        )
 
     def _subscribe(self) -> None:
         self.impl.subscribe()
@@ -63,14 +76,7 @@ class LagrangeProtocol:
         await self._cancel_tasks()
         # noinspection PyProtectedMember
         del self.lag
-        self.lag = Lagrange(
-            self.cfg.login.uin,
-            "custom" if self.cfg.login.use_custom else "linux",
-            (self.cfg.login.signer_url + "/api/sign/sec-sign")
-            .replace("https://", f"https://{self.cfg.login.signer_token}@")
-            .replace("http://", f"http://{self.cfg.login.signer_token}@"),
-            custom_protocol_path=self.cfg.login.appinfo_path,
-        )
+        self.lag = self._build_lagrange()
 
         self.lag.log.set_level("DEBUG")
 

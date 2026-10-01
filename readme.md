@@ -89,6 +89,9 @@ euler-onebot-<版本号>.exe     # Windows
     "signer_token": "",
     "use_custom": false,
     "appinfo_path": "./appinfo.json",
+    "use_custom_sign_provider": false,
+    "sign_provider_path": "./sign_provider.py",
+    "sign_provider_entry": "sign_provider",
     "setup_watchdog": false,
     "use_ipv6": false,
     "use_optimum": true
@@ -116,6 +119,9 @@ euler-onebot-<版本号>.exe     # Windows
 | `login.signer_token`   | 签名服务 access token                                                          |
 | `login.use_custom`     | 是否加载自定义协议参数；设为 `true` 后读取 `appinfo_path` 指定的 JSON 文件     |
 | `login.appinfo_path`   | 自定义协议参数文件路径，默认 `./appinfo.json`，相对当前工作目录                |
+| `login.use_custom_sign_provider` | 是否改用自定义 sign provider；设为 `true` 后从 `sign_provider_path` 加载    |
+| `login.sign_provider_path`       | 自定义 sign provider 文件路径，默认 `./sign_provider.py`，相对当前工作目录 |
+| `login.sign_provider_entry`      | 该文件中作为入口的方法名，默认 `sign_provider`                            |
 | `login.setup_watchdog` | 是否启用看门狗；连续 10 分钟没有处理事件时触发重新登录                         |
 | `login.use_ipv6`       | 是否使用 IPv6 连接                                                             |
 | `login.use_optimum`    | 是否启用最优服务器选择                                                         |
@@ -182,6 +188,42 @@ euler-onebot-<版本号>.exe     # Windows
   "Qua": "V1_LNX_NQ_3.2.26_46494_GW_B"
 }
 ```
+
+### 自定义 sign provider
+
+除了把 `signer_url` 指向一个 HTTP 签名服务，也可以直接在本进程内签名：把实现写进 `sign_provider.py`，
+再在配置里打开开关。该文件不纳入版本控制，可以放心写入自己的算法。
+
+```json
+{
+  "login": {
+    "use_custom_sign_provider": true,
+    "sign_provider_path": "./sign_provider.py",
+    "sign_provider_entry": "sign_provider"
+  }
+}
+```
+
+入口方法是一个工厂，参数由 hiro-qq 在每次连接时传入，返回值是一个异步签名函数：
+
+```python
+def sign_provider(sign_url, uin, guid, qua):
+    async def get_sign(cmd, seq, buf):
+        # ...
+        return {"sign": "<hex>", "token": "<hex>", "extra": "<hex>"}
+
+    return get_sign
+```
+
+几个要点：
+
+- `sign_url` 就是 `login.signer_url` 拼上 token 后的地址，用不用由你决定；`uin`、`guid`、`qua` 是当次连接的真实值。
+- hiro-qq 每次 `run()` 都会重新调用工厂，所以启动阶段拿不到设备信息也不影响；文件本身只加载一次。
+- 返回值需要 `sign` / `token` / `extra` 三个十六进制串，返回空 dict 表示这个包不签名。
+- 算法里如果用到 nonce，它是与 `time(NULL)` 绑定的：必须自己取当前 Unix 秒，不能缓存。
+- `sign_provider_entry` 填文件中定义的方法名，可以同时放多个实现按需切换。
+
+仓库根目录已经放了一份可直接改的单文件实现（移植自 ntqq-pure-sign 的纯 Python 版），把它当起点即可。
 
 ### 已经支持的连接类型
 

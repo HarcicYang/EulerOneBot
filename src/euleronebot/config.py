@@ -60,6 +60,9 @@ class LoginConfig(BaseModel):
     signer_token: str = ""
     use_custom: bool = False
     appinfo_path: str = "./appinfo.json"
+    use_custom_sign_provider: bool = False
+    sign_provider_path: str = "./sign_provider.py"
+    sign_provider_entry: str = "sign_provider"
     setup_watchdog: bool = False
     use_ipv6: bool = False
     use_optimum: bool = True

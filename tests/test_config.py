@@ -137,3 +137,41 @@ def test_event_compatibility_accepts_group_msg_emoji_like():
 def test_event_compatibility_rejects_unknown_reaction_type():
     with pytest.raises(ValidationError):
         BotConfig(event_compatibility={"reaction_event_type": "unknown"})
+
+
+def test_sign_provider_defaults_off():
+    login = BotConfig().login
+    assert login.use_custom_sign_provider is False
+    assert login.sign_provider_path == "./sign_provider.py"
+    assert login.sign_provider_entry == "sign_provider"
+
+
+def test_sign_provider_config_round_trip(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "appconfig.json").write_text(
+        json.dumps(
+            {
+                "login": {
+                    "uin": 123,
+                    "use_custom_sign_provider": True,
+                    "sign_provider_path": "./custom/sign.py",
+                    "sign_provider_entry": "build_signer",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    loaded = load_config("appconfig.json")
+    assert loaded.login.use_custom_sign_provider is True
+    assert loaded.login.sign_provider_path == "./custom/sign.py"
+    assert loaded.login.sign_provider_entry == "build_signer"
+
+
+def test_sign_provider_fields_in_template(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(FileNotFoundError):
+        load_config("appconfig.json")
+    raw = json.loads((tmp_path / "appconfig.json").read_text(encoding="utf-8"))
+    assert raw["login"]["use_custom_sign_provider"] is False
+    assert raw["login"]["sign_provider_path"] == "./sign_provider.py"
+    assert raw["login"]["sign_provider_entry"] == "sign_provider"

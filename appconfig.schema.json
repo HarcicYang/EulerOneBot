@@ -121,6 +121,21 @@
           "title": "Appinfo Path",
           "type": "string"
         },
+        "use_custom_sign_provider": {
+          "default": false,
+          "title": "Use Custom Sign Provider",
+          "type": "boolean"
+        },
+        "sign_provider_path": {
+          "default": "./sign_provider.py",
+          "title": "Sign Provider Path",
+          "type": "string"
+        },
+        "sign_provider_entry": {
+          "default": "sign_provider",
+          "title": "Sign Provider Entry",
+          "type": "string"
+        },
         "setup_watchdog": {
           "default": false,
           "title": "Setup Watchdog",
@@ -246,6 +261,9 @@
         "signer_token": "",
         "use_custom": false,
         "appinfo_path": "./appinfo.json",
+        "use_custom_sign_provider": false,
+        "sign_provider_path": "./sign_provider.py",
+        "sign_provider_entry": "sign_provider",
         "setup_watchdog": false,
         "use_ipv6": false,
         "use_optimum": true
