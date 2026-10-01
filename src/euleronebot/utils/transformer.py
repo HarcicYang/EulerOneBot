@@ -302,7 +302,7 @@ async def to_lagrange_msg(
             elif scheme == "file":
                 with open(path, "rb") as f:
                     if target.target == "group":
-                        img = await lgrc.upload_grp_image(grp_id=target.id, image=f)
+                        img = await lgrc.upload_grp_image(grp_id=target.id, is_emoji=i.data.is_emoji, image=f)
                     else:
                         img = await lgrc.upload_friend_image(
                             uid=await info_mgr.uid_mgr.from_uin(target.id),
@@ -313,7 +313,7 @@ async def to_lagrange_msg(
                 data = i.data.file.removeprefix("base64://")
                 img = base64.b64decode(data)
                 if target.target == "group":
-                    img = await lgrc.upload_grp_image(grp_id=target.id, image=io.BytesIO(img))
+                    img = await lgrc.upload_grp_image(grp_id=target.id, is_emoji=i.data.is_emoji, image=io.BytesIO(img))
                 else:
                     img = await lgrc.upload_friend_image(
                         uid=await info_mgr.uid_mgr.from_uin(target.id),
