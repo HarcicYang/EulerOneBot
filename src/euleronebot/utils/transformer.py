@@ -290,7 +290,9 @@ async def to_lagrange_msg(
                     if retried == 3:
                         continue
                     if target.target == "group":
-                        img = await lgrc.upload_grp_image(grp_id=target.id, image=io.BytesIO(response.content))
+                        img = await lgrc.upload_grp_image(
+                            grp_id=target.id, is_emoji=i.data.is_emoji, image=io.BytesIO(response.content)
+                        )
                     else:
                         img = await lgrc.upload_friend_image(
                             uid=await info_mgr.uid_mgr.from_uin(target.id),
