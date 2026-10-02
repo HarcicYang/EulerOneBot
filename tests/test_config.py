@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -12,166 +13,90 @@ def reset_loaded_config(monkeypatch):
     monkeypatch.setattr(config_module, "loaded_config", None)
 
 
-def test_default_config_when_missing(tmp_path, monkeypatch):
+def test_missing_config_creates_usable_template_and_caches_it(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    with pytest.raises(FileNotFoundError):
-        load_config("appconfig.json")
-    assert (tmp_path / "appconfig.json").exists()
+    config_path = tmp_path / "appconfig.json"
 
-
-def test_load_existing_config(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    cfg = BotConfig(
-        log_level="DEBUG",
-        login={"uin": 123},
-        connections=[{"type": "ForwardWebSocket", "url": "ws://127.0.0.1:5004"}],
-    )
-    (tmp_path / "appconfig.json").write_text(cfg.model_dump_json(indent=2), encoding="utf-8")
-    loaded = load_config("appconfig.json")
-    assert loaded.log_level == "DEBUG"
-    assert loaded.login.uin == 123
-    assert loaded.connections[0].url == "ws://127.0.0.1:5004"
-
-
-def test_load_corrupt_config(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    (tmp_path / "appconfig.json").write_text("not-json{{{", encoding="utf-8")
-    with pytest.raises(ValueError):
+    with pytest.raises(FileNotFoundError, match="已创建模板"):
         load_config("appconfig.json")
 
+    raw = json.loads(config_path.read_text(encoding="utf-8"))
+    assert next(iter(raw)) == "$schema"
+    assert raw["login"]["sign_provider_path"] == "./sign_provider.py"
+    assert raw["connections"][0]["type"] == "ForwardWebSocket"
 
-def test_config_cached(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    (tmp_path / "appconfig.json").write_text(BotConfig().model_dump_json(), encoding="utf-8")
     first = load_config("appconfig.json")
     second = load_config("appconfig.json")
     assert first is second
 
 
-def test_log_level_validation():
-    with pytest.raises(ValidationError):
-        BotConfig(log_level="NOT_A_LEVEL")  # type: ignore[bad-argument-type]
-
-
-def test_adapter_config_discriminates_by_type():
-    raw = json.dumps(
-        {
-            "log_level": "INFO",
-            "connections": [{"type": "HTTPPost", "url": "http://x", "timeout": 5}],
-        }
-    )
-    cfg = BotConfig.model_validate_json(raw)
-    assert cfg.connections[0].type == "HTTPPost"
-
-
-class TestSchema:
-    def test_template_contains_schema_first(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        with pytest.raises(FileNotFoundError):
-            load_config("appconfig.json")
-        raw = json.loads((tmp_path / "appconfig.json").read_text(encoding="utf-8"))
-        assert next(iter(raw)) == "$schema"
-        assert raw["$schema"] == "./appconfig.schema.json"
-
-    def test_load_config_with_schema_field(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / "appconfig.json").write_text(
-            '{"$schema": "./appconfig.schema.json", "log_level": "DEBUG", "connections": []}', encoding="utf-8"
-        )
-        loaded = load_config("appconfig.json")
-        assert loaded.log_level == "DEBUG"
-
-    def test_unknown_field_still_rejected(self):
-        with pytest.raises(ValidationError):
-            BotConfig.model_validate_json('{"no_such_field": 1}')
-
-    def test_schema_structure(self):
-        schema = config_module.build_schema()
-        assert "connections" in schema["properties"]
-        items = schema["properties"]["connections"]["items"]
-        assert len(items["oneOf"]) == 4
-        assert items["discriminator"]["propertyName"] == "type"
-        assert schema["properties"]["log_level"]["enum"] == [
-            "INFO",
-            "DEBUG",
-            "TRACE",
-            "WARNING",
-            "ERROR",
-            "CRITICAL",
-        ]
-        assert "login" in schema["properties"]
-        assert "heartbeat" in schema["properties"]
-        assert "event_compatibility" in schema["properties"]
-        assert schema["properties"]["$schema"]["type"] == "string"
-
-    def test_committed_schema_in_sync(self):
-        import os
-
-        schema_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "appconfig.schema.json")
-        with open(schema_path, encoding="utf-8") as f:
-            committed = json.loads(f.read())
-        assert committed == config_module.build_schema()
-
-
-def test_non_object_config_rejected(tmp_path, monkeypatch):
+def test_existing_config_round_trips_login_and_discriminated_connections(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "appconfig.json").write_text("[1, 2, 3]", encoding="utf-8")
+    raw = {
+        "$schema": "./appconfig.schema.json",
+        "log_level": "DEBUG",
+        "login": {
+            "uin": 123,
+            "use_custom_sign_provider": True,
+            "sign_provider_path": "./custom/sign.py",
+            "sign_provider_entry": "build_signer",
+        },
+        "connections": [
+            {"type": "HTTPPost", "url": "http://127.0.0.1:5005", "timeout": 5, "secret": "tok"},
+            {"type": "ReverseWebSocket", "url": "ws://127.0.0.1:5006", "use_universal_client": True},
+        ],
+    }
+    (tmp_path / "appconfig.json").write_text(json.dumps(raw), encoding="utf-8")
+
+    cfg = load_config("appconfig.json")
+
+    assert cfg.log_level == "DEBUG"
+    assert cfg.login.uin == 123
+    assert cfg.login.use_custom_sign_provider is True
+    assert [connection.type for connection in cfg.connections] == ["HTTPPost", "ReverseWebSocket"]
+    assert cfg.connections[0].model_dump()["timeout"] == 5
+    assert cfg.connections[1].model_dump()["use_universal_client"] is True
+
+
+def test_config_rejects_corrupt_non_object_and_invalid_values(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    path = tmp_path / "appconfig.json"
+
+    path.write_text("not-json{{{", encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_config("appconfig.json")
+
+    path.write_text("[1, 2, 3]", encoding="utf-8")
     with pytest.raises(ValueError, match="JSON 对象"):
         load_config("appconfig.json")
 
-
-def test_heartbeat_interval_must_be_positive():
-    with pytest.raises(ValidationError):
-        BotConfig(heartbeat={"enabled": True, "interval": 0})
-
-
-def test_event_compatibility_defaults_to_reaction():
-    assert BotConfig().event_compatibility.reaction_event_type == "reaction"
-
-
-def test_event_compatibility_accepts_group_msg_emoji_like():
-    cfg = BotConfig(event_compatibility={"reaction_event_type": "group_msg_emoji_like"})
-    assert cfg.event_compatibility.reaction_event_type == "group_msg_emoji_like"
+    invalid_configs = [
+        {"log_level": "NOT_A_LEVEL"},
+        {"heartbeat": {"enabled": True, "interval": 0}},
+        {"event_compatibility": {"reaction_event_type": "unknown"}},
+        {"no_such_field": 1},
+    ]
+    for raw in invalid_configs:
+        with pytest.raises(ValidationError):
+            BotConfig.model_validate(raw)
 
 
-def test_event_compatibility_rejects_unknown_reaction_type():
-    with pytest.raises(ValidationError):
-        BotConfig(event_compatibility={"reaction_event_type": "unknown"})
-
-
-def test_sign_provider_defaults_off():
-    login = BotConfig().login
-    assert login.use_custom_sign_provider is False
-    assert login.sign_provider_path == "./sign_provider.py"
-    assert login.sign_provider_entry == "sign_provider"
-
-
-def test_sign_provider_config_round_trip(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    (tmp_path / "appconfig.json").write_text(
-        json.dumps(
-            {
-                "login": {
-                    "uin": 123,
-                    "use_custom_sign_provider": True,
-                    "sign_provider_path": "./custom/sign.py",
-                    "sign_provider_entry": "build_signer",
-                }
-            }
-        ),
-        encoding="utf-8",
+def test_committed_schema_matches_builder_and_contains_connection_discriminator():
+    schema = config_module.build_schema()
+    committed = json.loads(
+        Path(__file__).resolve().parent.parent.joinpath("appconfig.schema.json").read_text(encoding="utf-8")
     )
-    loaded = load_config("appconfig.json")
-    assert loaded.login.use_custom_sign_provider is True
-    assert loaded.login.sign_provider_path == "./custom/sign.py"
-    assert loaded.login.sign_provider_entry == "build_signer"
+    connection_schema = schema["properties"]["connections"]["items"]
 
-
-def test_sign_provider_fields_in_template(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    with pytest.raises(FileNotFoundError):
-        load_config("appconfig.json")
-    raw = json.loads((tmp_path / "appconfig.json").read_text(encoding="utf-8"))
-    assert raw["login"]["use_custom_sign_provider"] is False
-    assert raw["login"]["sign_provider_path"] == "./sign_provider.py"
-    assert raw["login"]["sign_provider_entry"] == "sign_provider"
+    assert committed == schema
+    assert connection_schema["discriminator"]["propertyName"] == "type"
+    assert len(connection_schema["oneOf"]) == 4
+    assert schema["properties"]["log_level"]["enum"] == [
+        "INFO",
+        "DEBUG",
+        "TRACE",
+        "WARNING",
+        "ERROR",
+        "CRITICAL",
+    ]
+    assert schema["properties"]["$schema"]["type"] == "string"

@@ -9,41 +9,36 @@ def run(coro):
     return asyncio.run(coro)
 
 
-def test_success_on_first_try():
+def test_with_retry_returns_first_success_without_extra_calls():
+    calls = 0
+
     async def factory():
+        nonlocal calls
+        calls += 1
         return 42
 
     assert run(with_retry(factory)) == 42
+    assert calls == 1
 
 
-def test_retries_then_succeeds():
-    calls = {"n": 0}
+def test_with_retry_retries_and_respects_maximum():
+    calls = 0
 
-    async def factory():
-        calls["n"] += 1
-        if calls["n"] < 3:
-            raise ConnectionError("boom")
+    async def succeeds_later():
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            raise ConnectionError("temporary")
         return "ok"
 
-    assert run(with_retry(factory)) == "ok"
-    assert calls["n"] == 3
+    assert run(with_retry(succeeds_later)) == "ok"
+    assert calls == 3
 
+    async def always_fails():
+        nonlocal calls
+        calls += 1
+        raise ValueError("boom")
 
-def test_exhausts_retries():
-    async def factory():
-        raise ValueError("always fails")
-
-    with pytest.raises(RuntimeError, match="Max retries"):
-        run(with_retry(factory))
-
-
-def test_custom_maximum():
-    calls = {"n": 0}
-
-    async def factory():
-        calls["n"] += 1
-        raise ValueError("x")
-
-    with pytest.raises(RuntimeError):
-        run(with_retry(factory, maximum=2))
-    assert calls["n"] == 2
+    with pytest.raises(RuntimeError, match=r"Max retries \(2\)"):
+        run(with_retry(always_fails, maximum=2))
+    assert calls == 5

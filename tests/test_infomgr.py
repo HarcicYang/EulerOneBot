@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Literal
+from typing import Any, Literal, cast
 
 import pytest
 
@@ -17,8 +17,8 @@ _MANAGERS: list[InfoManager] = []
 @pytest.fixture(autouse=True)
 def close_managers():
     yield
-    for m in _MANAGERS:
-        run(m.close())
+    for manager in _MANAGERS:
+        run(manager.close())
     _MANAGERS.clear()
 
 
@@ -38,280 +38,157 @@ async def new_mgr(tmp_path) -> InfoManager:
     return mgr
 
 
-class TestMsgIDPool:
-    def test_add_and_fetch(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            info = make_msg(seq=10)
-            nid = await mgr.msgid_mgr.add(info)
-            assert isinstance(nid, int)
-            assert await mgr.msgid_mgr.fetch(nid) == info
+def test_msgid_pool_deduplicates_persists_and_roundtrips_raw_messages(tmp_path):
+    from lagrange.client.message import elems
 
-        run(main())
+    async def main():
+        db = str(tmp_path / "test.db")
+        mgr = make_mgr()
+        await mgr.init(path=db, migrate_from=str(tmp_path / "cache.json"))
+        raw = [elems.Text(text="hi"), elems.MarketFace(name="f", face_id=b"\xaa\xbb", tab_id=1, width=1, height=1)]
+        info = make_msg(scene_id=42, seq=7, raw_msg=raw)
 
-    def test_fetch_unknown_raises(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            with pytest.raises(KeyError):
-                await mgr.msgid_mgr.fetch(123456)
+        nid = await mgr.msgid_mgr.add(info)
+        duplicate = await mgr.msgid_mgr.add(info)
+        other = await mgr.msgid_mgr.add(make_msg(scene_id=42, seq=8))
+        fetched = await mgr.msgid_mgr.fetch(nid)
 
-        run(main())
+        assert duplicate == nid
+        assert other != nid
+        assert await mgr.msgid_mgr.search(make_msg(scene_id=42, seq=7)) == nid
+        assert await mgr.msgid_mgr.search(make_msg(scene_id=42, seq=999)) == 0
+        assert isinstance(fetched.raw_msg[0], elems.Text)
+        assert fetched.raw_msg[0].text == "hi"
+        assert isinstance(fetched.raw_msg[1], elems.MarketFace)
+        assert fetched.raw_msg[1].face_id == b"\xaa\xbb"
 
-    def test_search_hit(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            info = make_msg(seq=10)
-            nid = await mgr.msgid_mgr.add(info)
-            assert await mgr.msgid_mgr.search(info) == nid
+        with pytest.raises(KeyError):
+            await mgr.msgid_mgr.fetch(123456)
 
-        run(main())
+        await mgr.close()
+        restarted = make_mgr()
+        await restarted.init(path=db, migrate_from=str(tmp_path / "cache.json"))
+        assert await restarted.msgid_mgr.add(info) == nid
+        restored = await restarted.msgid_mgr.fetch(nid)
+        assert cast(Any, restored.raw_msg[0]).text == "hi"
 
-    def test_search_miss_returns_zero(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            assert await mgr.msgid_mgr.search(make_msg(seq=999)) == 0
-
-        run(main())
-
-    def test_duplicate_add_returns_same_id(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            first = await mgr.msgid_mgr.add(make_msg(seq=7))
-            again = await mgr.msgid_mgr.add(make_msg(seq=7))
-            assert first == again
-            assert await mgr.msgid_mgr.search(make_msg(seq=7)) == first
-
-        run(main())
-
-    def test_different_seq_different_id(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            a = await mgr.msgid_mgr.add(make_msg(seq=7))
-            b = await mgr.msgid_mgr.add(make_msg(seq=8))
-            assert a != b
-
-        run(main())
-
-    def test_stable_id_across_restart(self, tmp_path):
-        async def main():
-            db = str(tmp_path / "test.db")
-            mgr = make_mgr()
-            await mgr.init(path=db, migrate_from=str(tmp_path / "cache.json"))
-            nid = await mgr.msgid_mgr.add(make_msg(scene_id=42, seq=7))
-            await mgr.close()
-            mgr2 = make_mgr()
-            await mgr2.init(path=db, migrate_from=str(tmp_path / "cache.json"))
-            nid2 = await mgr2.msgid_mgr.add(make_msg(scene_id=42, seq=7))
-            assert nid == nid2
-
-        run(main())
-
-    def test_raw_msg_pickle_roundtrip(self, tmp_path):
-        from lagrange.client.message import elems
-
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            raw = [elems.Text(text="hi"), elems.MarketFace(name="f", face_id=b"\xaa\xbb", tab_id=1, width=1, height=1)]
-            nid = await mgr.msgid_mgr.add(make_msg(seq=3, raw_msg=raw))
-            fetched = await mgr.msgid_mgr.fetch(nid)
-            assert isinstance(fetched.raw_msg[0], elems.Text)
-            assert fetched.raw_msg[0].text == "hi"
-            assert isinstance(fetched.raw_msg[1], elems.MarketFace)
-            assert fetched.raw_msg[1].face_id == b"\xaa\xbb"
-
-        run(main())
+    run(main())
 
 
-class TestUIDPool:
-    def test_add_and_from_uid(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            await mgr.uid_mgr.add("u_abc", 10001)
-            assert await mgr.uid_mgr.from_uid("u_abc") == 10001
+def test_uid_pool_maps_uid_and_uin_and_distinguishes_fake_entries(tmp_path):
+    async def main():
+        mgr = await new_mgr(tmp_path)
+        await mgr.uid_mgr.add(b"u_bytes", 10002)
+        await mgr.uid_mgr.add("u_real", 10001)
 
-        run(main())
+        assert await mgr.uid_mgr.from_uid("u_real") == 10001
+        assert await mgr.uid_mgr.from_uid(b"u_bytes") == 10002
+        assert await mgr.uid_mgr.from_uin(10001) == "u_real"
+        assert await mgr.uid_mgr.is_exist("u_real") is True
+        assert await mgr.uid_mgr.is_exist(10001) is True
 
-    def test_add_bytes_uid(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            await mgr.uid_mgr.add(b"u_byte", 10002)
-            assert await mgr.uid_mgr.from_uid("u_byte") == 10002
+        await mgr.uid_mgr.add("u_real", 20001)
+        assert await mgr.uid_mgr.from_uid("u_real") == 20001
 
-        run(main())
+        fake_uin = await mgr.uid_mgr.add_fake("u_fake")
+        assert str(fake_uin).endswith("0145")
+        assert await mgr.uid_mgr.from_uid("u_fake") == fake_uin
+        assert await mgr.uid_mgr.is_exist("u_fake") is False
+        assert await mgr.uid_mgr.is_exist(fake_uin) is True
 
-    def test_from_uid_unknown_raises(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            with pytest.raises(ValueError):
-                await mgr.uid_mgr.from_uid("u_none")
+        with pytest.raises(ValueError):
+            await mgr.uid_mgr.from_uid("missing")
+        with pytest.raises(ValueError):
+            await mgr.uid_mgr.from_uin(999999)
 
-        run(main())
-
-    def test_from_uin(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            await mgr.uid_mgr.add("u_abc", 10001)
-            assert await mgr.uid_mgr.from_uin(10001) == "u_abc"
-
-        run(main())
-
-    def test_from_uin_unknown_raises(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            with pytest.raises(ValueError):
-                await mgr.uid_mgr.from_uin(99999)
-
-        run(main())
-
-    def test_is_exist_uid_and_uin(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            await mgr.uid_mgr.add("u_abc", 10001)
-            assert await mgr.uid_mgr.is_exist("u_abc")
-            assert await mgr.uid_mgr.is_exist(10001)
-            assert not await mgr.uid_mgr.is_exist("u_none")
-
-        run(main())
-
-    def test_is_exist_fake_uid_returns_false(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            fake_uin = await mgr.uid_mgr.add_fake("u_fake")
-            assert await mgr.uid_mgr.is_exist("u_fake") is False
-            assert await mgr.uid_mgr.from_uid("u_fake") == fake_uin
-
-        run(main())
-
-    def test_add_fake_uin_ends_with_0145(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            uin = await mgr.uid_mgr.add_fake("u_fake")
-            assert str(uin).endswith("0145")
-
-        run(main())
-
-    def test_add_overwrites_existing(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            await mgr.uid_mgr.add("u_abc", 10001)
-            await mgr.uid_mgr.add("u_abc", 10002)
-            assert await mgr.uid_mgr.from_uid("u_abc") == 10002
-
-        run(main())
+    run(main())
 
 
-class TestRequestPool:
-    def test_set_and_fetch(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            flag = await mgr.req_mgr.set_group(grp_id=100, seq=200, ev_type=1)
-            info = await mgr.req_mgr.fetch(flag)
-            assert info.type == "group"
-            assert info.id == 100
-            assert info.seq == 200
+def test_request_pool_roundtrips_flags_and_reports_unknown_requests(tmp_path):
+    async def main():
+        mgr = await new_mgr(tmp_path)
+        flag = await mgr.req_mgr.set_group(grp_id=100, seq=200, ev_type=1)
+        info = await mgr.req_mgr.fetch(flag)
 
-        run(main())
+        assert info == RequestInfo(type="group", id=100, seq=200, ev_type=1)
+        assert await mgr.req_mgr.has(info) is True
+        assert await mgr.req_mgr.has(RequestInfo(type="group", id=1, seq=2, ev_type=3)) is False
+        with pytest.raises(ValueError):
+            await mgr.req_mgr.fetch("no-such-flag")
 
-    def test_fetch_unknown_raises(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            with pytest.raises(ValueError):
-                await mgr.req_mgr.fetch("no-such-flag")
-
-        run(main())
-
-    def test_has(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            flag = await mgr.req_mgr.set_group(grp_id=100, seq=200, ev_type=1)
-            info = await mgr.req_mgr.fetch(flag)
-            assert await mgr.req_mgr.has(info)
-            assert not await mgr.req_mgr.has(RequestInfo(type="group", id=1, seq=2, ev_type=3))
-
-        run(main())
+    run(main())
 
 
-class TestMigration:
-    @staticmethod
-    def _write_legacy_cache(tmp_path) -> str:
-        data = {
-            "uid_mgr": {"pool": {"u_real": 10001, "u_fake": 2000145}},
-            "msgid_mgr": {
-                "pool": {
-                    "12345": {
-                        "scene_type": "group",
-                        "scene_id": 100,
-                        "uin": 10001,
-                        "uid": "u_real",
-                        "timestamp": 1000,
-                        "seq": 5,
-                        "rand": 7,
-                        "text": "hello",
-                    }
+def _write_legacy_cache(tmp_path) -> str:
+    data = {
+        "uid_mgr": {"pool": {"u_real": 10001, "u_fake": 2000145}},
+        "msgid_mgr": {
+            "pool": {
+                "12345": {
+                    "scene_type": "group",
+                    "scene_id": 100,
+                    "uin": 10001,
+                    "uid": "u_real",
+                    "timestamp": 1000,
+                    "seq": 5,
+                    "rand": 7,
+                    "text": "hello",
                 }
-            },
-            "req_mgr": {"pool": {"999": {"type": "group", "id": 100, "seq": 200, "ev_type": 1}}},
-        }
+            }
+        },
+        "req_mgr": {"pool": {"999": {"type": "group", "id": 100, "seq": 200, "ev_type": 1}}},
+    }
+    path = tmp_path / "cache.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return str(path)
+
+
+def test_legacy_cache_migration_imports_all_pools_and_backs_up_file(tmp_path):
+    async def main():
+        cache = _write_legacy_cache(tmp_path)
+        mgr = make_mgr()
+        await mgr.init(path=str(tmp_path / "test.db"), migrate_from=cache)
+
+        assert await mgr.uid_mgr.from_uid("u_real") == 10001
+        assert await mgr.uid_mgr.is_exist("u_fake") is False
+        info = await mgr.msgid_mgr.fetch(12345)
+        assert (info.scene_id, info.seq, info.text, info.raw_msg) == (100, 5, "hello", [])
+        request = await mgr.req_mgr.fetch("999")
+        assert (request.id, request.seq, request.ev_type) == (100, 200, 1)
+        assert not (tmp_path / "cache.json").exists()
+        assert (tmp_path / "cache.json.bak").exists()
+
+    run(main())
+
+
+def test_corrupt_legacy_cache_is_left_untouched(tmp_path):
+    async def main():
         path = tmp_path / "cache.json"
-        path.write_text(json.dumps(data), encoding="utf-8")
-        return str(path)
+        path.write_text("not-json{{{", encoding="utf-8")
+        mgr = make_mgr()
+        await mgr.init(path=str(tmp_path / "test.db"), migrate_from=str(path))
 
-    def test_migrate_imports_all_pools(self, tmp_path):
-        async def main():
-            cache = self._write_legacy_cache(tmp_path)
-            mgr = make_mgr()
-            await mgr.init(path=str(tmp_path / "test.db"), migrate_from=cache)
-            assert await mgr.uid_mgr.from_uid("u_real") == 10001
-            assert await mgr.uid_mgr.is_exist("u_fake") is False
-            nid = await mgr.msgid_mgr.search(make_msg(scene_id=100, seq=5))
-            assert nid == 12345
-            info = await mgr.msgid_mgr.fetch(nid)
-            assert info.text == "hello"
-            assert info.raw_msg == []
-            flag = await mgr.req_mgr.set_group(grp_id=100, seq=200, ev_type=1)
-            assert flag != "999"
+        assert await mgr.msgid_mgr.search(make_msg(seq=1)) == 0
+        assert path.exists()
 
-        run(main())
+    run(main())
 
-    def test_migrate_backs_up_legacy_file(self, tmp_path):
-        async def main():
-            cache = self._write_legacy_cache(tmp_path)
-            mgr = make_mgr()
-            await mgr.init(path=str(tmp_path / "test.db"), migrate_from=cache)
-            assert not (tmp_path / "cache.json").exists()
-            assert (tmp_path / "cache.json.bak").exists()
 
-        run(main())
+def test_migration_does_not_overwrite_existing_database(tmp_path):
+    async def main():
+        db = str(tmp_path / "test.db")
+        mgr = make_mgr()
+        await mgr.init(path=db, migrate_from=str(tmp_path / "missing.json"))
+        await mgr.msgid_mgr.add(make_msg(seq=1))
+        await mgr.close()
 
-    def test_corrupt_legacy_file_skipped(self, tmp_path):
-        async def main():
-            path = tmp_path / "cache.json"
-            path.write_text("not-json{{{", encoding="utf-8")
-            mgr = make_mgr()
-            await mgr.init(path=str(tmp_path / "test.db"), migrate_from=str(path))
-            assert await mgr.msgid_mgr.search(make_msg(seq=1)) == 0
-            assert path.exists()
+        cache = _write_legacy_cache(tmp_path)
+        restarted = make_mgr()
+        await restarted.init(path=db, migrate_from=cache)
 
-        run(main())
+        with pytest.raises(KeyError):
+            await restarted.msgid_mgr.fetch(12345)
+        assert await restarted.msgid_mgr.search(make_msg(seq=1)) != 0
+        assert (tmp_path / "cache.json").exists()
 
-    def test_no_migration_without_file(self, tmp_path):
-        async def main():
-            mgr = await new_mgr(tmp_path)
-            assert await mgr.msgid_mgr.search(make_msg(seq=1)) == 0
-
-        run(main())
-
-    def test_migrate_skipped_when_db_not_empty(self, tmp_path):
-        async def main():
-            db = str(tmp_path / "test.db")
-            mgr = make_mgr()
-            await mgr.init(path=db, migrate_from=str(tmp_path / "cache.json"))
-            await mgr.msgid_mgr.add(make_msg(seq=1))
-            await mgr.close()
-            cache = self._write_legacy_cache(tmp_path)
-            mgr2 = make_mgr()
-            await mgr2.init(path=db, migrate_from=cache)
-            assert await mgr2.msgid_mgr.search(make_msg(seq=1)) != 0
-            assert (tmp_path / "cache.json").exists()
-
-        run(main())
+    run(main())

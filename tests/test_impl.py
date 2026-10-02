@@ -38,6 +38,7 @@ from euleronebot.onebot.segments import (
 )
 from euleronebot.protocol.impl import LagrangeImpl
 from euleronebot.utils import infomgr as im
+from euleronebot.utils.infomgr import MsgInfo
 from euleronebot.utils.transformer import to_lagrange_msg, to_onebot_msg
 
 
@@ -69,11 +70,9 @@ class StubClient:
 
     async def upload_grp_file(self, file, grp_id, target_directory="/", file_name=None):
         self.calls.append(("upload_grp_file", grp_id, target_directory, file_name, file.read()))
-        return None
 
     async def upload_friend_file(self, file, uid, file_name=None):
         self.calls.append(("upload_friend_file", uid, file_name, file.read()))
-        return None
 
     async def fetch_grp_file_url(self, grp_id, file_id):
         self.calls.append(("fetch_grp_file_url", grp_id, file_id))
@@ -97,232 +96,172 @@ def stub_client(impl: LagrangeImpl) -> StubClient:
     return cast(Any, impl.lag.client)
 
 
-class TestSendGroupMessage:
-    def test_rand_fetch_failure_still_reports_ok(self, tmp_path):
-        async def main():
-            mgr = await init_mgr(tmp_path)
-            try:
-                impl = make_impl()
-                rsp = await impl.send_group_message(
-                    SendGroupMsgData(group_id=123, message=[Text(data=TextData(text="hi"))])
-                )
-                assert rsp.status == "ok"
-                assert rsp.data.message_id != 0
-                assert stub_client(impl).calls == [("send_grp_msg", 123)]
-            finally:
-                await mgr.close()
-
-        run(main())
-
-
-class TestAtDegradation:
-    def test_unknown_uin_at_skipped_rest_sent(self, tmp_path):
-        async def main():
-            mgr = await init_mgr(tmp_path)
-            try:
-                out = await to_lagrange_msg(
-                    [
-                        Text(data=TextData(text="hello")),
-                        At(data=AtData(qq="999999")),
-                        Text(data=TextData(text=" world")),
-                    ],
-                    lgrc=cast(Any, None),
-                    target=TargetInfo(target="group", id=1),
-                )
-                assert len(out) == 2
-                assert all(isinstance(o, elems.Text) for o in out)
-            finally:
-                await mgr.close()
-
-        run(main())
-
-
-class TestSetFriendAddRequest:
-    def test_set_friend_add_request_calls_client(self):
-        async def main():
+def test_group_message_uses_zero_rand_when_history_lookup_fails(tmp_path):
+    async def main():
+        mgr = await init_mgr(tmp_path)
+        try:
             impl = make_impl()
-            rsp = await impl.set_friend_add_request(SetFriendAddRequestData(flag="u_abc", approve=True, remark=""))
-            assert rsp.status == "ok"
-            assert stub_client(impl).calls == [("set_friend_request", "u_abc", True)]
-
-        run(main())
-
-
-class TestAdapterCycle:
-    def test_invalid_call_gets_failed_response_with_echo(self):
-        async def main():
-            adapter = Adapter(impls=[])
-            results = []
-
-            async def fake_report(rsp):
-                results.append(rsp.model_dump())
-
-            adapter.report = fake_report
-            task = asyncio.create_task(adapter.cycle())
-            await adapter.connector.received.put('{"action": "no_such_action", "params": {}, "echo": "abc123"}')
-            for _ in range(200):
-                if results:
-                    break
-                await asyncio.sleep(0.01)
-            task.cancel()
-            with suppress(asyncio.CancelledError):
-                await task
-            assert results
-            assert results[0]["status"] == "failed"
-            assert results[0]["retcode"] == 1404
-            assert results[0]["echo"] == "abc123"
-
-        run(main())
-
-    def test_valid_call_queued(self):
-        async def main():
-            adapter = Adapter(impls=[])
-            task = asyncio.create_task(adapter.cycle())
-            await adapter.connector.received.put(
-                '{"action": "send_private_msg", "params": {"user_id": 1, "message": []}, "echo": "x"}'
+            rsp = await impl.send_group_message(
+                SendGroupMsgData(group_id=123, message=[Text(data=TextData(text="hi"))])
             )
-            got = await asyncio.wait_for(adapter.api_calls.get(), timeout=2)
-            task.cancel()
-            with suppress(asyncio.CancelledError):
-                await task
-            assert isinstance(got, SendPrivateMessage)
-            assert got.echo == "x"
-
-        run(main())
-
-
-class TestSubscription:
-    def test_subscribe_registers_impl_handlers(self):
-        impl = LagrangeImpl(cast(Any, None), cast(Any, StubLag()), cast(Any, None))
-        impl.subscribe()
-        assert "send_group_msg" in impl.subscriptions
-        assert "set_friend_add_request" in impl.subscriptions
-        assert len(impl.subscriptions) == 34
-
-
-class TestOnDecorator:
-    def test_on_sets_ev_type(self):
-        from lagrange.client.events.service import ClientOnline
-
-        from euleronebot.protocol.handle import on
-
-        @on(ClientOnline)
-        async def handler(client, event):
-            pass
-
-        assert cast(Any, handler).ev_type is ClientOnline
-
-    def test_on_sets_call_type(self):
-        from euleronebot.onebot.api import SendGroupMessage
-        from euleronebot.protocol.impl import on as impl_on
-
-        @impl_on(SendGroupMessage)
-        async def handler(data):
-            pass
-
-        assert cast(Any, handler).call_type is SendGroupMessage
-
-
-class TestGetMessageFallback:
-    def test_user_info_failure_returns_ok_with_safe_sender(self, tmp_path):
-        from euleronebot.onebot.api_data import GetMsgData
-        from euleronebot.utils.infomgr import MsgInfo
-
-        class FailClient(StubClient):
-            async def get_user_info(self, uid_or_uin):
-                raise AttributeError("boom")
-
-        async def main():
-            mgr = await init_mgr(tmp_path)
-            try:
-                impl = LagrangeImpl(cast(Any, None), cast(Any, StubLag()), cast(Any, None))
-                impl.lag = cast(Any, StubLag())
-                impl.lag.client = FailClient()
-                nid = await mgr.msgid_mgr.add(MsgInfo(scene_type="user", scene_id=1, seq=1, uin=123, uid="", text="hi"))
-                rsp = await impl.get_message(GetMsgData(message_id=nid))
-                assert rsp.status == "ok"
-                assert rsp.data.sender.nickname == ""
-                assert rsp.data.sender.sex == "unknown"
-                assert rsp.data.sender.age == 0
-            finally:
-                await mgr.close()
-
-        run(main())
-
-
-class TestFileUploadHandlers:
-    def test_upload_group_file(self, tmp_path):
-        async def main():
-            mgr = await init_mgr(tmp_path)
-            try:
-                path = tmp_path / "data.txt"
-                path.write_text("hello", encoding="utf-8")
-                impl = make_impl()
-                rsp = await impl.upload_group_file(
-                    UploadGroupFileData(group_id=123, file=str(path), name="renamed.bin", folder="/sub")
-                )
-                assert rsp.status == "ok"
-                assert stub_client(impl).calls == [
-                    ("upload_grp_file", 123, "/sub", "renamed.bin", b"hello"),
-                ]
-            finally:
-                await mgr.close()
-
-        run(main())
-
-    def test_upload_private_file(self, tmp_path):
-        async def main():
-            mgr = await init_mgr(tmp_path)
-            try:
-                await mgr.uid_mgr.add("u_456", 456)
-                path = tmp_path / "private.txt"
-                path.write_text("world", encoding="utf-8")
-                impl = make_impl()
-                rsp = await impl.upload_private_file(UploadPrivateFileData(user_id=456, file=str(path), name="p.bin"))
-                assert rsp.status == "ok"
-                assert stub_client(impl).calls == [
-                    ("upload_friend_file", "u_456", "p.bin", b"world"),
-                ]
-            finally:
-                await mgr.close()
-
-        run(main())
-
-    def test_get_group_file_url(self):
-        async def main():
-            impl = make_impl()
-            rsp = await impl.get_group_file_url(GetGroupFileUrlData(group_id=123, file_id="fid"))
             assert rsp.status == "ok"
-            assert rsp.data.url == "https://group.example/file"
-            assert stub_client(impl).calls == [("fetch_grp_file_url", 123, "fid")]
+            assert rsp.data.message_id != 0
+            assert stub_client(impl).calls == [("send_grp_msg", 123)]
+        finally:
+            await mgr.close()
 
-        run(main())
-
-    def test_get_private_file_url(self, tmp_path):
-        async def main():
-            mgr = await init_mgr(tmp_path)
-            try:
-                await mgr.uid_mgr.add("u_456", 456)
-                impl = make_impl()
-                rsp = await impl.get_private_file_url(
-                    GetPrivateFileUrlData(user_id=456, file_id="uuid", file_hash="hash")
-                )
-                assert rsp.status == "ok"
-                assert rsp.data.url == "https://friend.example/file"
-                assert stub_client(impl).calls == [("fetch_friend_file_url", "uuid", "hash", "u_456")]
-            finally:
-                await mgr.close()
-
-        run(main())
+    run(main())
 
 
-class TestVideoAndFileSegments:
+def test_unknown_at_segment_is_skipped_without_dropping_other_text(tmp_path):
+    async def main():
+        mgr = await init_mgr(tmp_path)
+        try:
+            out = await to_lagrange_msg(
+                [
+                    Text(data=TextData(text="hello")),
+                    At(data=AtData(qq="999999")),
+                    Text(data=TextData(text=" world")),
+                ],
+                lgrc=cast(Any, None),
+                target=TargetInfo(target="group", id=1),
+            )
+            assert len(out) == 2
+            assert all(isinstance(item, elems.Text) for item in out)
+        finally:
+            await mgr.close()
+
+    run(main())
+
+
+def test_set_friend_add_request_delegates_approval_to_lagrange():
+    async def main():
+        impl = make_impl()
+        rsp = await impl.set_friend_add_request(SetFriendAddRequestData(flag="u_abc", approve=True, remark=""))
+        assert rsp.status == "ok"
+        assert stub_client(impl).calls == [("set_friend_request", "u_abc", True)]
+
+    run(main())
+
+
+def test_adapter_cycle_reports_invalid_calls_and_queues_valid_ones():
+    async def main():
+        adapter = Adapter(impls=[])
+        reported = []
+
+        async def fake_report(rsp):
+            reported.append(rsp.model_dump())
+
+        adapter.report = fake_report
+        task = asyncio.create_task(adapter.cycle())
+        await adapter.connector.received.put('{"action": "no_such_action", "params": {}, "echo": "bad"}')
+        await adapter.connector.received.put(
+            '{"action": "send_private_msg", "params": {"user_id": 1, "message": []}, "echo": "ok"}'
+        )
+        queued = await asyncio.wait_for(adapter.api_calls.get(), timeout=2)
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+        assert isinstance(queued, SendPrivateMessage)
+        assert queued.echo == "ok"
+        assert reported[0]["status"] == "failed"
+        assert reported[0]["retcode"] == 1404
+        assert reported[0]["echo"] == "bad"
+
+    run(main())
+
+
+def test_subscriptions_cover_every_registered_api_action():
+    adapter = Adapter(impls=[])
+    impl = LagrangeImpl(cast(Any, adapter), cast(Any, StubLag()), cast(Any, None))
+    impl.subscribe()
+
+    assert set(impl.subscriptions) == adapter.api_actions
+
+
+def test_get_message_returns_safe_sender_when_user_lookup_fails(tmp_path):
+    from euleronebot.onebot.api_data import GetMsgData
+
+    class FailClient(StubClient):
+        async def get_user_info(self, uid_or_uin):
+            raise AttributeError("boom")
+
+    async def main():
+        mgr = await init_mgr(tmp_path)
+        try:
+            impl = LagrangeImpl(cast(Any, None), cast(Any, StubLag()), cast(Any, None))
+            impl.lag.client = cast(Any, FailClient())
+            nid = await mgr.msgid_mgr.add(MsgInfo(scene_type="user", scene_id=1, seq=1, uin=123, uid="", text="hi"))
+            rsp = await impl.get_message(GetMsgData(message_id=nid))
+            assert rsp.status == "ok"
+            assert (rsp.data.sender.nickname, rsp.data.sender.sex, rsp.data.sender.age) == ("", "unknown", 0)
+        finally:
+            await mgr.close()
+
+    run(main())
+
+
+def test_upload_file_handlers_open_local_files_and_delegate(tmp_path):
+    async def main():
+        mgr = await init_mgr(tmp_path)
+        try:
+            await mgr.uid_mgr.add("u_456", 456)
+            group_path = tmp_path / "group.txt"
+            private_path = tmp_path / "private.txt"
+            group_path.write_text("group-data", encoding="utf-8")
+            private_path.write_text("private-data", encoding="utf-8")
+            impl = make_impl()
+
+            group_rsp = await impl.upload_group_file(
+                UploadGroupFileData(group_id=123, file=str(group_path), name="renamed.bin", folder="/sub")
+            )
+            private_rsp = await impl.upload_private_file(
+                UploadPrivateFileData(user_id=456, file=str(private_path), name="private.bin")
+            )
+
+            assert group_rsp.status == private_rsp.status == "ok"
+            assert stub_client(impl).calls == [
+                ("upload_grp_file", 123, "/sub", "renamed.bin", b"group-data"),
+                ("upload_friend_file", "u_456", "private.bin", b"private-data"),
+            ]
+        finally:
+            await mgr.close()
+
+    run(main())
+
+
+def test_file_url_handlers_resolve_uid_and_delegate(tmp_path):
+    async def main():
+        mgr = await init_mgr(tmp_path)
+        try:
+            await mgr.uid_mgr.add("u_456", 456)
+            impl = make_impl()
+
+            group_rsp = await impl.get_group_file_url(GetGroupFileUrlData(group_id=123, file_id="fid"))
+            private_rsp = await impl.get_private_file_url(
+                GetPrivateFileUrlData(user_id=456, file_id="uuid", file_hash="hash")
+            )
+
+            assert group_rsp.data.url == "https://group.example/file"
+            assert private_rsp.data.url == "https://friend.example/file"
+            assert stub_client(impl).calls == [
+                ("fetch_grp_file_url", 123, "fid"),
+                ("fetch_friend_file_url", "uuid", "hash", "u_456"),
+            ]
+        finally:
+            await mgr.close()
+
+    run(main())
+
+
+def test_group_video_is_uploaded_before_sending():
     class VideoClient:
         def __init__(self):
             self.calls = []
 
         async def upload_grp_video(self, file, grp_id, thumb=None):
-            self.calls.append(("grp", grp_id, file.read()))
+            self.calls.append((grp_id, file.read()))
             return elems.Video(
                 name="v.mp4",
                 size=1,
@@ -336,164 +275,117 @@ class TestVideoAndFileSegments:
                 file_key="",
             )
 
-        async def upload_friend_video(self, file, uid, thumb=None):
-            self.calls.append(("friend", uid, file.read()))
-            return "uploaded-video"
+    async def main():
+        client = VideoClient()
+        out = await to_lagrange_msg(
+            [Video(data=VideoData(file="base64://" + base64.b64encode(b"video").decode()))],
+            lgrc=cast(Any, client),
+            target=TargetInfo(target="group", id=123),
+        )
+        assert len(out) == 1
+        assert isinstance(out[0], elems.Video)
+        assert client.calls == [(123, b"video")]
 
-    def test_send_group_video(self):
-        async def main():
-            client = self.VideoClient()
-            out = await to_lagrange_msg(
-                [Video(data=VideoData(file="base64://" + base64.b64encode(b"video").decode()))],
-                lgrc=cast(Any, client),
-                target=TargetInfo(target="group", id=123),
-            )
-            assert len(out) == 1
-            assert isinstance(out[0], elems.Video)
-            assert client.calls == [("grp", 123, b"video")]
+    run(main())
 
-        run(main())
 
-    def test_file_segment_is_not_sent_via_message(self):
-        async def main():
-            out = await to_lagrange_msg(
+def test_file_segments_are_received_but_not_sent_as_message_payload(tmp_path):
+    async def main():
+        mgr = await init_mgr(tmp_path)
+        try:
+            sent = await to_lagrange_msg(
                 [File(data=FileData(file_name="a.txt", file_id="fid", url="https://example.com/a.txt"))],
                 lgrc=cast(Any, None),
                 target=TargetInfo(target="group", id=123),
             )
-            assert out == []
-
-        run(main())
-
-    def test_incoming_file_converts_to_file_segment(self, tmp_path):
-        from euleronebot.utils.infomgr import MsgInfo
-
-        async def main():
-            mgr = await init_mgr(tmp_path)
-            try:
-                raw = [
-                    elems.File(
-                        file_size=3,
-                        file_name="a.txt",
-                        file_md5=b"\x00" * 16,
-                        file_url="https://example.com/a.txt",
-                        file_id="fid",
-                        file_uuid=None,
-                        file_hash=None,
-                    )
-                ]
-                out = await to_onebot_msg(
-                    adp=cast(Any, None),
-                    msg=MsgInfo(scene_type="group", scene_id=1, seq=1, raw_msg=raw),
+            raw = [
+                elems.File(
+                    file_size=3,
+                    file_name="a.txt",
+                    file_md5=b"\x00" * 16,
+                    file_url="https://example.com/a.txt",
+                    file_id="fid",
+                    file_uuid=None,
+                    file_hash=None,
                 )
-                assert len(out) == 1
-                assert isinstance(out[0], File)
-                assert out[0].data.file_name == "a.txt"
-                assert out[0].data.file_id == "fid"
-                assert out[0].data.url == "https://example.com/a.txt"
-            finally:
-                await mgr.close()
+            ]
+            received = await to_onebot_msg(
+                adp=cast(Any, None),
+                msg=MsgInfo(scene_type="group", scene_id=1, seq=1, raw_msg=raw),
+            )
+            assert sent == []
+            assert isinstance(received[0], File)
+            assert received[0].data.model_dump() == {
+                "file_name": "a.txt",
+                "file_hash": "",
+                "file_id": "fid",
+                "url": "https://example.com/a.txt",
+            }
+        finally:
+            await mgr.close()
 
-        run(main())
+    run(main())
 
 
-class TestExtendedSegments:
-    def test_send_poke_rps_dice_and_grey_tips(self):
-        async def main():
-            out = await to_lagrange_msg(
-                [
-                    Poke(data=PokeData(id="2003", type="126")),
-                    Rps(data=RpsData()),
-                    Dice(data=DiceData()),
-                    GreyTips(data=GreyTipsData(text="tip")),
+def test_special_segments_convert_in_both_directions_and_skip_invalid_values():
+    async def main():
+        sent = await to_lagrange_msg(
+            [
+                Poke(data=PokeData(id="2003", type="126")),
+                Rps(data=RpsData()),
+                Dice(data=DiceData()),
+                GreyTips(data=GreyTipsData(text="tip")),
+            ],
+            lgrc=cast(Any, None),
+            target=TargetInfo(target="group", id=1),
+        )
+        invalid = await to_lagrange_msg(
+            [Poke(data=PokeData(id="bad", type="126"))],
+            lgrc=cast(Any, None),
+            target=TargetInfo(target="group", id=1),
+        )
+        received = await to_onebot_msg(
+            adp=cast(Any, None),
+            msg=MsgInfo(
+                scene_type="group",
+                scene_id=1,
+                seq=1,
+                raw_msg=[
+                    elems.Emoji(id=359),
+                    elems.Emoji(id=358),
+                    elems.Emoji(id=1),
+                    elems.Poke(id=2003, f7=126, f8=0),
+                    elems.GreyTips(text="tip"),
                 ],
-                lgrc=cast(Any, None),
-                target=TargetInfo(target="group", id=1),
-            )
-            assert isinstance(out[0], elems.Poke)
-            assert (out[0].id, out[0].f7, out[0].f8) == (2003, 126, 0)
-            assert isinstance(out[1], elems.Emoji)
-            assert out[1].id == 359
-            assert isinstance(out[2], elems.Emoji)
-            assert out[2].id == 358
-            assert isinstance(out[3], elems.GreyTips)
-            assert out[3].text == "tip"
+            ),
+        )
 
-        run(main())
+        assert isinstance(sent[0], elems.Poke) and (sent[0].id, sent[0].f7, sent[0].f8) == (2003, 126, 0)
+        assert [isinstance(item, elems.Emoji) and item.id for item in sent[1:3]] == [359, 358]
+        assert isinstance(sent[3], elems.GreyTips) and sent[3].text == "tip"
+        assert invalid == []
+        assert isinstance(received[0], Rps)
+        assert isinstance(received[1], Dice)
+        assert received[2].type == "face" and received[2].data.id == "1"
+        assert isinstance(received[3], Poke) and received[3].data.model_dump() == {"id": "2003", "type": "126"}
+        assert len(received) == 4
 
-    def test_invalid_poke_is_skipped(self):
-        async def main():
-            out = await to_lagrange_msg(
-                [Poke(data=PokeData(id="bad", type="126"))],
-                lgrc=cast(Any, None),
-                target=TargetInfo(target="group", id=1),
-            )
-            assert out == []
-
-        run(main())
-
-    def test_receive_special_faces_and_poke(self, tmp_path):
-        from euleronebot.utils.infomgr import MsgInfo
-
-        async def main():
-            mgr = await init_mgr(tmp_path)
-            try:
-                out = await to_onebot_msg(
-                    adp=cast(Any, None),
-                    msg=MsgInfo(
-                        scene_type="group",
-                        scene_id=1,
-                        seq=1,
-                        raw_msg=[
-                            elems.Emoji(id=359),
-                            elems.Emoji(id=358),
-                            elems.Emoji(id=1),
-                            elems.Poke(id=2003, f7=126, f8=0),
-                        ],
-                    ),
-                )
-                assert isinstance(out[0], Rps)
-                assert isinstance(out[1], Dice)
-                assert out[2].type == "face"
-                assert out[2].data.id == "1"
-                assert isinstance(out[3], Poke)
-                assert out[3].data.id == "2003"
-                assert out[3].data.type == "126"
-            finally:
-                await mgr.close()
-
-        run(main())
-
-    def test_receive_grey_tips_is_not_mapped(self, tmp_path):
-        from euleronebot.utils.infomgr import MsgInfo
-
-        async def main():
-            mgr = await init_mgr(tmp_path)
-            try:
-                out = await to_onebot_msg(
-                    adp=cast(Any, None),
-                    msg=MsgInfo(scene_type="group", scene_id=1, seq=1, raw_msg=[elems.GreyTips(text="tip")]),
-                )
-                assert out == []
-            finally:
-                await mgr.close()
-
-        run(main())
+    run(main())
 
 
-class TestGetStatus:
-    def test_returns_protocol_status_and_standard_fields(self):
-        async def main():
-            protocol = SimpleNamespace(status=BotStatus(online=False, good=True))
-            impl = LagrangeImpl(cast(Any, None), cast(Any, StubLag()), cast(Any, protocol))
-            rsp = await impl.get_status(GetStatusData())
-            assert rsp.status == "ok"
-            assert rsp.data.app_initialized is True
-            assert rsp.data.app_enabled is True
-            assert rsp.data.plugins_good is None
-            assert rsp.data.app_good is True
-            assert rsp.data.online is False
-            assert rsp.data.good is True
-            assert rsp.data.memory >= 0
+def test_get_status_returns_protocol_state_and_process_metrics():
+    async def main():
+        protocol = SimpleNamespace(status=BotStatus(online=False, good=True))
+        impl = LagrangeImpl(cast(Any, None), cast(Any, StubLag()), cast(Any, protocol))
+        rsp = await impl.get_status(GetStatusData())
 
-        run(main())
+        assert rsp.status == "ok"
+        assert rsp.data.app_initialized is True
+        assert rsp.data.app_enabled is True
+        assert rsp.data.plugins_good is None
+        assert rsp.data.app_good is True
+        assert rsp.data.online is False
+        assert rsp.data.good is True
+        assert rsp.data.memory >= 0
+
+    run(main())

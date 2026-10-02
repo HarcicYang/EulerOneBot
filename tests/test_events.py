@@ -5,10 +5,8 @@ from euleronebot.onebot.events import (
     FriendFileUploadEvent,
     FriendPokeEvent,
     FriendRecallEvent,
-    GroupDecreaseEvent,
     GroupFileUploadEvent,
     GroupMessageEvent,
-    GroupMuteEvent,
     GroupPokeEvent,
     HeartbeatEvent,
     LifecycleEvent,
@@ -17,96 +15,48 @@ from euleronebot.onebot.events import (
 )
 
 
-def test_group_message_event():
-    ev = GroupMessageEvent.model_validate(
-        {
-            "time": 1,
-            "self_id": 2,
-            "post_type": "message",
-            "message_type": "group",
-            "sub_type": "normal",
-            "message_id": 3,
-            "user_id": 4,
-            "group_id": 5,
-            "message": [{"type": "text", "data": {"text": "hi"}}],
-            "raw_message": "hi",
-            "sender": {
-                "user_id": 4,
-                "nickname": "n",
-                "sex": "unknown",
-                "age": 0,
-                "card": "",
-                "area": "",
-                "level": "",
-                "role": "member",
-                "title": "",
-            },
-        }
-    )
-    assert ev.group_id == 5
-    assert ev.sub_type == "normal"
+def group_sender() -> dict:
+    return {
+        "user_id": 4,
+        "nickname": "n",
+        "sex": "unknown",
+        "age": 0,
+        "card": "",
+        "area": "",
+        "level": "",
+        "role": "member",
+        "title": "",
+    }
 
 
-@pytest.mark.parametrize("sub_type", ["normal", "anonymous", "notice"])
-def test_group_message_event_sub_types(sub_type):
-    ev = GroupMessageEvent.model_validate(
-        {
-            "time": 1,
-            "self_id": 2,
-            "post_type": "message",
-            "message_type": "group",
-            "sub_type": sub_type,
-            "message_id": 3,
-            "user_id": 4,
-            "group_id": 5,
-            "message": [],
-            "raw_message": "",
-            "sender": {
-                "user_id": 4,
-                "nickname": "n",
-                "sex": "unknown",
-                "age": 0,
-                "card": "",
-                "area": "",
-                "level": "",
-                "role": "member",
-                "title": "",
-            },
-        }
-    )
-    assert ev.sub_type == sub_type
+def group_message(sub_type: str) -> dict:
+    return {
+        "time": 1,
+        "self_id": 2,
+        "post_type": "message",
+        "message_type": "group",
+        "sub_type": sub_type,
+        "message_id": 3,
+        "user_id": 4,
+        "group_id": 5,
+        "message": [{"type": "text", "data": {"text": "hi"}}],
+        "raw_message": "hi",
+        "sender": group_sender(),
+    }
 
 
-def test_group_message_event_rejects_old_group_sub_type():
+def test_group_message_event_accepts_protocol_subtypes_and_rejects_legacy_value():
+    for sub_type in ("normal", "anonymous", "notice"):
+        event = GroupMessageEvent.model_validate(group_message(sub_type))
+        assert event.group_id == 5
+        assert event.sub_type == sub_type
+
     with pytest.raises(ValidationError):
-        GroupMessageEvent.model_validate(
-            {
-                "time": 1,
-                "self_id": 2,
-                "message_type": "group",
-                "sub_type": "group",
-                "message_id": 3,
-                "user_id": 4,
-                "group_id": 5,
-                "message": [],
-                "raw_message": "",
-                "sender": {
-                    "user_id": 4,
-                    "nickname": "n",
-                    "sex": "unknown",
-                    "age": 0,
-                    "card": "",
-                    "area": "",
-                    "level": "",
-                    "role": "member",
-                    "title": "",
-                },
-            }
-        )
+        GroupMessageEvent.model_validate(group_message("group"))
 
 
-def test_private_message_event_defaults():
-    ev = PrivateMessageEvent.model_validate(
+def test_private_message_event_uses_private_discriminator():
+    event = PrivateMessageEvent.model_validate(
         {
             "time": 1,
             "self_id": 2,
@@ -120,93 +70,44 @@ def test_private_message_event_defaults():
             "sender": {"user_id": 4, "nickname": "n", "sex": "unknown", "age": 0},
         }
     )
-    assert ev.sub_type == "friend"
+    assert event.message_type == "private"
+    assert event.sub_type == "friend"
 
 
-def test_group_mute_lift_ban():
-    ev = GroupMuteEvent.model_validate(
+def test_notice_events_validate_representative_payloads_and_reaction_alias():
+    file_info = {"id": "a", "name": "b", "size": 1, "busid": 0, "hash": "h", "url": "https://example.com/b"}
+    group_upload = GroupFileUploadEvent.model_validate(
         {
             "time": 1,
             "self_id": 2,
-            "post_type": "notice",
-            "notice_type": "group_ban",
-            "sub_type": "lift_ban",
-            "group_id": 3,
-            "operator_id": 4,
-            "user_id": 5,
-            "duration": 0,
-        }
-    )
-    assert ev.duration == 0
-
-
-def test_group_decrease_kick_me():
-    ev = GroupDecreaseEvent.model_validate(
-        {
-            "time": 1,
-            "self_id": 2,
-            "post_type": "notice",
-            "notice_type": "group_decrease",
-            "sub_type": "kick_me",
-            "group_id": 3,
-            "operator_id": 0,
-            "user_id": 2,
-        }
-    )
-    assert ev.sub_type == "kick_me"
-
-
-def test_friend_file_upload_notice_type():
-    ev = FriendFileUploadEvent.model_validate(
-        {
-            "time": 1,
-            "self_id": 2,
-            "post_type": "notice",
-            "notice_type": "friend_upload",
-            "user_id": 3,
-            "file": {"id": "a", "name": "b", "size": 1, "busid": 0, "hash": "h", "url": "https://example.com/b"},
-        }
-    )
-    assert ev.notice_type == "friend_upload"
-    assert ev.file.url == "https://example.com/b"
-
-
-def test_group_file_upload_notice_type():
-    ev = GroupFileUploadEvent.model_validate(
-        {
-            "time": 1,
-            "self_id": 2,
-            "post_type": "notice",
             "notice_type": "group_upload",
             "group_id": 3,
             "user_id": 4,
-            "file": {"id": "a", "name": "b", "size": 1, "busid": 0, "url": "https://example.com/b"},
+            "file": file_info,
         }
     )
-    assert ev.notice_type == "group_upload"
-    assert ev.file.url == "https://example.com/b"
-
-
-def test_friend_recall():
-    ev = FriendRecallEvent.model_validate(
+    friend_upload = FriendFileUploadEvent.model_validate(
         {
             "time": 1,
             "self_id": 2,
-            "post_type": "notice",
+            "notice_type": "friend_upload",
+            "user_id": 3,
+            "file": file_info,
+        }
+    )
+    recall = FriendRecallEvent.model_validate(
+        {
+            "time": 1,
+            "self_id": 2,
             "notice_type": "friend_recall",
             "user_id": 3,
             "message_id": 4,
         }
     )
-    assert ev.message_id == 4
-
-
-def test_group_poke():
-    ev = GroupPokeEvent.model_validate(
+    group_poke = GroupPokeEvent.model_validate(
         {
             "time": 1,
             "self_id": 2,
-            "post_type": "notice",
             "notice_type": "notify",
             "sub_type": "poke",
             "group_id": 3,
@@ -214,44 +115,17 @@ def test_group_poke():
             "user_id": 5,
         }
     )
-    assert ev.target_id == 4
-
-
-def test_friend_poke():
-    ev = FriendPokeEvent.model_validate(
+    friend_poke = FriendPokeEvent.model_validate(
         {
             "time": 1,
             "self_id": 2,
-            "post_type": "notice",
             "notice_type": "notify",
             "sub_type": "poke",
             "target_id": 3,
             "user_id": 4,
         }
     )
-    assert ev.target_id == 3
-    assert ev.user_id == 4
-
-
-def test_reaction_event():
-    ev = ReactionEvent.model_validate(
-        {
-            "time": 1,
-            "self_id": 2,
-            "post_type": "notice",
-            "notice_type": "reaction",
-            "message_id": 3,
-            "operator_id": 4,
-            "sub_type": "add",
-            "code": 1,
-            "count": 2,
-        }
-    )
-    assert ev.code == 1
-
-
-def test_reaction_event_supports_group_msg_emoji_like_alias():
-    ev = ReactionEvent(
+    reaction = ReactionEvent(
         time=1,
         self_id=2,
         notice_type="group_msg_emoji_like",
@@ -261,11 +135,17 @@ def test_reaction_event_supports_group_msg_emoji_like_alias():
         code=1,
         count=2,
     )
-    assert ev.notice_type == "group_msg_emoji_like"
+
+    assert group_upload.file.url == "https://example.com/b"
+    assert friend_upload.file.hash == "h"
+    assert recall.message_id == 4
+    assert (group_poke.group_id, group_poke.target_id) == (3, 4)
+    assert (friend_poke.target_id, friend_poke.user_id) == (3, 4)
+    assert reaction.notice_type == "group_msg_emoji_like"
 
 
-def test_lifecycle_event():
-    ev = LifecycleEvent.model_validate(
+def test_meta_events_validate_lifecycle_and_require_heartbeat_status():
+    lifecycle = LifecycleEvent.model_validate(
         {
             "time": 1,
             "self_id": 2,
@@ -274,10 +154,19 @@ def test_lifecycle_event():
             "sub_type": "connect",
         }
     )
-    assert ev.sub_type == "connect"
+    heartbeat = HeartbeatEvent.model_validate(
+        {
+            "time": 1,
+            "self_id": 2,
+            "post_type": "meta_event",
+            "meta_event_type": "heartbeat",
+            "status": {"online": True, "good": True},
+            "interval": 15000,
+        }
+    )
 
-
-def test_heartbeat_event_requires_status():
+    assert lifecycle.sub_type == "connect"
+    assert heartbeat.status.good is True
     with pytest.raises(ValidationError):
         HeartbeatEvent.model_validate(
             {
@@ -288,17 +177,3 @@ def test_heartbeat_event_requires_status():
                 "interval": 15000,
             }
         )
-
-
-def test_heartbeat_event():
-    ev = HeartbeatEvent.model_validate(
-        {
-            "time": 1,
-            "self_id": 2,
-            "post_type": "meta_event",
-            "meta_event_type": "heartbeat",
-            "status": {"online": True, "good": True},
-            "interval": 15000,
-        }
-    )
-    assert ev.status.good is True

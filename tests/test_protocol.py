@@ -2,11 +2,12 @@ import asyncio
 from contextlib import suppress
 from typing import Any, cast
 
+import pytest
+
 from euleronebot.config import BotConfig, ForwardWebsocketConfig
 from euleronebot.onebot import Adapter
 from euleronebot.protocol import LagrangeProtocol
 from euleronebot.utils import infomgr as im
-from euleronebot.utils import sign_provider as sign_provider_module
 
 PROVIDER_SOURCE = "\n".join(
     [
@@ -42,73 +43,65 @@ class FakeLag:
 
 
 async def make_protocol(tmp_path, lag_exc: BaseException | None = None) -> LagrangeProtocol:
-    cfg = BotConfig(login={"uin": 1})
-    adapter = Adapter(impls=[])
-    protocol = LagrangeProtocol(cfg, adapter)
+    protocol = LagrangeProtocol(BotConfig(login={"uin": 1}), Adapter(impls=[]))
     protocol.lag = cast(Any, FakeLag(lag_exc))
     await im.info_mgr.init(path=str(tmp_path / "test.db"), migrate_from=str(tmp_path / "cache.json"))
     return protocol
 
 
-class TestRunCleanup:
-    def test_normal_exit_cleans_tasks_and_db(self, tmp_path):
-        async def main():
-            protocol = await make_protocol(tmp_path)
-            await protocol.run()
-            assert all(t.done() for t in protocol._tasks)
-            assert im.info_mgr.db is None
+@pytest.mark.parametrize("lag_exc", [None, KeyboardInterrupt])
+def test_protocol_run_cleans_tasks_database_and_client_on_exit(tmp_path, lag_exc):
+    async def main():
+        exc = None if lag_exc is None else lag_exc()
+        protocol = await make_protocol(tmp_path, lag_exc=exc)
+        await protocol.run()
 
-        run(main())
+        assert all(task.done() for task in protocol._tasks)
+        assert im.info_mgr.db is None
+        if lag_exc is not None:
+            assert cast(Any, protocol.lag.client).cleared is True
 
-    def test_keyboard_interrupt_cleans_tasks_and_db(self, tmp_path):
-        async def main():
-            protocol = await make_protocol(tmp_path, lag_exc=KeyboardInterrupt())
-            await protocol.run()
-            assert protocol.lag.client.cleared  # type: ignore[attr-defined]
-            assert all(t.done() for t in protocol._tasks)
-            assert im.info_mgr.db is None
-
-        run(main())
+    run(main())
 
 
-class TestConnectorClose:
-    def test_close_stops_uvicorn_server(self, tmp_path):
-        async def main():
-            adapter = Adapter(impls=[ForwardWebsocketConfig(url="ws://127.0.0.1:0")])
-            await adapter.setup()
-            task = asyncio.create_task(adapter.connector.run())
-            for _ in range(200):
-                if adapter.connector._servers and adapter.connector._servers[0].started:
-                    break
-                await asyncio.sleep(0.01)
-            assert adapter.connector._servers and adapter.connector._servers[0].started
-            await adapter.close()
-            for _ in range(200):
-                if task.done():
-                    break
-                await asyncio.sleep(0.01)
-            assert task.done()
+def test_connector_close_stops_uvicorn_server():
+    async def main():
+        adapter = Adapter(impls=[ForwardWebsocketConfig(url="ws://127.0.0.1:0")])
+        await adapter.setup()
+        task = asyncio.create_task(adapter.connector.run())
+        for _ in range(200):
+            if adapter.connector._servers and adapter.connector._servers[0].started:
+                break
+            await asyncio.sleep(0.01)
+        assert adapter.connector._servers and adapter.connector._servers[0].started
 
-        run(main())
+        await adapter.close()
+        for _ in range(200):
+            if task.done():
+                break
+            await asyncio.sleep(0.01)
+        assert task.done()
 
-
-class TestCycleSurvival:
-    def test_cycle_survives_connector_crash(self):
-        async def main():
-            adapter = Adapter(impls=[ForwardWebsocketConfig(url="ws://bad")])
-            await adapter.setup()
-            task = asyncio.create_task(adapter.cycle())
-            await asyncio.sleep(0.1)
-            assert not task.done()
-            assert adapter._connector_task is not None and adapter._connector_task.done()
-            task.cancel()
-            with suppress(asyncio.CancelledError):
-                await task
-
-        run(main())
+    run(main())
 
 
-class TestLifecycle:
+def test_adapter_cycle_survives_connector_crash():
+    async def main():
+        adapter = Adapter(impls=[ForwardWebsocketConfig(url="ws://bad")])
+        await adapter.setup()
+        task = asyncio.create_task(adapter.cycle())
+        await asyncio.sleep(0.1)
+
+        assert not task.done()
+        assert adapter._connector_task is not None and adapter._connector_task.done()
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+    run(main())
+
+
+def test_lifecycle_events_disable_once_and_mark_connections_online():
     class RecordingAdapter:
         def __init__(self):
             self.calls = []
@@ -116,58 +109,51 @@ class TestLifecycle:
         async def trigger(self, event):
             self.calls.append((event.meta_event_type, event.sub_type, event.self_id))
 
-    def test_disable_dedup_connect_and_self_id(self):
-        async def main():
-            adapter = self.RecordingAdapter()
-            protocol = LagrangeProtocol(BotConfig(login={"uin": 123}), cast(Any, adapter))
-            assert protocol.status.online is False
+    async def main():
+        adapter = RecordingAdapter()
+        protocol = LagrangeProtocol(BotConfig(login={"uin": 123}), cast(Any, adapter))
+        assert protocol.status.online is False
 
-            await protocol.emit_lifecycle("disable")
-            await protocol.emit_lifecycle("disable")
-            assert adapter.calls == [("lifecycle", "disable", 123)]
+        await protocol.emit_lifecycle("disable")
+        await protocol.emit_lifecycle("disable")
+        await protocol.emit_lifecycle("connect")
 
-            await protocol.emit_lifecycle("connect")
-            assert protocol.status.online is True
-            assert adapter.calls[-1] == ("lifecycle", "connect", 123)
+        assert adapter.calls == [("lifecycle", "disable", 123), ("lifecycle", "connect", 123)]
+        assert protocol.status.online is True
 
-        run(main())
+    run(main())
 
 
-class TestSignProviderWiring:
-    def _cfg(self, tmp_path):
-        path = tmp_path / "provider.py"
-        path.write_text(PROVIDER_SOURCE, encoding="utf-8")
-        return BotConfig(
-            login={
-                "uin": 123,
-                "use_custom_sign_provider": True,
-                "sign_provider_path": str(path),
-                "sign_provider_entry": "make_sign_provider",
-            }
-        )
+def test_default_signer_url_embeds_token_and_uses_hiroqq_signer():
+    cfg = BotConfig(login={"uin": 123, "signer_url": "https://sign.example.com", "signer_token": "tok"})
+    protocol = LagrangeProtocol(cfg, Adapter(impls=[]))
 
-    def test_default_config_signs_via_url(self):
-        cfg = BotConfig(login={"uin": 123, "signer_url": "https://sign.example.com", "signer_token": "tok"})
-        protocol = LagrangeProtocol(cfg, Adapter(impls=[]))
-        assert protocol.lag._custom_sign_provider is None
-        assert protocol.lag._sign_url == "https://tok@sign.example.com/api/sign/sec-sign"
+    assert protocol.lag._custom_sign_provider is None
+    assert protocol.lag._sign_url == "https://tok@sign.example.com/api/sign/sec-sign"
 
-    def test_custom_provider_is_loaded_and_wired(self, tmp_path):
-        protocol = LagrangeProtocol(self._cfg(tmp_path), Adapter(impls=[]))
-        factory = cast(Any, protocol.lag._custom_sign_provider)
-        assert callable(factory)
 
-        get_sign = factory(protocol.lag._sign_url, 123, "00" * 16, "V1_LNX_NQ_3.2.26_46494_GW_B")
-        assert asyncio.run(get_sign("MessageSvc.PbSendMsg", 1, b"\x00")) == {
-            "sign": "ab" * 32,
-            "token": "",
-            "extra": "cd" * 8,
+def test_custom_sign_provider_is_loaded_and_reused_when_lagrange_is_rebuilt(tmp_path):
+    path = tmp_path / "provider.py"
+    path.write_text(PROVIDER_SOURCE, encoding="utf-8")
+    cfg = BotConfig(
+        login={
+            "uin": 123,
+            "use_custom_sign_provider": True,
+            "sign_provider_path": str(path),
+            "sign_provider_entry": "make_sign_provider",
         }
+    )
+    protocol = LagrangeProtocol(cfg, Adapter(impls=[]))
+    factory = cast(Any, protocol.lag._custom_sign_provider)
+    assert callable(factory)
 
-    def test_relog_keeps_the_same_provider(self, tmp_path):
-        protocol = LagrangeProtocol(self._cfg(tmp_path), Adapter(impls=[]))
-        first = protocol.lag._custom_sign_provider
-        rebuilt = protocol._build_lagrange()
-        assert rebuilt._custom_sign_provider is first
-        assert rebuilt.use_ipv6 is protocol.cfg.login.use_ipv6
-        assert sign_provider_module.load_sign_provider is not None
+    get_sign = factory(protocol.lag._sign_url, 123, "00" * 16, "V1_LNX_NQ_3.2.26_46494_GW_B")
+    assert asyncio.run(get_sign("MessageSvc.PbSendMsg", 1, b"\x00")) == {
+        "sign": "ab" * 32,
+        "token": "",
+        "extra": "cd" * 8,
+    }
+
+    rebuilt = protocol._build_lagrange()
+    assert rebuilt._custom_sign_provider is factory
+    assert rebuilt.use_ipv6 is protocol.cfg.login.use_ipv6
