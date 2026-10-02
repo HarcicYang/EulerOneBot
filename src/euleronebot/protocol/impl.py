@@ -160,7 +160,7 @@ class LagrangeImpl:
         new_msg = await to_lagrange_msg(
             msg=data.message,
             lgrc=self.lag.client,
-            target=(TargetInfo(target="group", id=data.group_id)),
+            target=TargetInfo(target="group", id=data.group_id),
         )
         if len(new_msg) == 1 and isinstance(new_msg[0], MulitMsg):
             seq = await self.lag.client.send_grp_forward_msg(new_msg[0], data.group_id)  # type: ignore

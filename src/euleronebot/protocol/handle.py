@@ -181,7 +181,7 @@ class LagrangeEventHandler:
                 level="" if not guser_info.level else str(guser_info.level.num),
                 nickname=user_info.name,
                 role=role,
-                sex="unknown",
+                sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",  # type: ignore
                 title="",
                 user_id=event.uin,
             ),

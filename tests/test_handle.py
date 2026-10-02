@@ -170,6 +170,7 @@ def test_group_message_handler_emits_rich_event_and_persists_raw_message(tmp_pat
             assert emitted["sender"]["card"] == "Card"
             assert emitted["sender"]["level"] == "7"
             assert emitted["sender"]["role"] == "owner"
+            assert emitted["sender"]["sex"] == "female"
             assert emitted["sender"]["area"] == "CN SH City"
 
             stored = await im.info_mgr.msgid_mgr.fetch(emitted["message_id"])
