@@ -285,6 +285,8 @@ class LagrangeEventHandler:
 
     @on(GroupMemberJoined)
     async def grp_join_handler(self, _client: Client, event: GroupMemberJoined) -> None:
+        if event.join_type:
+            return
         logger.info(f"[Group] {event.grp_id}: member {event.uid} has joined")
         try:
             uin = await info_mgr.uid_mgr.from_uid(event.uid)
