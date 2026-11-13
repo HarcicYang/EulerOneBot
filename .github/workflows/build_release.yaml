@@ -54,7 +54,7 @@ jobs:
 
           - platform: macos
             arch: arm64
-            runner: macos-14
+            runner: macos-15
             output_dir: dist/nuitka/macos-arm64
 
           - platform: windows
