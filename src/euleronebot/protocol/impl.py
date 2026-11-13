@@ -489,13 +489,20 @@ class LagrangeImpl:
             )
         return GetGroupMemberListResponse(status="ok", retcode=0, data=GetGroupMemberListRsp.model_validate(result))
 
-    @on(GroupReaction)
-    async def group_reaction(self, data: GroupReactionData) -> GroupReactionResponse:
+    async def _group_reaction(self, data: GroupReactionData) -> GroupReactionResponse:
         msg_info = await info_mgr.msgid_mgr.fetch(data.message_id or 0)
         await self.lag.client.send_grp_reaction(
             grp_id=data.group_id, msg_seq=msg_info.seq, content=data.emoji or data.code or 0, is_cancel=not data.is_add
         )
         return GroupReactionResponse(status="ok", retcode=0, data=EmptyRsp())
+
+    @on(GroupReaction)
+    async def group_reaction(self, data: GroupReactionData) -> GroupReactionResponse:
+        return await self._group_reaction(data)
+
+    @on(SetGroupReaction)
+    async def set_group_reaction(self, data: GroupReactionData) -> GroupReactionResponse:
+        return await self._group_reaction(data)
 
     @on(SetGroupSpecialTitle)
     async def set_group_special_title(self, data: SetGroupSpecialTitleData) -> SetGroupSpecialTitleResponse:
