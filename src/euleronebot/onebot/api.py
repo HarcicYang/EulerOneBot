@@ -87,7 +87,7 @@ __all__ = [
 
 class BaseAPICall(BaseModel, Generic[DataType]):
     action: str
-    params: DataType
+    params: DataType = Field(default_factory=dict, validate_default=True)
     echo: Any = Field(default=None)
 
 
