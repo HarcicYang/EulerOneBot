@@ -73,7 +73,7 @@ class MsgIDPool:
     def _gen_id(info: MsgInfo) -> int:
         key = f"{info.scene_type}_{info.scene_id}_{info.seq}".encode()
         x = hashlib.sha1(key).digest()
-        return int.from_bytes(x[-4:], "big", signed=False)
+        return int.from_bytes(x[-4:], "big", signed=True)
 
     async def add(self, info: MsgInfo) -> int:
         nid = self._gen_id(info)
