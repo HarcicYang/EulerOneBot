@@ -411,6 +411,8 @@ class LagrangeEventHandler:
             notice_type=self.protocol.cfg.event_compatibility.reaction_event_type,
             message_id=msgid,
             operator_id=uin,
+            group_id=event.grp_id,
+            user_id=uin,
             sub_type="add" if event.is_increase else "remove",
             code=event.emoji_id,
             count=event.emoji_count,
