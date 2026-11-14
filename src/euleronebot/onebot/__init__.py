@@ -67,6 +67,8 @@ API_CALL_TYPES = (
     GetForwardMessage,
     SendLike,
     SendPoke,
+    SendGroupForwardMessage,
+    SendPrivateForwardMessage,
     SetGroupKick,
     SetGroupBan,
     SetGroupWholeBan,
