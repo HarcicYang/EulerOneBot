@@ -191,6 +191,14 @@ class LagrangeImpl:
         )
         return SendMessageResponse(status="ok", retcode=0, data=SendMsgRsp(message_id=msgid))
 
+    @on(SendPrivateForwardMessage)
+    async def send_private_forward_message(self, data: SendPrivateMsgData) -> SendMessageResponse:
+        return await self.send_private_message(data)
+
+    @on(SendGroupForwardMessage)
+    async def send_group_forward_message(self, data: SendGroupMsgData) -> SendMessageResponse:
+        return await self.send_group_message(data)
+
     @on(DeleteMessage)
     async def delete_message(self, data: DeleteMsgData) -> DeleteMessageResponse:
         msgid = data.message_id

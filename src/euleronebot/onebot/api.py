@@ -47,6 +47,7 @@ __all__ = [
     "GetVersionInfoResponse",
     "GroupReaction",
     "GroupReactionResponse",
+    "SendGroupForwardMessage",
     "SendGroupMessage",
     "SendGroupMsgData",
     "SendLike",
@@ -55,6 +56,7 @@ __all__ = [
     "SendMessageResponse",
     "SendPoke",
     "SendPokeResponse",
+    "SendPrivateForwardMessage",
     "SendPrivateMessage",
     "SendPrivateMsgData",
     "SetFriendAddRequest",
@@ -117,6 +119,14 @@ class SendMessage(BaseAPICall[SendMsgData]):
 
 
 class SendMessageResponse(BaseAPIResponse[SendMsgRsp]): ...
+
+
+class SendPrivateForwardMessage(BaseAPICall[SendPrivateMsgData]):
+    action: Literal["send_private_forward_msg"] = "send_private_forward_msg"
+
+
+class SendGroupForwardMessage(BaseAPICall[SendGroupMsgData]):
+    action: Literal["send_group_forward_msg"] = "send_group_forward_msg"
 
 
 class DeleteMessage(BaseAPICall[DeleteMsgData]):
