@@ -131,6 +131,8 @@ def test_notice_events_validate_representative_payloads_and_reaction_alias():
         notice_type="group_msg_emoji_like",
         message_id=3,
         operator_id=4,
+        user_id=5,
+        group_id=6,
         sub_type="add",
         code=1,
         count=2,
