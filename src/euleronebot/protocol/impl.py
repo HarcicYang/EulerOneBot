@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import io
 import os
@@ -483,7 +484,7 @@ class LagrangeImpl:
     @on(GetGroupMemberList)
     async def get_group_member_list(self, data: GetGroupMemberListData) -> GetGroupMemberListResponse:
         members = await self.lag.client.get_grp_members(grp_id=data.group_id)
-        result = []
+        tasks: list[asyncio.Task[GetGroupMemberInfoResponse]] = []
         for i in members.body:
             if not i.account.uin:
                 try:
@@ -492,10 +493,15 @@ class LagrangeImpl:
                     continue
             else:
                 uin = i.account.uin
-            result.append(
-                (await self.get_group_member_info(GetGroupMemberInfoData(group_id=data.group_id, user_id=uin))).data
+            tasks.append(
+                asyncio.create_task(
+                    self.get_group_member_info(GetGroupMemberInfoData(group_id=data.group_id, user_id=uin))
+                )
             )
-        return GetGroupMemberListResponse(status="ok", retcode=0, data=GetGroupMemberListRsp.model_validate(result))
+        await asyncio.gather(*tasks)
+        return GetGroupMemberListResponse(
+            status="ok", retcode=0, data=GetGroupMemberListRsp.model_validate([x.result().data for x in tasks])
+        )
 
     async def _group_reaction(self, data: GroupReactionData) -> GroupReactionResponse:
         msg_info = await info_mgr.msgid_mgr.fetch(data.message_id or 0)
