@@ -34,7 +34,7 @@ hook 方案的 OneBot 实现的用户。
 
 - Python >= 3.11
 - [Hiro QQ](https://github.com/Harcic/hiro-qq) [^1]
-- 兼容 Lagrange V2 的签名服务（见[签名服务](#签名服务)，Lagrange 说明见 [SignApiGuide](https://github.com/LagrangeDev/SignApiGuide)）
+- 与所选协议匹配的签名服务（PC 和安卓的接口不一样，见[签名服务](#签名服务)，Lagrange 说明见 [SignApiGuide](https://github.com/LagrangeDev/SignApiGuide)）
 
 ## 安装与使用
 
@@ -88,12 +88,32 @@ euler-onebot-<版本号>.exe     # Windows
   },
   "connections": [
     {
+      "type": "HTTP",
+      "url": "http://127.0.0.1:3000"
+    },
+    {
+      "type": "HTTPPost",
+      "url": "http://127.0.0.1:8080/onebot",
+      "timeout": 5,
+      "secret": ""
+    },
+    {
       "type": "ForwardWebSocket",
       "url": "ws://127.0.0.1:5004"
+    },
+    {
+      "type": "ReverseWebSocket",
+      "url": "ws://127.0.0.1:8080",
+      "api_url": "",
+      "event_url": "",
+      "use_universal_client": false,
+      "reconnect_interval": 3000
     }
   ],
   "login": {
     "uin": 0,
+    "protocol": "linux",
+    "fetch_appinfo": false,
     "signer_url": "https://sign.lagrangecore.org",
     "signer_token": "",
     "use_custom": false,
@@ -111,6 +131,7 @@ euler-onebot-<版本号>.exe     # Windows
   }
 }
 ```
+示例里把四种连接类型都写了一遍，实际只保留自己要用的那条，其余删掉即可，`connections` 数组里可以同时存在多条。
 
 仓库附有 `appconfig.schema.json`（由 `BotConfig` 模型自动生成，可通过 `python scripts/gen_schema.py` 重新生成）。
 保留配置开头的 `$schema` 字段后，VS Code / IDEA 等编辑器即可获得自动补全与校验。
@@ -118,12 +139,15 @@ euler-onebot-<版本号>.exe     # Windows
 
 | 字段                   | 说明                                                                           |
 |------------------------|--------------------------------------------------------------------------------|
+| `$schema`              | schema 文件路径，只给编辑器做补全和校验用，程序解析时会忽略                    |
 | `log_level`            | 日志级别：`TRACE` / `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL`        |
 | `log_nf`               | 是否为日志输出启用 NerdFont                                                    |
 | `access_token`         | 鉴权 Token，配置后 HTTP / 正向 WebSocket / 反向 WebSocket 需携带（空为不鉴权） |
 | `event_compatibility.reaction_event_type` | reaction 事件下发类型，可选 `reaction` 或 `group_msg_emoji_like` |
 | `connections`          | 通信连接列表（见下方连接类型）                                                 |
 | `login.uin`            | QQ 账号（不要真的写0哦）                                                       |
+| `login.protocol`       | 协议类型：`linux` / `macos` / `windows` / `android_phone` / `android_pad`      |
+| `login.fetch_appinfo`  | 是否在启动时从签名服务器获取协议参数，默认 `false`                             |
 | `login.signer_url`     | 签名服务地址（见[签名服务](#签名服务)）                                         |
 | `login.signer_token`   | 签名服务 access token                                                          |
 | `login.use_custom`     | 是否加载自定义协议参数；设为 `true` 后读取 `appinfo_path` 指定的 JSON 文件     |
@@ -139,6 +163,34 @@ euler-onebot-<版本号>.exe     # Windows
 
 `event_compatibility.reaction_event_type` 默认值为 `reaction`。设置为 `group_msg_emoji_like` 后，群表情回应事件的
 `notice_type` 会使用该兼容名称，其余字段保持不变。
+
+### 协议类型
+
+`login.protocol` 决定用哪套客户端参数登录，目前内置这几套：
+
+| 取值            | 说明                    |
+|-----------------|-------------------------|
+| `linux`         | 默认，PC 端 Linux QQ    |
+| `windows`       | PC 端 Windows QQ        |
+| `macos`         | PC 端 macOS QQ          |
+| `android_phone` | 安卓手机 QQ 9.1.60      |
+| `android_pad`   | 安卓平板 QQ 9.3.70      |
+
+前三个用的是一类 PC 参数，后两个是这次补上的安卓实现，参数和封包细节参照 Lagrange V2：
+
+- 每个 SSO 包的保留头都会带上 `MsgType = 32` 和 `NtCoreVersion = 100`；
+- 拉用户资料时，用 uin 查的 `0xFE1_2` 单独放行，`MsgType` 置 0；用 uid 查的 `0xFE1_8` 仍然是 32；
+- 文件相关的 OIDB（`0xE37_1700`、`0x6D9_4`）把保留字段填 1。
+
+切协议不用改代码，改配置就行。不过有两件事得先想清楚：安卓协议必须搭配支持安卓接口的签名服务；登录走的还是通用 NT 登录流程，风控表现和 PC 端不一定一样，建议先拿小号试。
+
+### 从签名服务器获取 appinfo
+
+`login.fetch_appinfo` 是这次新加的开关，默认关着。打开以后，启动时会先向签名服务要一份 appinfo，拿到就直接用，拿不到就退回内置参数，不会因此登不上。
+
+地址是在签名地址后面接 `/appinfo_v2`：PC 协议是 `{signer_url}/api/sign/sec-sign/appinfo_v2`，安卓协议是 `{signer_url}/api/sign/appinfo_v2`。返回结构和 Lagrange V2 一样，读 `data` 或 `value` 里的 `os`、`kernel`、`vendor_os`、`qua`、`current_version`、`pt_version`、`sso_version`、`package_name`、`app_id`、`sub_app_id`、`app_client_version`，以及 `sdk_info` 里的 `sdk_version`、`misc_bit_map`、`sub_sig_map`、`main_sig_map`。
+
+开关打开之后，`login.protocol` 只剩两个作用：决定签名接口走哪一套，以及拉取失败时用哪套内置参数兜底。版本号、qua 这些以签名服务返回的为准。签名服务不提供这个接口的话，保持关闭就行。
 
 ### 签名服务
 
@@ -161,9 +213,11 @@ euler-onebot-<版本号>.exe     # Windows
 
 若需要接入其它签名服务，把 `signer_url` 与 `signer_token` 换成对应服务提供的信息即可。
 
+选了 `android_phone` 或 `android_pad` 之后，请求会发到 `{signer_url}/api/sign`，请求体是 `uin`、`cmd`、`seq`、`buffer`、`guid`、`version`、`qua`，返回里从 `data.sign`、`data.token`、`data.extra` 读签名。PC 端还是原来的 `{signer_url}/api/sign/sec-sign`。如果签名服务只支持 PC 那套规范，切到安卓协议会直接卡在签名失败，这一点在换协议前先确认好。
+
 ### 自定义 appinfo.json
 
-`appinfo.json` 是可选文件。不使用自定义协议时，无需创建它，保持 `login.use_custom` 为 `false` 即可继续使用内置 Linux 参数。
+`appinfo.json` 是可选文件。不用自定义协议时，不需要创建它，保持 `login.use_custom` 为 `false`，程序会用 `login.protocol` 指定的内置参数。
 
 如需使用自定义协议，请将下面的示例保存为本地 `appinfo.json`（或替换为目标客户端对应的参数），再在 `appconfig.json` 的
 `login` 中启用自定义协议并填写该文件路径：
@@ -235,6 +289,7 @@ def sign_provider(sign_url, uin, guid, qua):
 - 返回值需要 `sign` / `token` / `extra` 三个十六进制串，返回空 dict 表示这个包不签名。
 - 算法里如果用到 nonce，它是与 `time(NULL)` 绑定的：必须自己取当前 Unix 秒，不能缓存。
 - `sign_provider_entry` 填文件中定义的方法名，可以同时放多个实现按需切换。
+- 这个工厂拿不到协议名，只有 `qua`。要在里面区分 PC 和安卓，按 `qua` 是不是 `V1_AND_` 开头判断就行。
 
 仓库根目录已经放了一份可直接改的单文件实现（移植自 ntqq-pure-sign 的纯 Python 版），把它当起点即可。
 
