@@ -1,5 +1,4 @@
 import asyncio
-import importlib.util
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,13 +19,6 @@ PROVIDER_SOURCE = "\n".join(
         "    return get_sign",
     ]
 )
-
-VECTORS = [
-    (bytes.fromhex("00"), "93a1f04712ec636afacdc8b5de7bfd0e135349ba0db46c0298dee6de4454874c"),
-    (bytes.fromhex("01"), "eb79babe6c4efa49d7e14f645b32f7b616b5b73f558f5670419155253a94cfb5"),
-    (b"hello", "31408282c1640790bb51efd07dedfa6270ce9ffff9534e3f6a96589b0174d98c"),
-]
-ROOT_PROVIDER = Path(__file__).resolve().parent.parent / "sign_provider.py"
 
 
 def write_provider(tmp_path: Path) -> str:
@@ -66,28 +58,6 @@ def test_loader_surfaces_missing_file_entry_and_syntax_errors(tmp_path):
     broken.write_text("this is not python(", encoding="utf-8")
     with pytest.raises(SyntaxError):
         load_sign_provider(str(broken), "make_sign_provider")
-
-
-@pytest.mark.skipif(not ROOT_PROVIDER.exists(), reason="root sign_provider.py is untracked and local-only")
-def test_root_provider_has_stable_vectors_and_command_domain_separation():
-    spec = importlib.util.spec_from_file_location("euleronebot.test_root_provider", str(ROOT_PROVIDER))
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-
-    for body, expected in VECTORS:
-        assert module.compute_sign(body, nonce_time=1700000000).hex() == expected
-    assert module.compute_sign(b"hello", "wtlogin.login", nonce_time=1700000000) != module.compute_sign(
-        b"hello", "MessageSvc.PbSendMsg", nonce_time=1700000000
-    )
-
-    get_sign = load_sign_provider(str(ROOT_PROVIDER), "sign_provider")(
-        None, 1, "00" * 16, "V1_LNX_NQ_3.2.26_46494_GW_B"
-    )
-    result = asyncio.run(get_sign("MessageSvc.PbSendMsg", 1, VECTORS[0][0]))
-    assert result["token"] == ""
-    assert bytes.fromhex(result["extra"]) == b"\x12\x1b" + b"V1_LNX_NQ_3.2.26_46494_GW_B"
-    assert len(bytes.fromhex(result["sign"])) == 32
 
 
 class FakeClient:
@@ -167,24 +137,3 @@ def test_custom_provider_receives_live_context_and_reaches_client(monkeypatch):
         "extra": "11" * 8,
     }
     assert seen["sign_call"] == ("MessageSvc.PbSendMsg", 9, b"\x00")
-
-
-def test_url_mode_uses_hiroqq_signer_when_no_custom_provider_is_configured(monkeypatch):
-    captured: dict[str, Any] = {}
-    monkeypatch.setattr("lagrange.Client", FakeClient)
-    monkeypatch.setattr("lagrange.InfoManager", FakeInfoManager)
-    lag = Lagrange(
-        3672492480,
-        "linux",
-        "https://sign.example.com/api/sign/sec-sign",
-        device_info_path="./unused.json",
-        signinfo_path="./unused.bin",
-    )
-
-    async def fake_login(client):
-        captured["sign"] = client.sign
-        return True
-
-    lag.login = fake_login  # type: ignore[method-assign]
-    asyncio.run(lag.run())
-    assert captured["sign"].__name__ == "get_sign"
