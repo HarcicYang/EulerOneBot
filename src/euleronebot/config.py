@@ -56,6 +56,8 @@ class EventCompatibilityConfig(BaseModel):
 
 class LoginConfig(BaseModel):
     uin: int = 0
+    protocol: Literal["linux", "macos", "windows", "android_phone", "android_pad"] = "linux"
+    fetch_appinfo: bool = False
     signer_url: str = "https://"
     signer_token: str = ""
     use_custom: bool = False
