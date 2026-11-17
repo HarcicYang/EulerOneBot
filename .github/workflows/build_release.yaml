@@ -112,8 +112,6 @@ jobs:
 
       - name: Compile with Nuitka
         shell: bash
-        env:
-          PYTHONPATH: ${{ github.workspace }}/patches
         run: |
           uv sync --frozen --no-default-groups --group build
 
