@@ -213,7 +213,9 @@ euler-onebot-<版本号>.exe     # Windows
 
 若需要接入其它签名服务，把 `signer_url` 与 `signer_token` 换成对应服务提供的信息即可。
 
-选了 `android_phone` 或 `android_pad` 之后，请求会发到 `{signer_url}/api/sign`，请求体是 `uin`、`cmd`、`seq`、`buffer`、`guid`、`version`、`qua`，返回里从 `data.sign`、`data.token`、`data.extra` 读签名。PC 端还是原来的 `{signer_url}/api/sign/sec-sign`。如果签名服务只支持 PC 那套规范，切到安卓协议会直接卡在签名失败，这一点在换协议前先确认好。
+选了 `android_phone` 或 `android_pad` 之后，登录走的是 OICQ `0x810_9` 那套包，和 PC 的 NT 登录不是一条路。签名请求会发到 `{signer_url}/api/sign`，请求体是 `uin`、`cmd`、`seq`、`buffer`、`guid`、`version`、`qua`，返回里从 `data.sign`、`data.token`、`data.extra` 读签名。除此之外还会请求两个安卓专用接口：`/energy` 拿 TLV 544，`/get_tlv553` 拿 TLV 553。PC 端还是原来的 `{signer_url}/api/sign/sec-sign`。
+
+签名服务必须同时支持这三个接口，缺一个都可能登录失败；只支持 PC 那套规范的服务切到安卓协议会直接卡在签名失败。另外安卓协议不支持扫码登录，只能用密码登录。
 
 ### 自定义 appinfo.json
 
