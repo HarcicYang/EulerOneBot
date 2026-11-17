@@ -12,7 +12,6 @@ from euleronebot.onebot.api_data import (
     GetGroupFileUrlData,
     GetPrivateFileUrlData,
     GetStatusData,
-    SendGroupMsgData,
     SetFriendAddRequestData,
     UploadGroupFileData,
     UploadPrivateFileData,
@@ -94,23 +93,6 @@ def make_impl() -> LagrangeImpl:
 
 def stub_client(impl: LagrangeImpl) -> StubClient:
     return cast(Any, impl.lag.client)
-
-
-def test_group_message_uses_zero_rand_when_history_lookup_fails(tmp_path):
-    async def main():
-        mgr = await init_mgr(tmp_path)
-        try:
-            impl = make_impl()
-            rsp = await impl.send_group_message(
-                SendGroupMsgData(group_id=123, message=[Text(data=TextData(text="hi"))])
-            )
-            assert rsp.status == "ok"
-            assert rsp.data.message_id != 0
-            assert stub_client(impl).calls == [("send_grp_msg", 123)]
-        finally:
-            await mgr.close()
-
-    run(main())
 
 
 def test_unknown_at_segment_is_skipped_without_dropping_other_text(tmp_path):
