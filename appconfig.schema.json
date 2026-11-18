@@ -101,6 +101,23 @@
           "title": "Uin",
           "type": "integer"
         },
+        "protocol": {
+          "default": "linux",
+          "enum": [
+            "linux",
+            "macos",
+            "windows",
+            "android_phone",
+            "android_pad"
+          ],
+          "title": "Protocol",
+          "type": "string"
+        },
+        "fetch_appinfo": {
+          "default": false,
+          "title": "Fetch Appinfo",
+          "type": "boolean"
+        },
         "signer_url": {
           "default": "https://",
           "title": "Signer Url",
@@ -257,6 +274,8 @@
       "$ref": "#/$defs/LoginConfig",
       "default": {
         "uin": 0,
+        "protocol": "linux",
+        "fetch_appinfo": false,
         "signer_url": "https://",
         "signer_token": "",
         "use_custom": false,

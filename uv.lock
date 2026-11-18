@@ -315,7 +315,7 @@ wheels = [
 [[package]]
 name = "hiro-qq"
 version = "0.1.9"
-source = { git = "https://github.com/HarcicYang/hiro-qq.git#ef0d596454829edd192752bea04b5147ae93ca51" }
+source = { git = "https://github.com/HarcicYang/hiro-qq.git#4327572afb0bdfa8bc906e1d43517dec1d9e2c46" }
 dependencies = [
     { name = "cryptography" },
     { name = "qrcode" },
