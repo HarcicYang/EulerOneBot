@@ -44,15 +44,18 @@ class LagrangeProtocol:
         return load_sign_provider(self.cfg.login.sign_provider_path, self.cfg.login.sign_provider_entry)
 
     def _build_lagrange(self) -> Lagrange:
+        protocol = "custom" if self.cfg.login.use_custom else self.cfg.login.protocol
+        sign_path = "/api/sign" if protocol.startswith("android") else "/api/sign/sec-sign"
         return Lagrange(
             self.cfg.login.uin,
-            "custom" if self.cfg.login.use_custom else "linux",
-            (self.cfg.login.signer_url + "/api/sign/sec-sign")
+            protocol,
+            (self.cfg.login.signer_url + sign_path)
             .replace("https://", f"https://{self.cfg.login.signer_token}@")
             .replace("http://", f"http://{self.cfg.login.signer_token}@"),
             custom_protocol_path=self.cfg.login.appinfo_path,
             use_ipv6=self.cfg.login.use_ipv6,
             use_optimum=self.cfg.login.use_optimum,
+            fetch_appinfo=self.cfg.login.fetch_appinfo,
             # hiro-qq's annotation for this parameter is shifted by one; the
             # real call is (sign_url, uin, guid, qua).
             custom_sign_provider=cast("Any", self._sign_provider),
