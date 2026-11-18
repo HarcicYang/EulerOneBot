@@ -1,0 +1,98 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check version
+        if: github.event_name == 'release'
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          test "$(uv version --short)" = "${TAG_NAME#v}"
+
+      - name: Prepare PyPI source
+        run: |
+          set -euo pipefail
+          dest="$RUNNER_TEMP/euler-pypi"
+          mkdir -p "$dest"
+          git archive HEAD | tar -x -C "$dest"
+          python scripts/prepare_pypi_source.py "$dest"
+
+      - name: Build distributions
+        run: uv build --project "$RUNNER_TEMP/euler-pypi" --out-dir dist
+
+      - name: Validate PyPI metadata
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import tarfile
+          import zipfile
+
+          distributions = Path("dist")
+          wheels = list(distributions.glob("*.whl"))
+          sdists = list(distributions.glob("*.tar.gz"))
+          assert len(wheels) == 1, wheels
+          assert len(sdists) == 1, sdists
+
+          with zipfile.ZipFile(wheels[0]) as wheel:
+              metadata_path = next(name for name in wheel.namelist() if name.endswith(".dist-info/METADATA"))
+              wheel_metadata = wheel.read(metadata_path).decode()
+
+          with tarfile.open(sdists[0], "r:gz") as sdist:
+              metadata_member = next(member for member in sdist.getmembers() if member.name.endswith("/PKG-INFO"))
+              extracted = sdist.extractfile(metadata_member)
+              assert extracted is not None
+              sdist_metadata = extracted.read().decode()
+
+          expected = "Requires-Dist: hiro-qq<0.3.0,>=0.2.0"
+          for kind, metadata in (("wheel", wheel_metadata), ("sdist", sdist_metadata)):
+              assert "git+https://" not in metadata, f"{kind} contains a direct git URL"
+              assert expected in metadata, f"{kind} does not require the released hiro-qq version"
+              print(f"{kind} metadata is PyPI-compatible")
+          PY
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-distributions
+          path: dist/*
+
+  publish:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: dist
+
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
