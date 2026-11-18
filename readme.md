@@ -63,14 +63,16 @@ euler-onebot-<版本号>.exe     # Windows
 
    ```shell
    uv sync
-   uv run main.py
+   uv run euler.onebot
    ```
 
-   若您不希望使用 uv：
+   若您不希望使用 uv，也可以安装后通过命令行入口或 Python 模块运行：
 
    ```shell
    pip install .
-   python main.py
+   euler.onebot
+   # 或
+   python -m euleronebot
    ```
 
 ## 配置文件

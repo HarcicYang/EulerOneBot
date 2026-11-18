@@ -1,22 +1,5 @@
 #!/usr/bin/env python3
-import asyncio
-
-from euleronebot import Adapter, LagrangeProtocol, setup
-
-
-def main() -> int:
-    try:
-        logger, cfg = setup()
-    except FileNotFoundError as exc:
-        print(exc)
-        return 0
-
-    logger.info("Euler OneBot")
-    adapter = Adapter(impls=cfg.connections, access_token=cfg.access_token)
-    protocol = LagrangeProtocol(cfg, adapter)
-    asyncio.run(protocol.run())
-    return 0
-
+from euleronebot.cli import main
 
 if __name__ == "__main__":
     raise SystemExit(main())
