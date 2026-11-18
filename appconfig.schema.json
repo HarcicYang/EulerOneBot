@@ -274,6 +274,8 @@
       "$ref": "#/$defs/LoginConfig",
       "default": {
         "uin": 0,
+        "protocol": "linux",
+        "fetch_appinfo": false,
         "signer_url": "https://",
         "signer_token": "",
         "use_custom": false,
