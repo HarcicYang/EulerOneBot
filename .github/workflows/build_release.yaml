@@ -139,6 +139,7 @@ jobs:
 
 
       - name: Locate release to attach to
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         id: release
         shell: bash
         env:
@@ -196,7 +197,7 @@ jobs:
 
 
       - name: Attach assets to release
-        if: steps.release.outputs.release_found == 'true'
+        if: (github.event_name == 'release' || github.event_name == 'workflow_dispatch') && steps.release.outputs.release_found == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
