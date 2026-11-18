@@ -153,10 +153,10 @@ jobs:
           FAIL_IF_NONE="${{ inputs.fail_if_no_release || 'false' }}"
           MATCH_VERSION="${{ inputs.match_version || 'true' }}"
 
-          RELEASE_ID=""
+          RELEASE_TAG=""
 
           if [ "$EVENT" = "release" ]; then
-            RELEASE_ID="${{ github.event.release.id }}"
+            RELEASE_TAG="${{ github.event.release.tag_name }}"
           else
             while read -r TAG DRAFT NAME; do
 
@@ -166,8 +166,8 @@ jobs:
                 fi
               fi
 
-              RELEASE_ID="$(gh release view "$TAG" --json id --jq .id)"
-              echo "Attaching to release: $TAG (id=$RELEASE_ID)"
+              RELEASE_TAG="$TAG"
+              echo "Attaching to release: $TAG"
               break
 
             done < <(
@@ -179,7 +179,7 @@ jobs:
           fi
 
 
-          if [ -z "$RELEASE_ID" ]; then
+          if [ -z "$RELEASE_TAG" ]; then
             echo "No matching release found"
 
             if [ "$FAIL_IF_NONE" = "true" ]; then
@@ -191,7 +191,7 @@ jobs:
           else
 
             echo "release_found=true" >> "$GITHUB_OUTPUT"
-            echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
+            echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
           fi
 
@@ -204,7 +204,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          RELEASE_ID="${{ steps.release.outputs.release_id }}"
+          RELEASE_TAG="${{ steps.release.outputs.release_tag }}"
 
           cd "${{ matrix.output_dir }}"
 
@@ -215,7 +215,7 @@ jobs:
             echo "Uploading $ASSET"
 
             gh release upload \
-              "$RELEASE_ID" \
+              "$RELEASE_TAG" \
               "$ASSET" \
               --clobber
 
