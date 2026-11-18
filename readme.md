@@ -44,8 +44,8 @@ hook 方案的 OneBot 实现的用户。
 `-linux-x64` / `-linux-arm64` / `-macos-arm64` / `-windows-x64` / `-windows-arm64`）并解压，随后运行：
 
 ```shell
-./euler-onebot-<版本号>       # Linux / macOS（macOS 提供普通命令行程序）
-euler-onebot-<版本号>.exe     # Windows
+./euler-onebot-v<版本号>-<平台>-<架构>       # Linux / macOS
+euler-onebot-v<版本号>-<平台>-<架构>.exe     # Windows
 ```
 
 首次启动会在可执行文件旁自动生成 `appconfig.json` 配置模板并显示提示，填写后重启即可。源码运行时配置仍在当前目录生成。
