@@ -123,7 +123,7 @@ jobs:
 
           uv run --no-sync python -m nuitka main.py \
             --onefile \
-            --output-filename="euler-onebot-$VERSION" \
+            --output-filename="euler-onebot-v$VERSION-${{ matrix.platform }}-${{ matrix.arch }}" \
             --output-dir="${{ matrix.output_dir }}" \
             --assume-yes-for-downloads \
             --disable-ccache \
