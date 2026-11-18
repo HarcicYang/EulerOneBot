@@ -25,6 +25,9 @@ dependencies = [
     "aiosqlite",
 ]
 
+[project.scripts]
+"euler.onebot" = "euleronebot.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["euleronebot*"]
