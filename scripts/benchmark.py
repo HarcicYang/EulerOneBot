@@ -10,12 +10,19 @@
   6. WebSocket —— 正向 WS 请求-响应流水线与事件推送
 
 lagrange 客户端使用 Stub 替换,不需要真实 QQ 登录,被测代码路径与线上一致。
-用法:uv run python scripts/benchmark.py
+可用 --rtt-ms 为每次模拟 QQ 协议交互增加固定 RTT,更接近真实收发延迟。
+
+用法:
+    uv run python scripts/benchmark.py
+    uv run python scripts/benchmark.py --rtt-ms 20
+    uv run python scripts/benchmark.py --only 4 --rtt-ms 20
 """
 
+import argparse
 import asyncio
 import faulthandler
 import json
+import logging
 import math
 import os
 import platform
@@ -33,7 +40,7 @@ import websockets
 from lagrange.client.message import elems
 from pydantic import TypeAdapter
 
-from euleronebot.config import ForwardWebsocketConfig, HTTPConfig
+from euleronebot.config import BotConfig, ForwardWebsocketConfig, HTTPConfig
 from euleronebot.hyperogger import Logger
 from euleronebot.onebot import API_CALL_TYPES, Adapter
 from euleronebot.onebot import events as onebot_events
@@ -58,6 +65,15 @@ from euleronebot.utils import infomgr as im
 from euleronebot.utils.transformer import to_lagrange_msg, to_onebot_msg
 
 # ---------------------------------------------------------------- 统计工具
+
+API_WORKERS = BotConfig().api_workers
+STUB_RTT_SECONDS = 0.0
+WORKER_SWEEP = (1, 2, 4, 8, 16)
+
+
+async def stub_rtt() -> None:
+    if STUB_RTT_SECONDS > 0:
+        await asyncio.sleep(STUB_RTT_SECONDS)
 
 
 def pct(sorted_xs: list[float], p: float) -> float:
@@ -122,6 +138,20 @@ def section(title: str) -> None:
     print(f"\n{'=' * 78}\n{title}\n{'=' * 78}")
 
 
+def quiet_library_logs() -> None:
+    for name in ("httpx", "uvicorn.error", "uvicorn.access"):
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
+async def stop_servers(adapter: Adapter) -> None:
+    for server in adapter.connector._servers:
+        server.should_exit = True
+    task = adapter._connector_task
+    if task is not None and not task.done():
+        with suppress(Exception):
+            await asyncio.wait_for(task, timeout=5)
+
+
 # ---------------------------------------------------------------- Stub lagrange 客户端
 
 
@@ -138,25 +168,31 @@ class StubClient:
 
     # 发消息
     async def send_grp_msg(self, grp_id: int, msg_chain: Any) -> int:
+        await stub_rtt()
         return self._next()
 
     async def send_friend_msg(self, uid: str, msg_chain: Any) -> int:
+        await stub_rtt()
         return self._next()
 
     async def send_grp_forward_msg(self, msg: Any, grp_id: int) -> int:
+        await stub_rtt()
         return self._next()
 
     async def send_friend_forward_msg(self, msg: Any, uid: str) -> int:
+        await stub_rtt()
         return self._next()
 
     # 查消息
     @staticmethod
     async def get_grp_msg(**kw: Any) -> list[Any]:
+        await stub_rtt()
         return [SimpleNamespace(rand=1)]
 
     # 用户信息
     @staticmethod
     async def get_user_info(_x: Any) -> Any:
+        await stub_rtt()
         return SimpleNamespace(
             name="stub",
             age=20,
@@ -169,18 +205,22 @@ class StubClient:
     # 上传素材(transformer 调用)
     @staticmethod
     async def upload_grp_image(grp_id: int, is_emoji: bool, image: Any) -> Any:
+        await stub_rtt()
         return SimpleNamespace(display="[图片]")
 
     @staticmethod
     async def upload_friend_image(uid: str, is_emoji: bool, image: Any) -> Any:
+        await stub_rtt()
         return SimpleNamespace(display="[图片]")
 
     @staticmethod
     async def upload_grp_audio(grp_id: int, voice: Any) -> Any:
+        await stub_rtt()
         return SimpleNamespace(display="[语音]")
 
     @staticmethod
     async def upload_friend_audio(uid: str, voice: Any) -> Any:
+        await stub_rtt()
         return SimpleNamespace(display="[语音]")
 
 
@@ -189,8 +229,9 @@ class StubLag:
         self.client = StubClient()
 
 
-def make_impl(adapter: Adapter) -> LagrangeImpl:
-    impl = LagrangeImpl(adapter, cast(Any, StubLag()), cast(Any, None))
+def make_impl(adapter: Adapter, api_workers: int | None = None) -> LagrangeImpl:
+    workers = API_WORKERS if api_workers is None else api_workers
+    impl = LagrangeImpl(adapter, cast(Any, StubLag()), cast(Any, None), api_workers=workers)
     impl.subscribe()
     return impl
 
@@ -336,7 +377,7 @@ async def section_transform() -> None:
     await bench("to_onebot_msg 纯文本链", 10000, onebot_text)
     await bench("to_onebot_msg 混合链(text/at/face/image/json)", 5000, onebot_mixed)
     await bench("to_onebot_msg 含引用段(带 DB 反查)", 5000, onebot_quote)
-    await bench("to_lagrange_msg 混合链(含 base64 图片上传)", 3000, lgr_mixed)
+    await bench("to_lagrange_msg 混合链(含 base64 图片上传)", 200, lgr_mixed)
 
 
 async def section_db() -> None:
@@ -389,9 +430,15 @@ async def section_dispatch() -> None:
         if not t.cancelled():
             print(f"!!! api_service 异常退出: {t.exception()!r}", flush=True)
 
-    async def queue_bench(name: str, n: int, factory: Callable[[int, str], Any], workers: int = 1) -> None:
+    async def queue_bench(
+        name: str,
+        n: int,
+        factory: Callable[[int, str], Any],
+        workers: int = 1,
+        api_workers: int | None = None,
+    ) -> None:
         adapter = Adapter(impls=[])
-        impl = make_impl(adapter)
+        impl = make_impl(adapter, api_workers)
         task = asyncio.create_task(impl.api_service())
         task.add_done_callback(_task_died)
         try:
@@ -408,10 +455,25 @@ async def section_dispatch() -> None:
             with suppress(asyncio.CancelledError):
                 await task
 
-    await queue_bench("队列分发 send_group_msg (含入库)", 3000, group_call)
-    await queue_bench("队列分发 send_private_msg (含 uid 反查)", 3000, private_call)
-    await queue_bench("队列分发 send_group_msg 并发 8", 5000, group_call, workers=8)
-    await queue_bench("队列分发 send_private_msg 并发 8", 5000, private_call, workers=8)
+    await queue_bench("队列分发 send_group_msg (含入库)", 100, group_call)
+    await queue_bench("队列分发 send_private_msg (含 uid 反查)", 100, private_call)
+    await queue_bench("队列分发 send_group_msg 并发 8", 500, group_call, workers=8)
+    await queue_bench("队列分发 send_private_msg 并发 8", 500, private_call, workers=8)
+    for api_workers in WORKER_SWEEP:
+        await queue_bench(
+            f"worker sweep send_group_msg (api={api_workers}, 在途 32)",
+            32,
+            group_call,
+            workers=32,
+            api_workers=api_workers,
+        )
+        await queue_bench(
+            f"worker sweep send_private_msg (api={api_workers}, 在途 32)",
+            32,
+            private_call,
+            workers=32,
+            api_workers=api_workers,
+        )
 
     # 日志开销对比(默认 INFO 下每次响应打印一行)
     adapter = Adapter(impls=[])
@@ -426,7 +488,7 @@ async def section_dispatch() -> None:
             await adapter.api_calls.put(group_call(i, echo))
             await fut
 
-        await bench("send_group_msg (INFO 日志,逐条打印)", 500, one_info)
+        await bench("send_group_msg (INFO 日志,逐条打印)", 100, one_info)
     finally:
         logger.set_level("WARNING")
         task.cancel()
@@ -454,7 +516,7 @@ async def section_dispatch() -> None:
             await adapter.connector.received.put(payload)
             await fut
 
-        await bench("完整 JSON 链路 send_group_msg (校验+分发+入库)", 3000, full)
+        await bench("完整 JSON 链路 send_group_msg (校验+分发+入库)", 200, full)
 
         async def unknown(i: int) -> None:
             echo = f"e{i}"
@@ -462,13 +524,18 @@ async def section_dispatch() -> None:
             await adapter.connector.received.put(json.dumps({"action": "no_such_action", "params": {}, "echo": echo}))
             await fut
 
-        await bench("未知 action 快速失败 (1404)", 3000, unknown)
+        logger.set_level("ERROR")
+        try:
+            await bench("未知 action 快速失败 (1404)", 500, unknown)
+        finally:
+            logger.set_level("WARNING")
     finally:
         service.cancel()
         cycle.cancel()
         with suppress(asyncio.CancelledError):
             await service
             await cycle
+        await adapter.close()
 
     # 事件触发吞吐(无连接,纯序列化+分发)
     adapter = Adapter(impls=[])
@@ -483,7 +550,7 @@ async def section_dispatch() -> None:
         async def trigger(i: int) -> None:
             await adapter.trigger(ev)
 
-        await bench("事件触发 trigger (序列化+传输) 无连接", 10000, trigger)
+        await bench("事件触发 trigger (序列化+传输) 无连接", 2000, trigger)
     finally:
         await adapter.close()
 
@@ -495,7 +562,6 @@ async def section_http() -> None:
     cycle = asyncio.create_task(adapter.cycle())
     impl = make_impl(adapter)
     service = asyncio.create_task(impl.api_service())
-    conn = asyncio.create_task(adapter.connector.run())
     for _ in range(400):
         if adapter.connector._servers and adapter.connector._servers[0].started:
             break
@@ -518,17 +584,16 @@ async def section_http() -> None:
                 rsp = await cli.post(f"{base}/no_such_action", json={})
                 assert rsp.status_code == 404
 
-            await bench("HTTP send_group_msg 串行 1 连接", 500, http_send, workers=1)
-            await bench("HTTP send_group_msg 并发 8 连接", 2000, http_send, workers=8)
-            await bench("HTTP 未知 action 并发 8 连接", 1000, http_unknown, workers=8)
+            await bench("HTTP send_group_msg 串行 1 连接", 50, http_send, workers=1)
+            await bench("HTTP send_group_msg 并发 8 连接", 300, http_send, workers=8)
+            await bench("HTTP 未知 action 并发 8 连接", 300, http_unknown, workers=8)
     finally:
         service.cancel()
+        await stop_servers(adapter)
         cycle.cancel()
-        conn.cancel()
         with suppress(asyncio.CancelledError):
             await service
             await cycle
-            await conn
         await adapter.close()
 
 
@@ -539,7 +604,6 @@ async def section_ws() -> None:
     cycle = asyncio.create_task(adapter.cycle())
     impl = make_impl(adapter)
     service = asyncio.create_task(impl.api_service())
-    conn = asyncio.create_task(adapter.connector.run())
     for _ in range(400):
         if adapter.connector._servers and adapter.connector._servers[0].started:
             break
@@ -551,7 +615,7 @@ async def section_ws() -> None:
         loop = asyncio.get_running_loop()
 
         # 请求-响应流水线:一次发完,逐个收
-        n = 1500
+        n = 500
         send_at: dict[str, float] = {}
         rtt: list[float] = []
         t0 = loop.time()
@@ -576,7 +640,7 @@ async def section_ws() -> None:
         print(f"    其中发送端耗时 {fmt_rt(send_wall)},服务端处理吞吐 {n / (wall / 1000):.0f} 请求/s")
 
         # 事件推送:服务端触发,客户端并行收取
-        n_ev = 1500
+        n_ev = 500
         ev = onebot_events.HeartbeatEvent(
             interval=15000,
             self_id=10001,
@@ -600,12 +664,11 @@ async def section_ws() -> None:
         print(f"  WS 事件推送(服务端 trigger -> 客户端收齐) {n_ev} 条,{fmt_rt(wall)},{n_ev / (wall / 1000):.0f} 条/s")
 
     service.cancel()
+    await stop_servers(adapter)
     cycle.cancel()
-    conn.cancel()
     with suppress(asyncio.CancelledError):
         await service
         await cycle
-        await conn
     await adapter.close()
 
 
@@ -673,9 +736,9 @@ class ResourceSampler:
 
 
 async def stack_dumper() -> None:
-    """每 10s 打印所有 asyncio 任务栈,用于定位卡死点。"""
+    """每 30s 打印所有 asyncio 任务栈,用于定位卡死点。"""
     while True:
-        await asyncio.sleep(10)
+        await asyncio.sleep(30)
         print("\n=== asyncio 任务栈 ===", flush=True)
         cur = asyncio.current_task()
         for t in asyncio.all_tasks():
@@ -701,7 +764,30 @@ def _guard_tmp_path(path: str, *, suffix: str) -> str:
     return ap
 
 
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Euler OneBot 性能基准")
+    parser.add_argument("--only", type=int, choices=range(1, 7), default=0, help="只运行指定区段 1-6")
+    parser.add_argument("--rtt-ms", type=float, default=0.0, help="每次模拟 QQ 协议交互的 RTT(毫秒)")
+    parser.add_argument(
+        "--api-workers",
+        type=int,
+        default=API_WORKERS,
+        help=f"API 分发 worker 数(默认 {API_WORKERS})",
+    )
+    args = parser.parse_args()
+    if args.rtt_ms < 0:
+        parser.error("--rtt-ms 必须大于等于 0")
+    if args.api_workers < 1:
+        parser.error("--api-workers 必须大于等于 1")
+    return args
+
+
 async def main() -> None:
+    global API_WORKERS, STUB_RTT_SECONDS
+    args = _parse_args()
+    API_WORKERS = args.api_workers
+    STUB_RTT_SECONDS = args.rtt_ms / 1000
+
     faulthandler.dump_traceback_later(60, repeat=True)  # 卡死时每 60s 打印所有协程栈
     print(f"Euler OneBot 性能基准  |  Python {sys.version.split()[0]}  |  {platform.platform()}", flush=True)
     try:
@@ -713,8 +799,10 @@ async def main() -> None:
     except OSError:
         pass
     print(f"CPU 核心数: {os.cpu_count()}")
+    print(f"API workers: {API_WORKERS}  |  模拟 QQ RTT: {args.rtt_ms:g}ms")
 
     Logger.create("euler", "WARNING", use_nf=False)  # 基准默认 WARNING,避免日志干扰
+    quiet_library_logs()
     tmpdir = tempfile.mkdtemp(prefix="eulerob_bench_")
     db_path = _guard_tmp_path(os.path.join(tmpdir, "bench.db"), suffix=".db")
     cache_path = _guard_tmp_path(os.path.join(tmpdir, "cache.json"), suffix=".json")
@@ -736,9 +824,6 @@ async def main() -> None:
     bounds: list[tuple[str, float, float]] = []
     loop = asyncio.get_running_loop()
     try:
-        only = 0
-        if len(sys.argv) > 1 and sys.argv[1] == "--only":
-            only = int(sys.argv[2])
         sections = [
             ("模型层", section_model),
             ("转换层", section_transform),
@@ -748,7 +833,7 @@ async def main() -> None:
             ("WebSocket", section_ws),
         ]
         for i, (label, fn) in enumerate(sections, 1):
-            if only and i != only:
+            if args.only and i != args.only:
                 continue
             print(f"\n>>> 运行区段 {i}/{len(sections)}: {label}", flush=True)
             t0 = loop.time()
