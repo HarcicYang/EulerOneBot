@@ -19,6 +19,7 @@ from . import with_retry
 if TYPE_CHECKING:
     from lagrange.client.message.elems import ForwardNode
     from lagrange.client.message.types import Element
+
     RawElement = Element | ForwardNode
 else:
     RawElement = Any
