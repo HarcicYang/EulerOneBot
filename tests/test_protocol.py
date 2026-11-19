@@ -119,7 +119,7 @@ def test_lifecycle_events_disable_once_and_mark_connections_online():
         await protocol.emit_lifecycle("connect")
 
         assert adapter.calls == [("lifecycle", "disable", 123), ("lifecycle", "connect", 123)]
-        assert protocol.status.online is True
+        assert protocol.status.online
 
     run(main())
 

@@ -184,7 +184,9 @@ class TestForwardWebSocket:
         async def main():
             adapter = Adapter(impls=[])
             socket = ConcurrentSocket()
-            await asyncio.gather(*(adapter.connector._forward_websocket_push(socket, str(i)) for i in range(5)))
+            await asyncio.gather(
+                *(adapter.connector._forward_websocket_push(cast(Any, socket), str(i)) for i in range(5))
+            )
             assert socket.max_active == 1
 
         run(main())
