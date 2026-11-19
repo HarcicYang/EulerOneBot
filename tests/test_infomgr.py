@@ -89,6 +89,8 @@ def test_uid_pool_maps_uid_and_uin_and_distinguishes_fake_entries(tmp_path):
 
         await mgr.uid_mgr.add("u_real", 20001)
         assert await mgr.uid_mgr.from_uid("u_real") == 20001
+        with pytest.raises(ValueError):
+            await mgr.uid_mgr.from_uin(10001)
 
         fake_uin = await mgr.uid_mgr.add_fake("u_fake")
         assert str(fake_uin).endswith("0145")
@@ -100,6 +102,13 @@ def test_uid_pool_maps_uid_and_uin_and_distinguishes_fake_entries(tmp_path):
             await mgr.uid_mgr.from_uid("missing")
         with pytest.raises(ValueError):
             await mgr.uid_mgr.from_uin(999999)
+
+        await mgr.close()
+        restarted = make_mgr()
+        await restarted.init(path=str(tmp_path / "test.db"), migrate_from=str(tmp_path / "missing.json"))
+        assert await restarted.uid_mgr.from_uid("u_real") == 20001
+        assert await restarted.uid_mgr.from_uid("u_fake") == fake_uin
+        assert await restarted.uid_mgr.is_exist("u_fake") is False
 
     run(main())
 

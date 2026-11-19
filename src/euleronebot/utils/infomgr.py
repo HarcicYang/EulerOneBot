@@ -132,6 +132,9 @@ class MsgIDPool:
 class UIDPool:
     def __init__(self, mgr: "InfoManager"):
         self._mgr = mgr
+        self._by_uid: dict[str, int] = {}
+        self._by_uin: dict[int, str] = {}
+        self._fake: set[str] = set()
 
     @property
     def db(self) -> aiosqlite.Connection:
@@ -140,11 +143,17 @@ class UIDPool:
     async def add(self, uid: str | bytes, uin: int) -> int:
         if isinstance(uid, bytes):
             uid = uid.decode()
+        old_uin = self._by_uid.get(uid)
         await self.db.execute(
             "INSERT OR REPLACE INTO uid_map (uid, uin, fake) VALUES (?, ?, 0)",
             (uid, uin),
         )
         await self.db.commit()
+        if old_uin is not None and old_uin != uin and self._by_uin.get(old_uin) == uid:
+            self._by_uin.pop(old_uin)
+        self._by_uid[uid] = uin
+        self._by_uin[uin] = uid
+        self._fake.discard(uid)
         return uin
 
     async def add_fake(self, uid: str) -> int:
@@ -158,6 +167,12 @@ class UIDPool:
             (uid, uin),
         )
         await self.db.commit()
+        old_uin = self._by_uid.get(uid)
+        if old_uin is not None and old_uin != uin and self._by_uin.get(old_uin) == uid:
+            self._by_uin.pop(old_uin)
+        self._by_uid[uid] = uin
+        self._by_uin[uin] = uid
+        self._fake.add(uid)
         return uin
 
     async def load_all_grps(self, client: Client) -> int:
@@ -212,29 +227,35 @@ class UIDPool:
     async def from_uid(self, uid: str | bytes) -> int:
         if isinstance(uid, bytes):
             uid = uid.decode()
-        cur = await self.db.execute("SELECT uin FROM uid_map WHERE uid = ?", (uid,))
-        row = await cur.fetchone()
-        if row is None:
-            raise ValueError(f"Unknown uid = {uid}")
-        return int(row[0])
+        try:
+            return self._by_uid[uid]
+        except KeyError:
+            raise ValueError(f"Unknown uid = {uid}") from None
 
     async def from_uin(self, uin: int) -> str:
-        cur = await self.db.execute("SELECT uid FROM uid_map WHERE uin = ?", (uin,))
-        row = await cur.fetchone()
-        if row is None:
-            raise ValueError(f"Unknown uin = {uin}")
-        return str(row[0])
+        try:
+            return self._by_uin[uin]
+        except KeyError:
+            raise ValueError(f"Unknown uin = {uin}") from None
 
     async def is_exist(self, uid_or_uin: int | str | bytes) -> bool:
         if isinstance(uid_or_uin, bytes):
             uid_or_uin = uid_or_uin.decode()
         if isinstance(uid_or_uin, str):
-            cur = await self.db.execute("SELECT fake FROM uid_map WHERE uid = ?", (uid_or_uin,))
-            row = await cur.fetchone()
-            return bool(row and not row["fake"])
-        cur = await self.db.execute("SELECT 1 FROM uid_map WHERE uin = ? LIMIT 1", (uid_or_uin,))
-        row = await cur.fetchone()
-        return row is not None
+            return uid_or_uin in self._by_uid and uid_or_uin not in self._fake
+        return uid_or_uin in self._by_uin
+
+    async def reload(self) -> None:
+        cur = await self.db.execute("SELECT uid, uin, fake FROM uid_map")
+        rows = await cur.fetchall()
+        self._by_uid = {row["uid"]: row["uin"] for row in rows}
+        self._by_uin = {row["uin"]: row["uid"] for row in rows}
+        self._fake = {row["uid"] for row in rows if row["fake"]}
+
+    def clear(self) -> None:
+        self._by_uid.clear()
+        self._by_uin.clear()
+        self._fake.clear()
 
 
 class RequestInfo(BaseModel):
@@ -301,8 +322,10 @@ class InfoManager:
             return self
         self.db = await aiosqlite.connect(path or _DB_FILE)
         self.db.row_factory = sqlite3.Row
+        await self.db.execute("PRAGMA journal_mode=WAL")
         await self._create_tables()
         await self._migrate_from_json(migrate_from)
+        await self.uid_mgr.reload()
         return self
 
     async def _create_tables(self) -> None:
@@ -396,6 +419,7 @@ class InfoManager:
         logger.info(f"已将 {cache_file} 迁移至数据库,原文件备份为 {cache_file}.bak")
 
     async def close(self) -> None:
+        self.uid_mgr.clear()
         if self.db is not None:
             await self.db.close()
             self.db = None
