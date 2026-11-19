@@ -59,6 +59,7 @@ class Connector:
         }
         self._reverse_ws_tasks: list[asyncio.Task[None]] = []
         self._http_post: HTTPPostConfig | None = None
+        self._http_post_client: httpx.AsyncClient | None = None
 
     async def setup(self) -> Self:
         for i in self.impls:
@@ -83,6 +84,9 @@ class Connector:
         for socket in self.active_websocket_servers.values():
             if socket.client_state != socket.client_state.DISCONNECTED:
                 await socket.close()
+        if self._http_post_client is not None:
+            await self._http_post_client.aclose()
+            self._http_post_client = None
 
     def _ws_authorized(self, websocket: WebSocket) -> bool:
         if not self.access_token:
@@ -148,6 +152,8 @@ class Connector:
 
     async def set_http_post(self, cfg: HTTPPostConfig) -> None:
         self._http_post = cfg
+        if self._http_post_client is None:
+            self._http_post_client = httpx.AsyncClient()
 
     async def set_forward_websocket(self, _cfg: ForwardWebsocketConfig) -> None:
         self.forward_app = FastAPI()
@@ -281,18 +287,17 @@ class Connector:
             tasks.append(asyncio.create_task(self._forward_websocket_push(socket, data)))
 
         event = asyncio.Event()
-        excute = asyncio.create_task(self._push_excute(tasks, event))
-        timed = 0
-        while not event.is_set():
-            await asyncio.sleep(0.02)
-            timed += 0.02
-            if timed >= 10:
-                logger.warning("event trigger timed out, giving up")
-                excute.cancel()
-                break
+        execute = asyncio.create_task(self._push_execute(tasks, event))
+        try:
+            await asyncio.wait_for(event.wait(), timeout=10)
+        except TimeoutError:
+            logger.warning("event trigger timed out, giving up")
+            execute.cancel()
+            with suppress(asyncio.CancelledError):
+                await execute
 
     @staticmethod
-    async def _push_excute(tasks: list[asyncio.Task], event: asyncio.Event) -> None:
+    async def _push_execute(tasks: list[asyncio.Task], event: asyncio.Event) -> None:
         try:
             await asyncio.gather(*tasks)
             event.set()
@@ -312,8 +317,8 @@ class Connector:
             headers["X-Signature"] = f"sha1={sig}"
         try:
             timeout = None if cfg.timeout == 0 else cfg.timeout
-            async with httpx.AsyncClient(timeout=timeout) as cli:
-                rsp = await cli.post(cfg.url, content=data, headers=headers)
+            assert self._http_post_client is not None
+            rsp = await self._http_post_client.post(cfg.url, content=data, headers=headers, timeout=timeout)
             if rsp.text:
                 logger.trace(f"Webhook response: {rsp.text}")
         except Exception as e:  # noinspection PyBroadException
