@@ -4,7 +4,9 @@ from contextlib import suppress
 from types import SimpleNamespace
 from typing import Any, cast
 
+import pytest
 from lagrange.client.message import elems
+from lagrange.utils.binary.protobuf import proto_encode
 
 from euleronebot.onebot import Adapter
 from euleronebot.onebot.api import BaseAPICall, BaseAPIResponse, SendPrivateMessage
@@ -13,7 +15,9 @@ from euleronebot.onebot.api_data import (
     GetGroupMemberListData,
     GetPrivateFileUrlData,
     GetStatusData,
+    SetEssenceMsgData,
     SetFriendAddRequestData,
+    SetGroupSignData,
     UploadGroupFileData,
     UploadPrivateFileData,
 )
@@ -64,6 +68,13 @@ class StubClient:
     @staticmethod
     async def get_grp_msg(**kw):
         return []
+
+    async def set_essence(self, **kw):
+        self.calls.append(("set_essence", kw))
+
+    async def send_oidb_svc(self, cmd, sub_cmd, buf):
+        self.calls.append(("send_oidb_svc", cmd, sub_cmd, buf))
+        return SimpleNamespace(ret_code=0, err_msg="", data=b"")
 
     async def set_friend_request(self, target_uid, accept):
         self.calls.append(("set_friend_request", target_uid, accept))
@@ -274,6 +285,47 @@ def test_file_url_handlers_resolve_uid_and_delegate(tmp_path):
             ]
         finally:
             await mgr.close()
+
+    run(main())
+
+
+def test_essence_handlers_use_persisted_group_sequence_and_rand(tmp_path):
+    async def main():
+        mgr = await init_mgr(tmp_path)
+        try:
+            group_id = await mgr.msgid_mgr.add(MsgInfo(scene_type="group", scene_id=30001, seq=42, rand=123456))
+            private_id = await mgr.msgid_mgr.add(MsgInfo(scene_type="user", scene_id=20001, seq=43))
+            impl = make_impl()
+
+            set_rsp = await impl.set_essence_msg(SetEssenceMsgData(message_id=group_id))
+            delete_rsp = await impl.delete_essence_msg(SetEssenceMsgData(message_id=group_id))
+
+            assert set_rsp.status == delete_rsp.status == "ok"
+            assert stub_client(impl).calls == [
+                ("set_essence", {"grp_id": 30001, "seq": 42, "rand": 123456, "is_remove": False}),
+                ("set_essence", {"grp_id": 30001, "seq": 42, "rand": 123456, "is_remove": True}),
+            ]
+            with pytest.raises(ValueError, match="group message"):
+                await impl.set_essence_msg(SetEssenceMsgData(message_id=private_id))
+        finally:
+            await mgr.close()
+
+    run(main())
+
+
+def test_group_sign_actions_share_the_same_oidb_request():
+    async def main():
+        impl = make_impl()
+        expected = proto_encode({2: {1: "1", 2: "30001", 3: "9.0.90"}})
+
+        set_rsp = await impl.set_group_sign(SetGroupSignData(group_id=30001))
+        send_rsp = await impl.send_group_sign(SetGroupSignData(group_id=30001))
+
+        assert set_rsp.status == send_rsp.status == "ok"
+        assert stub_client(impl).calls == [
+            ("send_oidb_svc", 0xEB7, 1, expected),
+            ("send_oidb_svc", 0xEB7, 1, expected),
+        ]
 
     run(main())
 

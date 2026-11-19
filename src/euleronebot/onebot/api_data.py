@@ -59,6 +59,7 @@ __all__ = [
     "SendPokeData",
     "SendPrivateForwardMsgData",
     "SendPrivateMsgData",
+    "SetEssenceMsgData",
     "SetFriendAddRequestData",
     "SetGroupAddRequestData",
     "SetGroupAdminData",
@@ -67,6 +68,7 @@ __all__ = [
     "SetGroupKickData",
     "SetGroupLeaveData",
     "SetGroupNameData",
+    "SetGroupSignData",
     "SetGroupSpecialTitleData",
     "SetGroupWholeBanData",
     "UploadGroupFileData",
@@ -175,6 +177,14 @@ class SetGroupCardData(BaseModel):
 class SetGroupNameData(BaseModel):
     group_id: int
     group_name: str
+
+
+class SetGroupSignData(BaseModel):
+    group_id: int
+
+
+class SetEssenceMsgData(BaseModel):
+    message_id: int
 
 
 class SetGroupLeaveData(BaseModel):

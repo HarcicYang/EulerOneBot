@@ -22,6 +22,7 @@ import httpx
 from lagrange import Lagrange
 from lagrange.client.message.elems import ForwardNode, MulitMsg
 from lagrange.client.message.types import Element
+from lagrange.utils.binary.protobuf import proto_encode
 
 from ..hyperogger import Logger
 from ..onebot import Adapter as OneBotAdapter
@@ -41,6 +42,7 @@ else:
 
 logger = Logger.fetch("euler").name_custom("euler.protocol.impl")
 APICallHandler = Callable[..., Coroutine[Any, Any, Any]]
+GROUP_SIGN_VERSION = "9.0.90"
 
 
 def _process_memory_bytes() -> int:
@@ -446,6 +448,37 @@ class LagrangeImpl:
     async def set_group_leave(self, data: SetGroupLeaveData) -> SetGroupLeaveResponse:
         await self.lag.client.leave_grp(grp_id=data.group_id)
         return SetGroupLeaveResponse(status="ok", retcode=0, data=EmptyRsp())
+
+    async def _group_sign(self, group_id: int) -> SetGroupSignResponse:
+        body = proto_encode({2: {1: str(self.lag.client.uin), 2: str(group_id), 3: GROUP_SIGN_VERSION}})
+        rsp = await self.lag.client.send_oidb_svc(0xEB7, 1, body)
+        if rsp.ret_code:
+            raise AssertionError(rsp.ret_code, rsp.err_msg)
+        return SetGroupSignResponse(status="ok", retcode=0, data=EmptyRsp())
+
+    @on(SetGroupSign)
+    async def set_group_sign(self, data: SetGroupSignData) -> SetGroupSignResponse:
+        return await self._group_sign(data.group_id)
+
+    @on(SendGroupSign)
+    async def send_group_sign(self, data: SetGroupSignData) -> SetGroupSignResponse:
+        return await self._group_sign(data.group_id)
+
+    async def _essence(self, message_id: int, remove: bool) -> None:
+        info = await info_mgr.msgid_mgr.fetch(message_id)
+        if info.scene_type != "group":
+            raise ValueError("essence message must be a group message")
+        await self.lag.client.set_essence(grp_id=info.scene_id, seq=info.seq, rand=info.rand, is_remove=remove)
+
+    @on(SetEssenceMsg)
+    async def set_essence_msg(self, data: SetEssenceMsgData) -> SetEssenceMsgResponse:
+        await self._essence(data.message_id, False)
+        return SetEssenceMsgResponse(status="ok", retcode=0, data=EmptyRsp())
+
+    @on(DeleteEssenceMsg)
+    async def delete_essence_msg(self, data: SetEssenceMsgData) -> DeleteEssenceMsgResponse:
+        await self._essence(data.message_id, True)
+        return DeleteEssenceMsgResponse(status="ok", retcode=0, data=EmptyRsp())
 
     @on(SetGroupAddRequest)
     async def set_group_add_request(self, data: SetGroupAddRequestData) -> SetGroupAddRequestResponse:

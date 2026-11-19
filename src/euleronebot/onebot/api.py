@@ -12,6 +12,8 @@ __all__ = [
     "AsyncResponse",
     "BaseAPICall",
     "BaseAPIResponse",
+    "DeleteEssenceMsg",
+    "DeleteEssenceMsgResponse",
     "DeleteMessage",
     "DeleteMessageResponse",
     "EmptyRsp",
@@ -51,6 +53,7 @@ __all__ = [
     "SendGroupForwardMsgData",
     "SendGroupMessage",
     "SendGroupMsgData",
+    "SendGroupSign",
     "SendLike",
     "SendLikeResponse",
     "SendMessage",
@@ -61,6 +64,8 @@ __all__ = [
     "SendPrivateForwardMsgData",
     "SendPrivateMessage",
     "SendPrivateMsgData",
+    "SetEssenceMsg",
+    "SetEssenceMsgResponse",
     "SetFriendAddRequest",
     "SetFriendAddRequestResponse",
     "SetGroupAddRequest",
@@ -78,6 +83,8 @@ __all__ = [
     "SetGroupName",
     "SetGroupNameResponse",
     "SetGroupReaction",
+    "SetGroupSign",
+    "SetGroupSignResponse",
     "SetGroupSpecialTitle",
     "SetGroupSpecialTitleResponse",
     "SetGroupWholeBan",
@@ -213,6 +220,31 @@ class SetGroupLeave(BaseAPICall[SetGroupLeaveData]):
 
 
 class SetGroupLeaveResponse(BaseAPIResponse[EmptyRsp]): ...
+
+
+class SetGroupSign(BaseAPICall[SetGroupSignData]):
+    action: Literal["set_group_sign"] = "set_group_sign"
+
+
+class SendGroupSign(BaseAPICall[SetGroupSignData]):
+    action: Literal["send_group_sign"] = "send_group_sign"
+
+
+class SetGroupSignResponse(BaseAPIResponse[EmptyRsp]): ...
+
+
+class SetEssenceMsg(BaseAPICall[SetEssenceMsgData]):
+    action: Literal["set_essence_msg"] = "set_essence_msg"
+
+
+class DeleteEssenceMsg(BaseAPICall[SetEssenceMsgData]):
+    action: Literal["delete_essence_msg"] = "delete_essence_msg"
+
+
+class SetEssenceMsgResponse(BaseAPIResponse[EmptyRsp]): ...
+
+
+class DeleteEssenceMsgResponse(BaseAPIResponse[EmptyRsp]): ...
 
 
 class SetGroupSpecialTitle(BaseAPICall[SetGroupSpecialTitleData]):
