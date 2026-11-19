@@ -107,6 +107,7 @@ class NoticeEvent(BaseEvent):
         "friend_recall",
         "notify",
         "reaction",
+        "group_msg_emoji_like",
     ]
 
 

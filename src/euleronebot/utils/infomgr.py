@@ -17,9 +17,11 @@ from ..hyperogger import Logger
 from . import with_retry
 
 if TYPE_CHECKING:
+    from lagrange.client.message.elems import ForwardNode
     from lagrange.client.message.types import Element
+    RawElement = Element | ForwardNode
 else:
-    Element = Any
+    RawElement = Any
 
 
 logger = Logger.fetch("euler").name_custom("euler.utils.infomgr")
@@ -34,7 +36,7 @@ class MsgInfo(BaseModel):
     uin: int = 0
     uid: str = ""
     timestamp: int = 0
-    raw_msg: list[Element] = []
+    raw_msg: list[RawElement] = []
     seq: int
     rand: int = 0
     text: str = ""
@@ -45,13 +47,13 @@ class MsgInfo(BaseModel):
         return other.scene_type == self.scene_type and other.scene_id == self.scene_id and other.seq == self.seq
 
 
-def _dump_raw(raw: list[Element]) -> bytes | None:
+def _dump_raw(raw: list[RawElement]) -> bytes | None:
     if not raw:
         return None
     return pickle.dumps(raw, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-def _load_raw(blob: bytes | None) -> list[Element]:
+def _load_raw(blob: bytes | None) -> list[RawElement]:
     if not blob:
         return []
     try:

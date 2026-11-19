@@ -280,14 +280,14 @@ async def to_lagrange_msg(
             if scheme in ["http", "https"]:
                 async with httpx.AsyncClient() as cli:
                     retried = 0
+                    response = None
                     while retried < 3:
-                        response = await cli.get(url.geturl())
-                        if response.status_code != 200:
-                            retried += 1
-                            continue
-                        else:
+                        candidate = await cli.get(url.geturl())
+                        if candidate.status_code == 200:
+                            response = candidate
                             break
-                    if retried == 3:
+                        retried += 1
+                    if response is None:
                         continue
                     if target.target == "group":
                         img = await lgrc.upload_grp_image(
