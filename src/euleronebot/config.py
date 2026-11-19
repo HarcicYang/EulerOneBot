@@ -47,7 +47,7 @@ AdapterConfig = Annotated[
 
 class HeartbeatConfig(BaseModel):
     enabled: bool = True
-    interval: int = Field(15000, gt=0, description="心跳间隔(毫秒),必须大于 0")
+    interval: int = Field(15000, gt=0)
 
 
 class EventCompatibilityConfig(BaseModel):
@@ -74,6 +74,7 @@ class BotConfig(BaseSettings):
     log_level: Literal["INFO", "DEBUG", "TRACE", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_nf: bool = True
     access_token: str = ""
+    api_workers: int = Field(4, ge=1)
     connections: list[AdapterConfig] = [ForwardWebsocketConfig()]
     login: LoginConfig = LoginConfig()
     heartbeat: HeartbeatConfig = HeartbeatConfig()
@@ -87,9 +88,8 @@ def build_schema() -> dict:
     """生成 appconfig.json 的 JSON Schema(由 BotConfig 模型推导)。"""
     schema = BotConfig.model_json_schema()
     schema.setdefault("title", "EulerOneBot 配置文件")
-    schema.setdefault("description", "Euler OneBot 的 appconfig.json 配置结构,由 BotConfig 模型自动生成")
     schema.setdefault("$id", "./appconfig.schema.json")
-    schema.setdefault("properties", {})["$schema"] = {"type": "string", "description": "JSON Schema 引用,解析时忽略"}
+    schema.setdefault("properties", {})["$schema"] = {"type": "string"}
     return schema
 
 

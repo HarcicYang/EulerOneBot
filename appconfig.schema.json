@@ -85,7 +85,6 @@
         },
         "interval": {
           "default": 15000,
-          "description": "心跳间隔(毫秒),必须大于 0",
           "exclusiveMinimum": 0,
           "title": "Interval",
           "type": "integer"
@@ -235,6 +234,12 @@
       "title": "Access Token",
       "type": "string"
     },
+    "api_workers": {
+      "default": 4,
+      "minimum": 1,
+      "title": "Api Workers",
+      "type": "integer"
+    },
     "connections": {
       "default": [
         {
@@ -302,12 +307,10 @@
       }
     },
     "$schema": {
-      "type": "string",
-      "description": "JSON Schema 引用,解析时忽略"
+      "type": "string"
     }
   },
   "title": "BotConfig",
   "type": "object",
-  "description": "Euler OneBot 的 appconfig.json 配置结构,由 BotConfig 模型自动生成",
   "$id": "./appconfig.schema.json"
 }

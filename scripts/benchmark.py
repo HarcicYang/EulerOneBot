@@ -389,7 +389,7 @@ async def section_dispatch() -> None:
         if not t.cancelled():
             print(f"!!! api_service 异常退出: {t.exception()!r}", flush=True)
 
-    async def queue_bench(name: str, n: int, factory: Callable[[int, str], Any]) -> None:
+    async def queue_bench(name: str, n: int, factory: Callable[[int, str], Any], workers: int = 1) -> None:
         adapter = Adapter(impls=[])
         impl = make_impl(adapter)
         task = asyncio.create_task(impl.api_service())
@@ -402,7 +402,7 @@ async def section_dispatch() -> None:
                 await adapter.api_calls.put(factory(i, echo))
                 await fut
 
-            await bench(name, n, one)
+            await bench(name, n, one, workers=workers)
         finally:
             task.cancel()
             with suppress(asyncio.CancelledError):
@@ -410,6 +410,8 @@ async def section_dispatch() -> None:
 
     await queue_bench("队列分发 send_group_msg (含入库)", 3000, group_call)
     await queue_bench("队列分发 send_private_msg (含 uid 反查)", 3000, private_call)
+    await queue_bench("队列分发 send_group_msg 并发 8", 5000, group_call, workers=8)
+    await queue_bench("队列分发 send_private_msg 并发 8", 5000, private_call, workers=8)
 
     # 日志开销对比(默认 INFO 下每次响应打印一行)
     adapter = Adapter(impls=[])

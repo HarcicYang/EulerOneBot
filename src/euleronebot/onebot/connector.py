@@ -52,6 +52,7 @@ class Connector:
         self.active_websocket_servers: dict[Literal["root", "api", "event"], WebSocket] = dict()
         self.forward_send_timeout = 2.0
         self._servers: list[UvicornServer] = []
+        self._ws_send_locks: dict[int, asyncio.Lock] = {}
         self._reverse_ws: dict[ReverseRole, ClientConnection | None] = {
             "API": None,
             "Event": None,
@@ -84,6 +85,7 @@ class Connector:
         for socket in self.active_websocket_servers.values():
             if socket.client_state != socket.client_state.DISCONNECTED:
                 await socket.close()
+        self._ws_send_locks.clear()
         if self._http_post_client is not None:
             await self._http_post_client.aclose()
             self._http_post_client = None
@@ -101,11 +103,13 @@ class Connector:
         if old is not None and old is not websocket:
             with suppress(Exception):
                 await old.close()
+            self._ws_send_locks.pop(id(old), None)
         self.active_websocket_servers[key] = websocket
 
     def _unregister_websocket(self, key: Literal["root", "api", "event"], websocket: WebSocket) -> None:
         if self.active_websocket_servers.get(key) is websocket:
             self.active_websocket_servers.pop(key, None)
+            self._ws_send_locks.pop(id(websocket), None)
 
     async def set_http(self, _cfg: HTTPConfig) -> None:
         self.http_app = FastAPI()
@@ -223,6 +227,9 @@ class Connector:
                 except Exception as e:  # noinspection PyBroadException
                     logger.warning(f"ReverseWS[{role}] failed to connect: {e!r}")
                 finally:
+                    ws = self._reverse_ws.get(role)
+                    if ws is not None:
+                        self._ws_send_locks.pop(id(ws), None)
                     self._reverse_ws[role] = None
                 await asyncio.sleep(interval)
 
@@ -263,7 +270,8 @@ class Connector:
             if ws is None:
                 continue
             with suppress(Exception):
-                await ws.send(data)
+                async with self._ws_send_locks.setdefault(id(ws), asyncio.Lock()):
+                    await ws.send(data)
 
     async def report(self, data: str) -> None:
         logger.trace(f"API report: {data}")
@@ -305,8 +313,12 @@ class Connector:
             return
 
     async def _forward_websocket_push(self, socket: WebSocket, data: str) -> None:
+        async def send() -> None:
+            async with self._ws_send_locks.setdefault(id(socket), asyncio.Lock()):
+                await socket.send_text(data)
+
         with suppress(Exception):
-            await asyncio.wait_for(socket.send_text(data), timeout=self.forward_send_timeout)
+            await asyncio.wait_for(send(), timeout=self.forward_send_timeout)
 
     async def _http_post_push(self, data: str) -> None:
         cfg = self._http_post

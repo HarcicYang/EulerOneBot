@@ -85,6 +85,7 @@ euler-onebot-v<版本号>-<平台>-<架构>.exe     # Windows
   "log_level": "INFO",
   "log_nf": true,
   "access_token": "",
+  "api_workers": 4,
   "event_compatibility": {
     "reaction_event_type": "reaction"
   },
@@ -145,6 +146,7 @@ euler-onebot-v<版本号>-<平台>-<架构>.exe     # Windows
 | `log_level`            | 日志级别：`TRACE` / `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL`        |
 | `log_nf`               | 是否为日志输出启用 NerdFont                                                    |
 | `access_token`         | 鉴权 Token，配置后 HTTP / 正向 WebSocket / 反向 WebSocket 需携带（空为不鉴权） |
+| `api_workers`          | API 请求并发 worker 数，默认 `4`，必须大于等于 `1`                              |
 | `event_compatibility.reaction_event_type` | reaction 事件下发类型，可选 `reaction` 或 `group_msg_emoji_like` |
 | `connections`          | 通信连接列表（见下方连接类型）                                                 |
 | `login.uin`            | QQ 账号（不要真的写0哦）                                                       |

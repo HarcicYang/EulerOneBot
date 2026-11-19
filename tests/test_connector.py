@@ -180,6 +180,15 @@ class TestForwardWebSocket:
 
         run(main())
 
+    def test_forward_websocket_push_serializes_concurrent_sends(self):
+        async def main():
+            adapter = Adapter(impls=[])
+            socket = ConcurrentSocket()
+            await asyncio.gather(*(adapter.connector._forward_websocket_push(socket, str(i)) for i in range(5)))
+            assert socket.max_active == 1
+
+        run(main())
+
 
 class FakeSocket:
     def __init__(self):
@@ -195,7 +204,35 @@ class SlowSocket:
         await asyncio.sleep(10)
 
 
+class ConcurrentSocket:
+    def __init__(self):
+        self.active = 0
+        self.max_active = 0
+
+    async def send_text(self, data):
+        await self._send()
+
+    async def send(self, data):
+        await self._send()
+
+    async def _send(self):
+        self.active += 1
+        self.max_active = max(self.max_active, self.active)
+        await asyncio.sleep(0.01)
+        self.active -= 1
+
+
 class TestReverseWebSocket:
+    def test_reverse_websocket_send_serializes_concurrent_messages(self):
+        async def main():
+            adapter = Adapter(impls=[])
+            socket = ConcurrentSocket()
+            adapter.connector._reverse_ws["API"] = cast(Any, socket)
+            await asyncio.gather(*(adapter.connector._send_reverse_ws(str(i), "API") for i in range(5)))
+            assert socket.max_active == 1
+
+        run(main())
+
     def test_reverse_websocket_separate_api_and_event_clients(self):
         async def main():
             roles = []

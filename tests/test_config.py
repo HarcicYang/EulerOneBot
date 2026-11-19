@@ -35,6 +35,7 @@ def test_existing_config_round_trips_login_and_discriminated_connections(tmp_pat
     raw = {
         "$schema": "./appconfig.schema.json",
         "log_level": "DEBUG",
+        "api_workers": 8,
         "login": {
             "uin": 123,
             "use_custom_sign_provider": True,
@@ -51,6 +52,7 @@ def test_existing_config_round_trips_login_and_discriminated_connections(tmp_pat
     cfg = load_config("appconfig.json")
 
     assert cfg.log_level == "DEBUG"
+    assert cfg.api_workers == 8
     assert cfg.login.uin == 123
     assert cfg.login.use_custom_sign_provider is True
     assert [connection.type for connection in cfg.connections] == ["HTTPPost", "ReverseWebSocket"]
@@ -72,6 +74,7 @@ def test_config_rejects_corrupt_non_object_and_invalid_values(tmp_path, monkeypa
 
     invalid_configs = [
         {"log_level": "NOT_A_LEVEL"},
+        {"api_workers": 0},
         {"heartbeat": {"enabled": True, "interval": 0}},
         {"event_compatibility": {"reaction_event_type": "unknown"}},
         {"no_such_field": 1},

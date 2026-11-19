@@ -67,10 +67,18 @@ def on(call_type: type[BaseAPICall]) -> Callable[[APICallHandler], APICallHandle
 
 
 class LagrangeImpl:
-    def __init__(self, onebot_adapter: OneBotAdapter, lag: Lagrange, protocol: LagrangeProtocol):
+    def __init__(
+        self,
+        onebot_adapter: OneBotAdapter,
+        lag: Lagrange,
+        protocol: LagrangeProtocol,
+        *,
+        api_workers: int = 4,
+    ):
         self.adapter = onebot_adapter
         self.lag = lag
         self.protocol = protocol
+        self.api_workers = api_workers
         self.subscriptions: dict[str, APICallHandler] = {}
 
     def subscribe(self) -> None:
@@ -100,7 +108,7 @@ class LagrangeImpl:
         filename = name or Path(path).name
         return open(path, "rb"), filename
 
-    async def api_service(self) -> NoReturn:
+    async def _api_worker(self) -> NoReturn:
         while True:
             call = await self.adapter.api_calls.get()
             try:
@@ -118,6 +126,10 @@ class LagrangeImpl:
                     await self.adapter.report(rsp)
                 except Exception:
                     logger.error("error in handler, can't deliver")
+
+    async def api_service(self) -> NoReturn:
+        await asyncio.gather(*(self._api_worker() for _ in range(self.api_workers)))
+        raise RuntimeError()
 
     @on(SendMessage)
     async def send_message(self, data: SendMsgData) -> SendMessageResponse:

@@ -33,7 +33,7 @@ class LagrangeProtocol:
 
         self.lag.log.set_level("DEBUG")
 
-        self.impl = LagrangeImpl(self.adapter, self.lag, self)
+        self.impl = LagrangeImpl(self.adapter, self.lag, self, api_workers=self.cfg.api_workers)
         self.handler = LagrangeEventHandler(self.adapter, self.lag, self)
 
         self._relog_ev = asyncio.Event()

@@ -7,7 +7,7 @@ from typing import Any, cast
 from lagrange.client.message import elems
 
 from euleronebot.onebot import Adapter
-from euleronebot.onebot.api import SendPrivateMessage
+from euleronebot.onebot.api import BaseAPICall, BaseAPIResponse, SendPrivateMessage
 from euleronebot.onebot.api_data import (
     GetGroupFileUrlData,
     GetPrivateFileUrlData,
@@ -160,6 +160,46 @@ def test_subscriptions_cover_every_registered_api_action():
     impl.subscribe()
 
     assert set(impl.subscriptions) == adapter.api_actions
+
+
+def test_api_service_uses_configured_worker_count():
+    async def main():
+        adapter = Adapter(impls=[])
+        impl = LagrangeImpl(cast(Any, adapter), cast(Any, StubLag()), cast(Any, None), api_workers=2)
+        started = 0
+        both_started = asyncio.Event()
+        release = asyncio.Event()
+        reported: list[str] = []
+
+        async def handler(_params):
+            nonlocal started
+            started += 1
+            if started == 2:
+                both_started.set()
+            await release.wait()
+            return BaseAPIResponse(status="ok", retcode=0, data=None)
+
+        async def report(rsp):
+            reported.append(rsp.echo)
+
+        impl.subscriptions["wait"] = handler
+        adapter.report = report
+        task = asyncio.create_task(impl.api_service())
+        await adapter.api_calls.put(BaseAPICall(action="wait", params={}, echo="a"))
+        await adapter.api_calls.put(BaseAPICall(action="wait", params={}, echo="b"))
+        await asyncio.wait_for(both_started.wait(), timeout=1)
+        release.set()
+        for _ in range(100):
+            if len(reported) == 2:
+                break
+            await asyncio.sleep(0.01)
+
+        assert set(reported) == {"a", "b"}
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+    run(main())
 
 
 def test_get_message_returns_safe_sender_when_user_lookup_fails(tmp_path):
