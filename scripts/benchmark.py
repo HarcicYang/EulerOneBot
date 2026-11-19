@@ -168,7 +168,7 @@ class StubClient:
 
     # 上传素材(transformer 调用)
     @staticmethod
-    async def upload_grp_image(grp_id: int, image: Any) -> Any:
+    async def upload_grp_image(grp_id: int, is_emoji: bool, image: Any) -> Any:
         return SimpleNamespace(display="[图片]")
 
     @staticmethod
