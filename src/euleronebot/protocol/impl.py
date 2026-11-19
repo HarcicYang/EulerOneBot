@@ -465,8 +465,11 @@ class LagrangeImpl:
     @on(GetGroupMemberInfo)
     async def get_group_member_info(self, data: GetGroupMemberInfoData) -> GetGroupMemberInfoResponse:
         uid = await info_mgr.uid_mgr.from_uin(data.user_id)
-        info = (await self.lag.client.get_grp_member_info(data.group_id, uid)).body[0]
-        user_info = await self.lag.client.get_user_info(data.user_id)
+        member_rsp, user_info = await asyncio.gather(
+            self.lag.client.get_grp_member_info(data.group_id, uid),
+            self.lag.client.get_user_info(data.user_id),
+        )
+        info = member_rsp.body[0]
         role = "member"
         if info.is_owner:
             role = "owner"

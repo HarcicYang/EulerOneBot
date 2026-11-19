@@ -1,3 +1,4 @@
+import asyncio
 import time
 import traceback
 from collections.abc import Callable
@@ -146,8 +147,11 @@ class LagrangeEventHandler:
         logger.info(f"[Group] {event.grp_name}({event.grp_id}): @{event.nickname}({event.uin}): {event.msg}")
         if not await info_mgr.uid_mgr.is_exist(event.uid):
             await info_mgr.uid_mgr.add(event.uid, event.uin)
-        guser_info = (await client.get_grp_member_info(event.grp_id, event.uid)).body[0]
-        user_info = await client.get_user_info(event.uid)
+        member_rsp, user_info = await asyncio.gather(
+            client.get_grp_member_info(event.grp_id, event.uid),
+            client.get_user_info(event.uid),
+        )
+        guser_info = member_rsp.body[0]
         if guser_info.is_owner:
             role = "owner"
         elif guser_info.is_admin:
