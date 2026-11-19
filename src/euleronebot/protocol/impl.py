@@ -481,7 +481,10 @@ class LagrangeImpl:
             self.lag.client.get_grp_member_info(data.group_id, uid),
             self.lag.client.get_user_info(data.user_id),
         )
-        info = member_rsp.body[0]
+        return self._group_member_response(data.group_id, data.user_id, member_rsp.body[0], user_info)
+
+    @staticmethod
+    def _group_member_response(group_id: int, user_id: int, info: Any, user_info: Any) -> GetGroupMemberInfoResponse:
         role = "member"
         if info.is_owner:
             role = "owner"
@@ -491,8 +494,8 @@ class LagrangeImpl:
             status="ok",
             retcode=0,
             data=GetGroupMemberInfoRsp(
-                group_id=data.group_id,
-                user_id=data.user_id,
+                group_id=group_id,
+                user_id=user_id,
                 nickname=info.nickname,
                 card="" if not info.name else info.name.string,
                 sex=user_info.sex.name if user_info.sex.name != "notset" else "unknown",  # type: ignore
@@ -561,23 +564,23 @@ class LagrangeImpl:
     @on(GetGroupMemberList)
     async def get_group_member_list(self, data: GetGroupMemberListData) -> GetGroupMemberListResponse:
         members = await self.lag.client.get_grp_members(grp_id=data.group_id)
-        tasks: list[asyncio.Task[GetGroupMemberInfoResponse]] = []
-        for i in members.body:
-            if not i.account.uin:
+
+        async def build(member: Any) -> GetGroupMemberInfoResponse | None:
+            if not member.account.uin:
                 try:
-                    uin = await info_mgr.uid_mgr.from_uid(i.account.uid)
+                    uin = await info_mgr.uid_mgr.from_uid(member.account.uid)
                 except ValueError:
-                    continue
+                    return None
             else:
-                uin = i.account.uin
-            tasks.append(
-                asyncio.create_task(
-                    self.get_group_member_info(GetGroupMemberInfoData(group_id=data.group_id, user_id=uin))
-                )
-            )
-        await asyncio.gather(*tasks)
+                uin = member.account.uin
+            user_info = await self.lag.client.get_user_info(uin)
+            return self._group_member_response(data.group_id, uin, member, user_info)
+
+        results = await asyncio.gather(*(build(member) for member in members.body))
         return GetGroupMemberListResponse(
-            status="ok", retcode=0, data=GetGroupMemberListRsp.model_validate([x.result().data for x in tasks])
+            status="ok",
+            retcode=0,
+            data=GetGroupMemberListRsp.model_validate([item.data for item in results if item is not None]),
         )
 
     async def _group_reaction(self, data: GroupReactionData) -> GroupReactionResponse:

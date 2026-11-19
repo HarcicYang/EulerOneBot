@@ -10,6 +10,7 @@ from euleronebot.onebot import Adapter
 from euleronebot.onebot.api import BaseAPICall, BaseAPIResponse, SendPrivateMessage
 from euleronebot.onebot.api_data import (
     GetGroupFileUrlData,
+    GetGroupMemberListData,
     GetPrivateFileUrlData,
     GetStatusData,
     SetFriendAddRequestData,
@@ -391,6 +392,79 @@ def test_special_segments_convert_in_both_directions_and_skip_invalid_values():
         assert received[2].type == "face" and received[2].data.id == "1"
         assert isinstance(received[3], Poke) and received[3].data.model_dump() == {"id": "2003", "type": "126"}
         assert len(received) == 4
+
+    run(main())
+
+
+def test_group_member_list_reuses_member_payload_and_only_fetches_profiles(tmp_path):
+    async def main():
+        mgr = await init_mgr(tmp_path)
+        try:
+            await mgr.uid_mgr.add("u_second", 20002)
+
+            class Client:
+                def __init__(self):
+                    self.calls = []
+
+                async def get_grp_members(self, grp_id):
+                    self.calls.append(("get_grp_members", grp_id))
+                    return SimpleNamespace(
+                        body=[
+                            SimpleNamespace(
+                                account=SimpleNamespace(uid="u_first", uin=20001),
+                                nickname="Alice",
+                                name=SimpleNamespace(string="Card A"),
+                                level=SimpleNamespace(num=7),
+                                permission=1,
+                                is_owner=True,
+                                is_admin=False,
+                                joined_time=100,
+                                last_seen=200,
+                            ),
+                            SimpleNamespace(
+                                account=SimpleNamespace(uid="u_second", uin=None),
+                                nickname="Bob",
+                                name=None,
+                                level=None,
+                                permission=0,
+                                is_owner=False,
+                                is_admin=False,
+                                joined_time=300,
+                                last_seen=400,
+                            ),
+                        ]
+                    )
+
+                async def get_user_info(self, uin):
+                    self.calls.append(("get_user_info", uin))
+                    return SimpleNamespace(
+                        age=18,
+                        country="CN",
+                        province="SH",
+                        city="City",
+                        sex=SimpleNamespace(name="female"),
+                    )
+
+                async def get_grp_member_info(self, grp_id, uid):
+                    raise AssertionError("member payload should not be fetched twice")
+
+            client = Client()
+            impl = LagrangeImpl(cast(Any, None), cast(Any, SimpleNamespace(client=client)), cast(Any, None))
+            rsp = await impl.get_group_member_list(GetGroupMemberListData(group_id=30001))
+
+            members = rsp.data.root
+            assert [(item.user_id, item.nickname, item.card, item.role) for item in members] == [
+                (20001, "Alice", "Card A", "owner"),
+                (20002, "Bob", "", "member"),
+            ]
+            assert ("get_grp_members", 30001) in client.calls
+            assert sorted(call for call in client.calls if call[0] == "get_user_info") == [
+                ("get_user_info", 20001),
+                ("get_user_info", 20002),
+            ]
+            assert all(call[0] != "get_grp_member_info" for call in client.calls)
+        finally:
+            await mgr.close()
 
     run(main())
 
