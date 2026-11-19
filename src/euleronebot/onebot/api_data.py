@@ -199,7 +199,7 @@ class SetGroupAddRequestData(BaseModel):
     flag: str
     sub_type: Literal["add", "invite"]
     approve: bool = True
-    reason: str
+    reason: str = ""
 
 
 class GetLoginInfoData(BaseModel): ...
