@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.11"
 
 [[package]]
@@ -315,7 +315,7 @@ wheels = [
 [[package]]
 name = "hiro-qq"
 version = "0.2.0"
-source = { git = "https://github.com/HarcicYang/hiro-qq.git#63176d4c60db4b095ad7d62398613298b38a4b63" }
+source = { git = "https://github.com/HarcicYang/hiro-qq.git#45a003f2196907ebbd138840e413f547ee3c740a" }
 dependencies = [
     { name = "cryptography" },
     { name = "qrcode" },
