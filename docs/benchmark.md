@@ -47,7 +47,7 @@ uv run python scripts/benchmark.py --rtt-ms 20
 | `to_onebot_msg` 混合链 | ~53,200 req/s | 17.8 µs |
 | SQLite 消息写入 | ~11,500 req/s | 72.9 µs |
 | SQLite 消息主键读取 | ~12,200 req/s | 68.7 µs |
-| UID→UIN 缓存读取 | ~1,884,900 req/s | 0.4 µs |
+| UID→UIN SQLite 查询 | ~20,800 req/s | 42.2 µs |
 
 完整基准平均 RSS 约 76.9 MB，峰值约 83.1 MB，数据库约 1.4 MB。
 
