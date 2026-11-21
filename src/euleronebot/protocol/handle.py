@@ -23,7 +23,6 @@ from lagrange.client.events.friend import (
 from lagrange.client.events.group import (
     GroupAdminChange,
     GroupMemberJoined,
-    GroupMemberJoinedByInvite,
     GroupMemberJoinRequest,
     GroupMemberQuit,
     GroupMessage,
@@ -289,9 +288,10 @@ class LagrangeEventHandler:
 
     @on(GroupMemberJoined)
     async def grp_join_handler(self, _client: Client, event: GroupMemberJoined) -> None:
-        if event.join_type == 131:
-            return
-        logger.info(f"[Group] {event.grp_id}: member {event.uid} has joined")
+        sub_type = "invite" if event.join_type == 131 else "approve"
+        logger.info(
+            f"[Group] {event.grp_id}: member {event.uid} has joined" + (" by invite" if sub_type == "invite" else "")
+        )
         try:
             uin = await info_mgr.uid_mgr.from_uid(event.uid)
         except ValueError:
@@ -303,24 +303,27 @@ class LagrangeEventHandler:
             group_id=event.grp_id,
             operator_id=0,
             self_id=self.lag.client.uin,
-            sub_type="approve",
+            sub_type=sub_type,
             time=round(time.time()),
             user_id=uin,
         )
         await self.adapter.trigger(ev)
 
-    @on(GroupMemberJoinedByInvite)
-    async def grp_invite_join_handler(self, _client: Client, event: GroupMemberJoinedByInvite) -> None:
-        logger.info(f"[Group] {event.grp_id}: member {event.uin} has joined, invited by {event.invitor_uin}")
-        ev = onebot_events.GroupIncreaseEvent(
-            group_id=event.grp_id,
-            operator_id=event.invitor_uin,
-            self_id=self.lag.client.uin,
-            sub_type="invite",
-            time=round(time.time()),
-            user_id=event.uin,
-        )
-        await self.adapter.trigger(ev)
+    # Gray-tip invite events are ignored: their attr parsing can crash the
+    # whole push handler, dropping the invite event entirely. Invite joins
+    # are handled by grp_join_handler via typ33 instead.
+    # @on(GroupMemberJoinedByInvite)
+    # async def grp_invite_join_handler(self, _client: Client, event: GroupMemberJoinedByInvite) -> None:
+    #     logger.info(f"[Group] {event.grp_id}: member {event.uin} has joined, invited by {event.invitor_uin}")
+    #     ev = onebot_events.GroupIncreaseEvent(
+    #         group_id=event.grp_id,
+    #         operator_id=event.invitor_uin,
+    #         self_id=self.lag.client.uin,
+    #         sub_type="invite",
+    #         time=round(time.time()),
+    #         user_id=event.uin,
+    #     )
+    #     await self.adapter.trigger(ev)
 
     @on(GroupMemberQuit)
     async def grp_quit_handler(self, _client: Client, event: GroupMemberQuit) -> None:
