@@ -289,7 +289,7 @@ class LagrangeEventHandler:
 
     @on(GroupMemberJoined)
     async def grp_join_handler(self, _client: Client, event: GroupMemberJoined) -> None:
-        if event.join_type:
+        if event.join_type == 131:
             return
         logger.info(f"[Group] {event.grp_id}: member {event.uid} has joined")
         try:
