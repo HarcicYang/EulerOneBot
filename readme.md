@@ -2,6 +2,8 @@
 
 用 Python 实现的 OneBot 11 服务，协议层基于 [Hiro QQ](https://github.com/HarcicYang/hiro-qq)。
 
+*この世界を正すことができるのは、私だけだ！*
+
 ![GPL-3.0](https://img.shields.io/static/v1?label=LICENSE&message=GPL-3.0&style=flat-square)
 ![OneBot V11](https://img.shields.io/badge/OneBot-11-black?style=flat-square)
 
