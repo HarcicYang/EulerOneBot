@@ -299,9 +299,15 @@ class LagrangeEventHandler:
             uin = rs.body[0].account.uin or 0
             if uin:
                 await info_mgr.uid_mgr.add(event.uid, uin)
+        opt_uin = 0
+        if sub_type == "invite" and event.operator_uid:
+            try:
+                opt_uin = await info_mgr.uid_mgr.from_uid(event.operator_uid)
+            except ValueError:
+                opt_uin = 0
         ev = onebot_events.GroupIncreaseEvent(
             group_id=event.grp_id,
-            operator_id=0,
+            operator_id=opt_uin,
             self_id=self.lag.client.uin,
             sub_type=sub_type,
             time=round(time.time()),
