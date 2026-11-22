@@ -85,7 +85,6 @@ loaded_config: BotConfig | None = None
 
 
 def build_schema() -> dict:
-    """生成 appconfig.json 的 JSON Schema(由 BotConfig 模型推导)。"""
     schema = BotConfig.model_json_schema()
     schema.setdefault("title", "EulerOneBot 配置文件")
     schema.setdefault("$id", "./appconfig.schema.json")

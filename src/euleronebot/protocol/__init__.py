@@ -56,9 +56,7 @@ class LagrangeProtocol:
             use_ipv6=self.cfg.login.use_ipv6,
             use_optimum=self.cfg.login.use_optimum,
             fetch_appinfo=self.cfg.login.fetch_appinfo,
-            # hiro-qq's annotation for this parameter is shifted by one; the
-            # real call is (sign_url, uin, guid, qua).
-            custom_sign_provider=cast("Any", self._sign_provider),
+            custom_sign_provider=cast(Any, self._sign_provider),
         )
 
     def _subscribe(self) -> None:

@@ -315,9 +315,6 @@ class LagrangeEventHandler:
         )
         await self.adapter.trigger(ev)
 
-    # Gray-tip invite events are ignored: their attr parsing can crash the
-    # whole push handler, dropping the invite event entirely. Invite joins
-    # are handled by grp_join_handler via typ33 instead.
     # @on(GroupMemberJoinedByInvite)
     # async def grp_invite_join_handler(self, _client: Client, event: GroupMemberJoinedByInvite) -> None:
     #     logger.info(f"[Group] {event.grp_id}: member {event.uin} has joined, invited by {event.invitor_uin}")
