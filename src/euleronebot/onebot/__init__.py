@@ -28,18 +28,12 @@ logger = Logger.fetch("euler").name_custom("euler.onebot")
 
 
 def _summarize_validation_error(e: ValidationError, raw: dict, known_actions: set[str]) -> str:
-    """把 pydantic union 验证错误压成一行摘要。
-
-    未知 action 时 69 个 variant 会各自报 action 字面量错误,只取与 action 匹配
-    的 variant 的 params 错误,避免完整 traceback 刷屏。
-    """
     action = raw.get("action")
     if action is None:
         return "缺少 action 字段"
     if action not in known_actions:
         return f"未知 action: {action!r}"
     errors = e.errors()
-    # action 字面量校验失败的 variant(与调用方无关),其 params 错误一并忽略
     action_fail = {err["loc"][0] for err in errors if err["type"] == "literal_error" and err["loc"][-1] == "action"}
     useful: list[str] = []
     seen: set[tuple[Any, str]] = set()
@@ -165,7 +159,8 @@ class Adapter:
         await self.connector.trigger(event.model_dump_json())
 
     async def report(self, rsp: BaseAPIResponse) -> None:
-        logger.info(f"API Result: {rsp}")
+        text = f"API Result: {rsp}"
+        logger.info(text if len(text) <= 450 else text[:450] + f"...({len(text) - 450} more)")
         if rsp.echo and rsp.echo in self._pending_responses:
             self._pending_responses.pop(rsp.echo).set_result(rsp)
         await self.connector.report(rsp.model_dump_json())
