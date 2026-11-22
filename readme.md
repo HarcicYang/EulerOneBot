@@ -2,12 +2,10 @@
 
 用 Python 实现的 OneBot 11 服务，协议层基于 [Hiro QQ](https://github.com/HarcicYang/hiro-qq)。
 
-*この世界を正すことができるのは、私だけだ！*
+*🖋この世界を正すことができるのは、私だけだ！*
 
 ![GPL-3.0](https://img.shields.io/static/v1?label=LICENSE&message=GPL-3.0&style=flat-square)
 ![OneBot V11](https://img.shields.io/badge/OneBot-11-black?style=flat-square)
-
-项目面向曾经使用 Lagrange.OneBot、在它停止维护后仍希望保留现有 OneBot 工作流的用户，也适合不需要 Hook 注入的场景。
 
 ## Why EulerOneBot ?
 
@@ -52,7 +50,7 @@ uv sync
 uv run euler.onebot
 ```
 
-也可以安装后运行：
+什么你不喜欢uv？
 
 ```shell
 pip install .
@@ -120,7 +118,7 @@ uv run pyrefly check
 
 ## 许可
 
-本项目使用 GPL-3.0-or-later 许可。
+GPL-3.0-or-later
 
 ## 友情链接
 
