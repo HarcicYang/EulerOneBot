@@ -7,11 +7,6 @@
 ![GPL-3.0](https://img.shields.io/static/v1?label=LICENSE&message=GPL-3.0&style=flat-square)
 ![OneBot V11](https://img.shields.io/badge/OneBot-11-black?style=flat-square)
 
-> [!CAUTION]
-> 出现了一些特殊情况，在 2026 年 11 月 28 日 8:00 （UTC+8）前，您将无法在本项目提供的自建签名服务中创建账户或修改配置，日志记录也将不可用
->
-> 我们（虽然除了我大概没别人）正在进行迁移，有可能更早恢复有关功能
-
 ## Why EulerOneBot ?
 
 1. 超过90%代码系古法手搓；
