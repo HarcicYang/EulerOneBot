@@ -46,7 +46,7 @@ class LagrangeProtocol:
     def _build_lagrange(self) -> Lagrange:
         protocol = "custom" if self.cfg.login.use_custom else self.cfg.login.protocol
         sign_path = "/api/sign" if protocol.startswith("android") else "/api/sign/sec-sign"
-        return Lagrange(
+        lag = Lagrange(
             self.cfg.login.uin,
             protocol,
             (self.cfg.login.signer_url + sign_path)
@@ -58,6 +58,20 @@ class LagrangeProtocol:
             fetch_appinfo=self.cfg.login.fetch_appinfo,
             custom_sign_provider=cast(Any, self._sign_provider),
         )
+
+        password = self.cfg.login.password
+        if password:
+
+            async def login_with_password(client: Client) -> bool:
+                if lag.im.sig_info.d2:
+                    if not await client.register():
+                        return await client.login(password)
+                    return True
+                return await client.login(password)
+
+            lag.login = login_with_password
+
+        return lag
 
     def _subscribe(self) -> None:
         self.impl.subscribe()

@@ -2,7 +2,7 @@ import json
 import os
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -56,6 +56,7 @@ class EventCompatibilityConfig(BaseModel):
 
 class LoginConfig(BaseModel):
     uin: int = 0
+    password: str = ""
     protocol: Literal["linux", "macos", "windows", "android_phone", "android_pad"] = "linux"
     fetch_appinfo: bool = False
     signer_url: str = "https://"
@@ -68,6 +69,17 @@ class LoginConfig(BaseModel):
     setup_watchdog: bool = False
     use_ipv6: bool = False
     use_optimum: bool = True
+
+    @field_validator("password", mode="before")
+    @classmethod
+    def _normalize_password(cls, value: str | None) -> str:
+        return value or ""
+
+    @model_validator(mode="after")
+    def _check_android_password(self) -> "LoginConfig":
+        if self.protocol.startswith("android") and not self.password:
+            raise ValueError("安卓协议不支持扫码登录，请填写 login.password")
+        return self
 
 
 class BotConfig(BaseSettings):
