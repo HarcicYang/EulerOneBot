@@ -100,6 +100,11 @@
           "title": "Uin",
           "type": "integer"
         },
+        "password": {
+          "default": "",
+          "title": "Password",
+          "type": "string"
+        },
         "protocol": {
           "default": "linux",
           "enum": [
@@ -279,6 +284,7 @@
       "$ref": "#/$defs/LoginConfig",
       "default": {
         "uin": 0,
+        "password": "",
         "protocol": "linux",
         "fetch_appinfo": false,
         "signer_url": "https://",

@@ -48,6 +48,7 @@ uv run python scripts/gen_schema.py
   ],
   "login": {
     "uin": 0,
+    "password": "",
     "protocol": "linux",
     "fetch_appinfo": false,
     "signer_url": "https://sign.lagrangecore.org",
