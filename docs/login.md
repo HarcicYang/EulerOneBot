@@ -16,6 +16,8 @@ QQ 登录依赖协议参数和签名服务。相关字段都位于 `appconfig.js
 
 PC 和 Android 使用不同的封包参数。Android 协议必须搭配支持 Android 接口的签名服务，并且只支持密码登录，不支持扫码。Android 登录的风险控制结果也可能与 PC 不同，建议先使用小号验证。
 
+登录密码写在 `login.password`，配置了密码就走密码登录，留空则走扫码登录；`login.protocol` 为 `android_phone` 或 `android_pad` 时必须填写，否则启动时直接报错。
+
 Android 封包沿用了 Lagrange V2 的几项细节：
 
 - SSO 保留头带 `MsgType = 32` 和 `NtCoreVersion = 100`。

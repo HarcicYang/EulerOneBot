@@ -4,6 +4,8 @@ import argparse
 import asyncio
 from collections.abc import Sequence
 
+from pydantic import ValidationError
+
 from euleronebot import Adapter, LagrangeProtocol, setup
 from euleronebot.versions import VERSION
 
@@ -21,6 +23,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     except FileNotFoundError as exc:
         print(exc)
         return 0
+    except ValidationError as exc:
+        print(exc)
+        return 1
 
     logger.info("Euler OneBot")
     adapter = Adapter(impls=cfg.connections, access_token=cfg.access_token)
